@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { GroupSelect } from '@/components/GroupSelect';
+import ChallengeHistoryDialog from '@/components/challenges/ChallengeHistoryDialog';
 
 interface Challenge { id: string; title: string; description: string | null; penalty_cents: number; strike_allowance: number; group_id: string; created_by: string; }
 
@@ -23,6 +24,7 @@ const ChallengesPage = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [myParticipation, setMyParticipation] = useState<Record<string, boolean>>({});
   const [todaysLogs, setTodaysLogs] = useState<Record<string, boolean>>({});
+  const [historyId, setHistoryId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -129,15 +131,29 @@ const ChallengesPage = () => {
               <CardDescription>{c.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3">
-                <Checkbox id={`chk-${c.id}`} checked={!!todaysLogs[c.id]} disabled={!canLog(c.id)} onCheckedChange={() => toggleToday(c.id)} />
-                <label htmlFor={`chk-${c.id}`} className="text-sm text-muted-foreground">Mark today as success</label>
-                {!canLog(c.id) && <span className="text-xs text-muted-foreground">(ask creator to add you)</span>}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Checkbox id={`chk-${c.id}`} checked={!!todaysLogs[c.id]} disabled={!canLog(c.id)} onCheckedChange={() => toggleToday(c.id)} />
+                  <label htmlFor={`chk-${c.id}`} className="text-sm text-muted-foreground">Mark today as success</label>
+                  {!canLog(c.id) && <span className="text-xs text-muted-foreground">(ask creator to add you)</span>}
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setHistoryId(c.id)}>History & Progress</Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {historyId && userId && (
+        <ChallengeHistoryDialog
+          open={!!historyId}
+          onOpenChange={(o) => { if (!o) setHistoryId(null); }}
+          challengeId={historyId}
+          title={challenges.find((x) => x.id === historyId)?.title || 'Challenge'}
+          canLog={canLog(historyId)}
+          userId={userId}
+        />
+      )}
     </section>
   );
 };

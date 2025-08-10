@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
@@ -24,6 +24,7 @@ const AppLayout = () => {
       <header className="border-b bg-card/50">
         <div className="container flex items-center justify-between py-4">
           <nav className="flex items-center gap-1">
+            <NavLink to="/" className={linkClass}>Home</NavLink>
             <NavLink to="/app/groups" className={linkClass}>Groups</NavLink>
             <NavLink to="/app/challenges" className={linkClass}>Challenges</NavLink>
             <NavLink to="/app/ideas" className={linkClass}>Ideas</NavLink>
