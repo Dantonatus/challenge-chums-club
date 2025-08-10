@@ -14,8 +14,8 @@ const Index = () => {
       <header className="container py-8 flex items-center justify-between">
         <a href="#features" className="story-link text-sm">How it works</a>
         <div className="flex gap-2">
-          <Button variant="outline">Sign in</Button>
-          <Button variant="hero" className="hover-scale">Get started</Button>
+          <a href="/auth"><Button variant="outline">Sign in</Button></a>
+          <a href="/auth"><Button variant="hero" className="hover-scale">Get started</Button></a>
         </div>
       </header>
 

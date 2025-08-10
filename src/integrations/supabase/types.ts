@@ -471,6 +471,10 @@ export type Database = {
         Args: { _group_id: string; _user_id?: string }
         Returns: boolean
       }
+      join_group: {
+        Args: { p_invite_code: string }
+        Returns: string
+      }
     }
     Enums: {
       challenge_duration_type: "weeks" | "months" | "continuous"
