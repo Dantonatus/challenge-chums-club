@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import heroImg from "@/assets/hero-challenge.jpg";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
@@ -12,10 +13,10 @@ const Index = () => {
       </Helmet>
 
       <header className="container py-8 flex items-center justify-between">
-        <a href="#features" className="story-link text-sm">How it works</a>
+        <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="story-link text-sm">How it works</button>
         <div className="flex gap-2">
-          <a href="/auth"><Button variant="outline">Sign in</Button></a>
-          <a href="/auth"><Button variant="hero" className="hover-scale">Get started</Button></a>
+          <Link to="/auth"><Button variant="outline">Sign in</Button></Link>
+          <Link to="/auth"><Button variant="hero" className="hover-scale">Get started</Button></Link>
         </div>
       </header>
 
@@ -29,8 +30,8 @@ const Index = () => {
               Create groups, set challenges, log results, and keep a friendly ledger. No spreadsheets. Just clarity and momentum.
             </p>
             <div className="flex gap-3">
-              <a href="/app"><Button variant="hero" className="hover-scale">Try the demo</Button></a>
-              <a href="#features"><Button variant="outline">Explore features</Button></a>
+              <Link to="/app"><Button variant="hero" className="hover-scale">Try the demo</Button></Link>
+              <Button variant="outline" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Explore features</Button>
             </div>
           </div>
           <div className="rounded-2xl overflow-hidden shadow-[var(--shadow-elegant)]">
@@ -38,7 +39,7 @@ const Index = () => {
           </div>
         </section>
 
-        <section id="features" className="mt-20 grid gap-6 md:grid-cols-3">
+        <section id="features" className="scroll-mt-24 mt-20 grid gap-6 md:grid-cols-3">
           <div className="rounded-xl border p-6 bg-card/50">
             <h3 className="font-semibold">Challenges that fit</h3>
             <p className="text-sm text-muted-foreground">Daily or weekly, strike allowances, flexible penalties — solo or whole group.</p>
