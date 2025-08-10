@@ -13,7 +13,7 @@ const Index = () => {
       </Helmet>
 
       <header className="container py-8 flex items-center justify-between">
-        <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="story-link text-sm">How it works</button>
+        <Link to="/features" className="story-link text-sm">How it works</Link>
         <div className="flex gap-2">
           <Link to="/auth"><Button variant="outline">Sign in</Button></Link>
           <Link to="/auth"><Button variant="hero" className="hover-scale">Get started</Button></Link>
@@ -31,7 +31,7 @@ const Index = () => {
             </p>
             <div className="flex gap-3">
               <Link to="/app"><Button variant="hero" className="hover-scale">Try the demo</Button></Link>
-              <Button variant="outline" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Explore features</Button>
+              <Link to="/features"><Button variant="outline">Explore features</Button></Link>
             </div>
           </div>
           <div className="rounded-2xl overflow-hidden shadow-[var(--shadow-elegant)]">

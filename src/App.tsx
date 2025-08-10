@@ -14,6 +14,7 @@ import ChallengesPage from "./pages/app/Challenges";
 import IdeasPage from "./pages/app/Ideas";
 import LedgerPage from "./pages/app/Ledger";
 import JournalPage from "./pages/app/Journal";
+import Features from "./pages/Features";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/features" element={<Features />} />
             <Route
               path="/app"
               element={
