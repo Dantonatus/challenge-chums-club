@@ -64,13 +64,13 @@ export const Trends = ({ userId, t }: TrendsProps) => {
     (violationsQuery.data || []).forEach(v => {
       const d = new Date(v.created_at);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (key in penByMonth) penByMonth[key] += v.amount_cents || 0;
+      if (key in penByMonth) penByMonth[key] += 1;
     });
 
     return monthKeys.map(k => ({
       m: monthLabel(k),
       challenges: chByMonth[k],
-      penalties: (penByMonth[k] || 0) / 100,
+      penalties: (penByMonth[k] || 0),
     }));
   }, [challengesQuery.data, violationsQuery.data]);
 
@@ -79,17 +79,17 @@ export const Trends = ({ userId, t }: TrendsProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t?.charts?.lineTitle || 'Trends'}</CardTitle>
+        <CardTitle>{t?.charts?.trendsCountsTitle || 'Challenges & Verstöße (6 Monate)'}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
           <Skeleton className="h-40 w-full" />
         ) : (
-          <ChartContainer config={{ challenges: { label: 'Challenges', color: 'hsl(var(--primary))' }, penalties: { label: '€', color: 'hsl(var(--muted-foreground))' } }}>
+          <ChartContainer config={{ challenges: { label: t?.charts?.challengesLabel || 'Challenges', color: 'hsl(var(--primary))' }, penalties: { label: t?.charts?.violationsLabel || 'Violations', color: 'hsl(var(--muted-foreground))' } }}>
             <LineChart data={data}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="m" tickLine={false} axisLine={false} />
-              <YAxis tickLine={false} axisLine={false} />
+              <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Line type="monotone" dataKey="challenges" stroke="var(--color-challenges)" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="penalties" stroke="var(--color-penalties)" strokeWidth={2} dot={false} />

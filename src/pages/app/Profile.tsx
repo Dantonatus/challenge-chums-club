@@ -41,7 +41,7 @@ const dict = {
     stats: { active: "Aktive Challenges", violations30: "Verletzungen (30 Tage)", outstanding: "Offen gesamt" },
     top: { title: "Top-Challenges", empty: "Keine aktiven Challenges", open: "Öffnen", penalty: "Strafe/Verstoß" },
     feed: { title: "Aktivität", empty: "Noch keine Aktivitäten", youViolation: "Du hast eine Verletzung hinzugefügt in", joinedGroup: "ist deiner Gruppe beigetreten", someone: "Jemand", challenge: "Challenge" },
-    charts: { barTitle: "Verstöße pro Teilnehmer", lineTitle: "Kumulative Strafen (€)", empty: "Keine Daten verfügbar" },
+    charts: { barTitle: "Verstöße pro Teilnehmer", lineTitle: "Kumulative Strafen (€)", trendsCountsTitle: "Challenges & Verstöße (6 Monate)", challengesLabel: "Challenges", violationsLabel: "Verstöße", empty: "Keine Daten verfügbar" },
   },
   en: {
     pageTitle: "Profile | Character Challenge",
@@ -54,7 +54,7 @@ const dict = {
     stats: { active: "Active challenges", violations30: "Violations (30 days)", outstanding: "Outstanding total" },
     top: { title: "Top Challenges", empty: "No active challenges", open: "Open", penalty: "Penalty/violation" },
     feed: { title: "Activity", empty: "No activity yet", youViolation: "You added a violation in", joinedGroup: "joined your group", someone: "Someone", challenge: "Challenge" },
-    charts: { barTitle: "Violations per participant", lineTitle: "Cumulative penalties (€)", empty: "No data available" },
+    charts: { barTitle: "Violations per participant", lineTitle: "Cumulative penalties (€)", trendsCountsTitle: "Challenges & Violations (6 months)", challengesLabel: "Challenges", violationsLabel: "Violations", empty: "No data available" },
   },
 };
 
