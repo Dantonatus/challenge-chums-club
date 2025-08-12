@@ -5,11 +5,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useDateRange } from "@/contexts/DateRangeContext";
 
 interface TopChallengesProps { userId: string; t: any }
 
 export const TopChallenges = ({ userId, t }: TopChallengesProps) => {
   const navigate = useNavigate();
+  const { start, end } = useDateRange();
+  const startISO = start.toISOString().slice(0,10);
+  const endISO = end.toISOString().slice(0,10);
 
   const myParticipantQuery = useQuery({
     queryKey: ["top","participants", userId],
@@ -25,17 +29,16 @@ export const TopChallenges = ({ userId, t }: TopChallengesProps) => {
 
   const challengeIds = (myParticipantQuery.data || []).map((p) => p.challenge_id);
 
-  const today = new Date().toISOString().slice(0,10);
   const challengesQuery = useQuery({
     enabled: challengeIds.length > 0,
-    queryKey: ["top","challenges", challengeIds.join(","), today],
+    queryKey: ["top","challenges", challengeIds.join(","), startISO, endISO],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("challenges")
         .select("id,title,start_date,end_date,penalty_cents")
         .in("id", challengeIds)
-        .lte("start_date", today)
-        .gte("end_date", today);
+        .lte("start_date", endISO)
+        .gte("end_date", startISO);
       if (error) throw error;
       return data || [];
     }
@@ -71,18 +74,40 @@ export const TopChallenges = ({ userId, t }: TopChallengesProps) => {
     }
   });
 
-  const loading = myParticipantQuery.isLoading || challengesQuery.isLoading || participantsQuery.isLoading || profileMapQuery.isLoading;
+  const violationsRangeQuery = useQuery({
+    enabled: (challengesQuery.data || []).length > 0,
+    queryKey: ["top","violationsRange", (challengesQuery.data||[]).map(c=>c.id).join(","), start.toISOString(), end.toISOString()],
+    queryFn: async () => {
+      const ids = (challengesQuery.data || []).map((c) => c.id);
+      const { data, error } = await supabase
+        .from("challenge_violations")
+        .select("challenge_id,user_id,created_at")
+        .in("challenge_id", ids)
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString());
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const loading = myParticipantQuery.isLoading || challengesQuery.isLoading || participantsQuery.isLoading || profileMapQuery.isLoading || violationsRangeQuery.isLoading;
 
   const cards = useMemo(() => {
     const active = challengesQuery.data || [];
-    // Simple relevance: sort by sum of penalty_count desc
+    const countsMap = new Map<string, number>();
+    (violationsRangeQuery.data || []).forEach((v: any) => {
+      const key = `${v.challenge_id}:${v.user_id}`;
+      countsMap.set(key, (countsMap.get(key) || 0) + 1);
+    });
+
     const sums = active.map((c) => {
-      const participants = (participantsQuery.data || []).filter(p => p.challenge_id === c.id);
+      const participants = (participantsQuery.data || []).filter(p => p.challenge_id === c.id)
+        .map(p => ({ ...p, penalty_count: countsMap.get(`${c.id}:${p.user_id}`) || 0 }));
       const total = participants.reduce((s, p) => s + (p.penalty_count || 0), 0);
       return { c, total, participants };
     }).sort((a,b) => b.total - a.total).slice(0,3);
     return sums;
-  }, [challengesQuery.data, participantsQuery.data]);
+  }, [challengesQuery.data, participantsQuery.data, violationsRangeQuery.data]);
 
   if (loading) {
     return (

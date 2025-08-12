@@ -5,16 +5,20 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { useDateRange } from "@/contexts/DateRangeContext";
 
 interface TrendsProps { userId: string; t: any }
 
 export const Trends = ({ userId, t }: TrendsProps) => {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - 5, 1); // 6 months window
-  const monthKeys = Array.from({ length: 6 }).map((_, i) => {
-    const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const { start, end } = useDateRange();
+  const startISO = start.toISOString().slice(0,10);
+  const endISO = end.toISOString().slice(0,10);
+  const rangeStartMonth = new Date(start.getFullYear(), start.getMonth(), 1);
+  const rangeEndMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+  const monthKeys: string[] = [];
+  for (let d = new Date(rangeStartMonth); d <= rangeEndMonth; d.setMonth(d.getMonth() + 1)) {
+    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
 
   const challengesQuery = useQuery({
     queryKey: ["trends","challenges"],

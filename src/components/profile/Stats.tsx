@@ -9,22 +9,26 @@ import { useDateRange } from "@/contexts/DateRangeContext";
 interface StatsProps { userId: string; t: any }
 
 export const Stats = ({ userId, t }: StatsProps) => {
-  const today = new Date().toISOString().slice(0,10);
+  const { start, end } = useDateRange();
+  const startISODate = start.toISOString().slice(0,10);
+  const endISODate = end.toISOString().slice(0,10);
   const from30 = new Date(Date.now() - 30*24*60*60*1000).toISOString();
 
+  // Active challenges overlapping the selected range
   const challengesQuery = useQuery({
-    queryKey: ["stats","challenges", today],
+    queryKey: ["stats","challenges", startISODate, endISODate],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("challenges")
         .select("id,start_date,end_date")
-        .lte("start_date", today)
-        .gte("end_date", today);
+        .lte("start_date", endISODate)
+        .gte("end_date", startISODate);
       if (error) throw error;
       return data || [];
     }
   });
 
+  // Violations count (fixed 30 days)
   const violationsQuery = useQuery({
     queryKey: ["stats","violations", userId],
     queryFn: async () => {
@@ -39,11 +43,27 @@ export const Stats = ({ userId, t }: StatsProps) => {
     }
   });
 
-  const outstandingCents = useMemo(() => {
-    return (violationsQuery.data || []).reduce((sum, v) => sum + (v.amount_cents || 0), 0);
-  }, [violationsQuery.data]);
+  // Outstanding in selected range
+  const outstandingQuery = useQuery({
+    enabled: !!userId,
+    queryKey: ["stats","outstanding", userId, start.toISOString(), end.toISOString()],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("challenge_violations")
+        .select("amount_cents, created_at")
+        .eq("user_id", userId)
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString());
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
-  const loading = challengesQuery.isLoading || violationsQuery.isLoading;
+  const outstandingCents = useMemo(() => {
+    return (outstandingQuery.data || []).reduce((sum, v) => sum + (v.amount_cents || 0), 0);
+  }, [outstandingQuery.data]);
+
+  const loading = challengesQuery.isLoading || violationsQuery.isLoading || outstandingQuery.isLoading;
 
   if (loading) {
     return (
