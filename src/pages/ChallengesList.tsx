@@ -24,7 +24,7 @@ export default function ChallengesList() {
     enabled: !!groupId,
     queryFn: async () => {
       const today = new Date().toISOString().slice(0,10);
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("challenges")
         .select("id, title, description, start_date, end_date, penalty_amount, group_id")
         .eq("group_id", groupId)
@@ -42,7 +42,7 @@ export default function ChallengesList() {
     queryKey: ["challenge_participants", challengeIds],
     enabled: challengeIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("challenge_participants")
         .select("id, challenge_id, user_id, penalty_count")
         .in("challenge_id", challengeIds);

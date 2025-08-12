@@ -48,7 +48,7 @@ export default function ChallengeDetail() {
     queryKey: ["challenge", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("challenges")
         .select("id, title, description, start_date, end_date, penalty_amount, group_id")
         .eq("id", id)
@@ -62,7 +62,7 @@ export default function ChallengeDetail() {
     queryKey: ["challenge_participants", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("challenge_participants")
         .select("id, user_id, penalty_count")
         .eq("challenge_id", id);
@@ -120,7 +120,7 @@ export default function ChallengeDetail() {
 
   const addViolation = async (cpId: string, current: number) => {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("challenge_participants")
         .update({ penalty_count: current + 1 })
         .eq("id", cpId);
@@ -135,7 +135,7 @@ export default function ChallengeDetail() {
     if (!id || !extendDate) return;
     try {
       const iso = extendDate.toISOString().slice(0,10);
-      const { error } = await supabase.from('challenges').update({ end_date: iso }).eq('id', id);
+      const { error } = await (supabase as any).from('challenges').update({ end_date: iso }).eq('id', id);
       if (error) throw error;
       setExtendOpen(false);
       refetch();
