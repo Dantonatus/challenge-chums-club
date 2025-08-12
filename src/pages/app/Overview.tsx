@@ -1,10 +1,12 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ChallengeForm from "@/components/challenges/ChallengeForm";
 import { supabase } from "@/integrations/supabase/client";
 
 const t = {
@@ -15,6 +17,7 @@ const t = {
     perViolation: "pro Verstoß",
     participants: (n: number) => `${n} Teilnehmer`,
     view: "Zur Challenge",
+    create: "Neue Challenge",
   },
   en: {
     title: "Overview",
@@ -23,11 +26,16 @@ const t = {
     perViolation: "per violation",
     participants: (n: number) => `${n} participants`,
     view: "View challenge",
+    create: "New challenge",
   },
 };
 
 export default function OverviewPage() {
   const lang: keyof typeof t = 'de';
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [groupToCreate, setGroupToCreate] = useState<string | null>(null);
+  const openCreate = (gid: string) => { setGroupToCreate(gid); setOpen(true); };
 
   const { data: groups } = useQuery({
     queryKey: ["groups"],
@@ -107,13 +115,19 @@ export default function OverviewPage() {
       <div className="grid gap-4 md:grid-cols-2">
         {(groups || []).map((g: any) => (
           <Card key={g.id} className="animate-fade-in">
-            <CardHeader>
-              <CardTitle>{g.name}</CardTitle>
+            <CardHeader className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle>{g.name}</CardTitle>
+                <Button size="sm" onClick={() => openCreate(g.id)}>{t[lang].create}</Button>
+              </div>
               <CardDescription>{g.description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {(byGroup[g.id] || []).length === 0 && (
-                <div className="text-sm text-muted-foreground">{t[lang].none}</div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="text-sm text-muted-foreground">{t[lang].none}</div>
+                  <Button size="sm" onClick={() => openCreate(g.id)}>{t[lang].create}</Button>
+                </div>
               )}
               {(byGroup[g.id] || []).map((c: any) => (
                 <div key={c.id} className="flex items-center justify-between rounded-lg border p-3">
@@ -135,6 +149,27 @@ export default function OverviewPage() {
           </Card>
         ))}
       </div>
+
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setGroupToCreate(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t[lang].create}</DialogTitle>
+          </DialogHeader>
+          {groupToCreate && (
+            <ChallengeForm
+              groupId={groupToCreate}
+              locale={lang}
+              onCancel={() => setOpen(false)}
+              onSaved={() => {
+                setOpen(false);
+                setGroupToCreate(null);
+                queryClient.invalidateQueries();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
+
