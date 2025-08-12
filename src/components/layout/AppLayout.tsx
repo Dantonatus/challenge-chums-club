@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
+import { useRef, useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
@@ -19,6 +20,18 @@ const AppLayout = () => {
     `px-3 py-2 rounded-md text-sm font-medium transition-colors ${
       isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
     }`;
+  const startBtnRef = useRef<HTMLButtonElement>(null);
+  const [startMoving, setStartMoving] = useState(false);
+  const handleStartClick = () => {
+    if (startMoving) return;
+    const btn = startBtnRef.current;
+    if (!btn) { navigate('/'); return; }
+    const padding = 16; const circle = 32; const right = 16;
+    const slide = Math.max(0, btn.clientWidth - padding - right - circle);
+    btn.style.setProperty('--slide-x', `${slide}px`);
+    setStartMoving(true);
+    setTimeout(() => navigate('/'), 380);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -29,15 +42,18 @@ const AppLayout = () => {
               <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
             </Button>
 
-            <Button variant="ctaOutline" size="lg" asChild className="hover-scale animate-enter" aria-label="Startseite">
-              <Link to="/">
-                <span className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full ring-2 ring-primary/30">
-                    <Home className="h-4 w-4 text-primary" aria-hidden="true" />
-                  </span>
-                  <span className="font-medium text-primary">Start</span>
-                </span>
-              </Link>
+            <Button
+              ref={startBtnRef}
+              variant="cta"
+              size="lg"
+              className="relative overflow-hidden hover-scale animate-enter"
+              onClick={handleStartClick}
+              aria-label="Startseite"
+            >
+              <span className={"absolute left-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full ring-2 ring-primary/30 bg-background/70 backdrop-blur-sm " + (startMoving ? "circle-moving" : "") }>
+                <Home className="h-4 w-4 text-[hsl(var(--cta-foreground))]" aria-hidden="true" />
+              </span>
+              <span className="pl-12 font-semibold">Start</span>
             </Button>
 
             <nav className="flex items-center gap-1">

@@ -55,6 +55,7 @@ All colors MUST be HSL. */
     /* CTA gradient (inspired by reference image) */
     --cta-start: 168 70% 60%;
     --cta-end: 45 95% 60%;
+    --cta-foreground: 0 0% 10%;
     --gradient-cta: linear-gradient(135deg, hsl(var(--cta-start)), hsl(var(--cta-end)) 85%);
     --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(240 10% 97%));
     --shadow-elegant: 0 12px 30px -12px hsl(var(--primary) / 0.35);
@@ -142,4 +143,11 @@ All colors MUST be HSL. */
 
   .hover-scale { @apply transition-transform duration-200 hover:scale-105; }
   .pulse { @apply animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]; }
+
+  /* Start button circle movement */
+  @keyframes circle-move {
+    from { transform: translateY(-50%) translateX(0); }
+    to   { transform: translateY(-50%) translateX(var(--slide-x, 0px)); }
+  }
+  .circle-moving { animation: circle-move 0.38s ease-out forwards; }
 }
