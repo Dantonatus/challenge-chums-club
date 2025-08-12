@@ -94,6 +94,11 @@ export default function ChallengeForm({ groupId, challengeId, initialValues, onC
 
   const onSubmit = async (values: ChallengeFormValues) => {
     try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr) throw authErr;
+      const userId = authData?.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
       const payload = {
         group_id: groupId,
         title: values.title,
@@ -103,15 +108,16 @@ export default function ChallengeForm({ groupId, challengeId, initialValues, onC
         penalty_amount: values.penalty_amount,
         // keep legacy path working
         penalty_cents: Math.round(values.penalty_amount * 100),
+        created_by: userId,
       } as any;
 
       if (challengeId) {
-        const { error } = await supabase.from("challenges").update(payload).eq("id", challengeId);
+        const { error } = await (supabase as any).from("challenges").update(payload).eq("id", challengeId);
         if (error) throw error;
         toast({ title: dict.updated });
         onSaved?.(challengeId);
       } else {
-        const { data, error } = await supabase.from("challenges").insert(payload).select("id").maybeSingle();
+        const { data, error } = await (supabase as any).from("challenges").insert(payload).select("id").maybeSingle();
         if (error) throw error;
         toast({ title: dict.created });
         if (data?.id) onSaved?.(data.id);

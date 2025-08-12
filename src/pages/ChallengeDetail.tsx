@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { format } from "date-fns";
-import { Plus, Calendar as CalendarIcon, UserPlus } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, UserPlus, Pencil, Trash2 } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import * as Recharts from "recharts";
 import AddParticipantsDialog from "@/components/challenges/AddParticipantsDialog";
+import ChallengeForm from "@/components/challenges/ChallengeForm";
+import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
 
 const t = {
   en: {
@@ -40,9 +42,11 @@ export default function ChallengeDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [extendOpen, setExtendOpen] = useState(false);
   const [extendDate, setExtendDate] = useState<Date | undefined>();
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: challenge, refetch } = useQuery({
     queryKey: ["challenge", id],
@@ -50,7 +54,7 @@ export default function ChallengeDetail() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("challenges")
-        .select("id, title, description, start_date, end_date, penalty_amount, group_id")
+        .select("id, title, description, start_date, end_date, penalty_amount, penalty_cents, group_id")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
