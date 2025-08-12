@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Group { id: string; name: string; description: string | null; invite_code: string; owner_id: string; }
 
@@ -15,6 +17,8 @@ const GroupsPage = () => {
   const [description, setDescription] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
+  const [members, setMembers] = useState<Record<string, { user_id: string; name: string; avatar_url?: string }[]>>({});
+  const [manageOpen, setManageOpen] = useState<{ open: boolean; groupId: string | null }>({ open: false, groupId: null });
 
   const fetchGroups = async () => {
     const { data } = await supabase.from('groups').select('*').order('created_at', { ascending: false });
@@ -38,6 +42,24 @@ const GroupsPage = () => {
     setName(''); setDescription('');
     toast({ title: 'Group created' });
     fetchGroups();
+  };
+
+  const loadMembers = async (gid: string) => {
+    const { data: gm } = await (supabase as any)
+      .from('group_members')
+      .select('user_id')
+      .eq('group_id', gid);
+    const ids = (gm || []).map((r: any) => r.user_id);
+    if (ids.length === 0) { setMembers(prev => ({ ...prev, [gid]: [] })); return; }
+    const { data: profs } = await (supabase as any)
+      .from('profiles')
+      .select('id, display_name, avatar_url')
+      .in('id', ids);
+    const list = ids.map((id: string) => {
+      const p = (profs || []).find((x: any) => x.id === id);
+      return { user_id: id, name: p?.display_name || id.slice(0,6), avatar_url: p?.avatar_url };
+    });
+    setMembers(prev => ({ ...prev, [gid]: list }));
   };
 
   const joinByCode = async (e: React.FormEvent) => {
@@ -94,10 +116,64 @@ const GroupsPage = () => {
             </CardHeader>
             <CardContent>
               <div className="text-sm text-muted-foreground">Invite code: <code>{g.invite_code}</code></div>
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" variant="outline" onClick={async () => {
+                  await loadMembers(g.id);
+                  setManageOpen({ open: true, groupId: g.id });
+                }}>Mitglieder verwalten</Button>
+                <Button size="sm" variant="secondary" onClick={() => {
+                  navigator.clipboard.writeText(g.invite_code);
+                  toast({ title: 'Invite code kopiert' });
+                }}>Code kopieren</Button>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <Dialog open={manageOpen.open} onOpenChange={(o) => setManageOpen({ open: o, groupId: o ? manageOpen.groupId : null })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mitglieder verwalten</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {(members[manageOpen.groupId || ''] || []).map((m) => (
+              <div key={m.user_id} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={m.avatar_url} alt={m.name} />
+                    <AvatarFallback>{m.name.slice(0,2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">{m.name}</span>
+                </div>
+                <div>
+                  {groups.find(g => g.id === manageOpen.groupId)?.owner_id === userId ? (
+                    <Button size="sm" variant="destructive" onClick={async () => {
+                      const gid = manageOpen.groupId!;
+                      const { error } = await (supabase as any).from('group_members').delete().eq('group_id', gid).eq('user_id', m.user_id);
+                      if (error) return toast({ title: 'Fehler', description: error.message, variant: 'destructive' as any });
+                      await loadMembers(gid);
+                      toast({ title: 'Mitglied entfernt' });
+                    }}>Entfernen</Button>
+                  ) : m.user_id === userId ? (
+                    <Button size="sm" variant="outline" onClick={async () => {
+                      const gid = manageOpen.groupId!;
+                      const { error } = await (supabase as any).from('group_members').delete().eq('group_id', gid).eq('user_id', m.user_id);
+                      if (error) return toast({ title: 'Fehler', description: error.message, variant: 'destructive' as any });
+                      setManageOpen({ open: false, groupId: null });
+                      fetchGroups();
+                      toast({ title: 'Gruppe verlassen' });
+                    }}>Verlassen</Button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+            {(members[manageOpen.groupId || ''] || []).length === 0 && (
+              <div className="text-sm text-muted-foreground">Keine Mitglieder gefunden.</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };

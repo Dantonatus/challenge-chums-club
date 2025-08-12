@@ -120,7 +120,22 @@ export default function ChallengeForm({ groupId, challengeId, initialValues, onC
         const { data, error } = await (supabase as any).from("challenges").insert(payload).select("id").maybeSingle();
         if (error) throw error;
         toast({ title: dict.created });
-        if (data?.id) onSaved?.(data.id);
+        if (data?.id) {
+          // Auto-add all current group members as challenge participants
+          try {
+            const { data: members } = await (supabase as any)
+              .from('group_members')
+              .select('user_id')
+              .eq('group_id', groupId);
+            const toInsert = (members || []).map((m: any) => ({ challenge_id: data.id, user_id: m.user_id }));
+            if (toInsert.length > 0) {
+              await (supabase as any).from('challenge_participants').insert(toInsert);
+            }
+          } catch (e) {
+            // Non-blocking: ignore auto-add errors
+          }
+          onSaved?.(data.id);
+        }
       }
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" as any });
