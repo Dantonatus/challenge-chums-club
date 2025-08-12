@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload } from "lucide-react";
+import { AvatarUploader } from "@/components/profile/AvatarUploader";
 
 const ProfilePage = () => {
   const { toast } = useToast();
@@ -49,25 +49,12 @@ const ProfilePage = () => {
     toast({ title: "Profil aktualisiert" });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUploaded = async (url: string) => {
+    setAvatarUrl(url);
     if (!userId) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
     try {
-      setLoading(true);
-      const path = `${userId}/${Date.now()}-${file.name}`;
-      const { error: uploadErr } = await supabase.storage.from("avatars").upload(path, file);
-      if (uploadErr) throw uploadErr;
-      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-      const url = data.publicUrl;
-      setAvatarUrl(url);
       await supabase.from("profiles").update({ avatar_url: url }).eq("id", userId);
-      toast({ title: "Avatar aktualisiert" });
-    } catch (err: any) {
-      toast({ title: "Upload fehlgeschlagen", description: err.message, variant: "destructive" as any });
-    } finally {
-      setLoading(false);
-    }
+    } catch {}
   };
 
   const initials = (displayName || "").trim().split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase() || "?";
@@ -97,12 +84,13 @@ const ProfilePage = () => {
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div>
-                <input id="avatar" type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                <label htmlFor="avatar">
-                  <Button type="button" variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-2" /> Neues Bild hochladen
+                {userId ? (
+                  <AvatarUploader userId={userId} onUploaded={handleAvatarUploaded} />
+                ) : (
+                  <Button type="button" variant="outline" size="sm" disabled>
+                    Neues Bild hochladen
                   </Button>
-                </label>
+                )}
               </div>
             </div>
             <div className="md:col-span-2 grid gap-3">
