@@ -27,6 +27,7 @@ import {
   Line,
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Trends } from "@/components/profile/Trends";
 
 const dict = {
   de: {
@@ -228,30 +229,28 @@ const ProfilePage = () => {
             <CardDescription>{t.profileInfoDesc}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="flex items-center gap-4 md:col-span-1">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
-                  <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <div>
-                  {userId ? (
-                    <AvatarUploader userId={userId} onUploaded={handleAvatarUploaded} />
-                  ) : (
-                    <Button type="button" variant="outline" size="sm" disabled>
-                      {t.upload}
-                    </Button>
-                  )}
-                </div>
+            <div className="flex flex-col items-center gap-4">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+              <div>
+                {userId ? (
+                  <AvatarUploader userId={userId} onUploaded={handleAvatarUploaded} />
+                ) : (
+                  <Button type="button" variant="outline" size="sm" disabled>
+                    {t.upload}
+                  </Button>
+                )}
               </div>
-              <div className="md:col-span-2 grid gap-3">
+              <div className="w-full max-w-sm mx-auto grid gap-3">
                 <Input
                   placeholder={lang === "de" ? "Vollständiger Name" : "Full name"}
                   aria-label={lang === "de" ? "Vollständiger Name" : "Full name"}
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                 />
-                <div>
+                <div className="flex justify-center">
                   <Button onClick={handleSave} disabled={loading}>{t.save}</Button>
                 </div>
               </div>
@@ -262,8 +261,10 @@ const ProfilePage = () => {
         {/* Right column: content */}
         <div className="md:col-span-2 grid gap-6">
           <Stats userId={userId || ""} t={t} />
-          <TopChallenges userId={userId || ""} t={t} />
-
+          <div className="grid gap-6 md:grid-cols-2">
+            <TopChallenges userId={userId || ""} t={t} />
+            <Trends userId={userId || ""} t={t} />
+          </div>
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
