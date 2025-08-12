@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { QRCode } from "qrcode.react";
+import QRCode from "qrcode.react";
 
 interface FriendsInvitesProps {
   userId: string;
