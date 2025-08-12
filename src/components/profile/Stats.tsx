@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-aimport { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { formatEUR } from "@/lib/currency";
 import { useDateRange } from "@/contexts/DateRangeContext";
 

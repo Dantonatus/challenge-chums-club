@@ -44,13 +44,13 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
   const lang = (navigator.language?.startsWith("de") ? "de" : "en") as keyof typeof dict;
   const t = dict[lang];
 
-  const minDays = React.useMemo(() => daysSinceEpoch(minDate), [minDate]);
-  const maxDays = React.useMemo(() => daysSinceEpoch(maxDate), [maxDate]);
-  const [local, setLocal] = React.useState<[number, number]>([daysSinceEpoch(start), daysSinceEpoch(end)]);
+  const minDays = React.useMemo(() => daysSinceEpochLocal(minDate), [minDate]);
+  const maxDays = React.useMemo(() => daysSinceEpochLocal(maxDate), [maxDate]);
+  const [local, setLocal] = React.useState<[number, number]>([daysSinceEpochLocal(start), daysSinceEpochLocal(end)]);
 
   // Keep local in sync with provider
   React.useEffect(() => {
-    setLocal([daysSinceEpoch(start), daysSinceEpoch(end)]);
+    setLocal([daysSinceEpochLocal(start), daysSinceEpochLocal(end)]);
   }, [start, end]);
 
 // commit updates on drag end via onValueCommit for reliability
@@ -61,7 +61,7 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
     const d = new Date(minDate);
     d.setDate(1);
     while (d <= maxDate) {
-      const pos = ((daysSinceEpoch(d) - minDays) / (maxDays - minDays)) * 100;
+      const pos = ((daysSinceEpochLocal(d) - minDays) / (maxDays - minDays)) * 100;
       const label = d.toLocaleDateString(undefined, { month: 'short' });
       ticks.push({ pos, label });
       d.setMonth(d.getMonth() + 1);
@@ -83,18 +83,18 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
       case "All": startDate = new Date(minDate); break;
       default: startDate = new Date(minDate);
     }
-    const sVal = Math.max(daysSinceEpoch(startDate), minDays);
-    const eVal = Math.min(daysSinceEpoch(endDate), maxDays);
+    const sVal = Math.max(daysSinceEpochLocal(startDate), minDays);
+    const eVal = Math.min(daysSinceEpochLocal(endDate), maxDays);
     const next: [number, number] = [Math.min(sVal, eVal), Math.max(sVal, eVal)];
     setLocal(next);
-    setRange({ start: dateFromDays(next[0]), end: dateFromDays(next[1]) });
+    setRange({ start: dateFromLocalDayNumber(next[0]), end: dateFromLocalDayNumber(next[1]) });
   };
 
 // built-in keyboard support from Radix will handle arrow keys
 
   const [sDays, eDays] = local;
-  const sDate = dateFromDays(sDays);
-  const eDate = dateFromDays(eDays);
+  const sDate = dateFromLocalDayNumber(sDays);
+  const eDate = dateFromLocalDayNumber(eDays);
 
   return (
     <Card className={cn("rounded-xl shadow-sm border bg-gradient-to-r from-background to-muted/30", sticky && "sticky top-0 z-30")}> 
@@ -132,7 +132,7 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             step={1}
             value={[sDays, eDays]}
             onValueChange={(v) => setLocal([Math.min(v[0], v[1]), Math.max(v[0], v[1])])}
-            onValueCommit={(v) => setRange({ start: dateFromDays(Math.min(v[0], v[1])), end: dateFromDays(Math.max(v[0], v[1])) })}
+            onValueCommit={(v) => setRange({ start: dateFromLocalDayNumber(Math.min(v[0], v[1])), end: dateFromLocalDayNumber(Math.max(v[0], v[1])) })}
             aria-label={t.title}
           >
             <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
