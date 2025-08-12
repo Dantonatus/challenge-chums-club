@@ -20,11 +20,12 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         hero: "bg-[var(--gradient-primary)] text-primary-foreground shadow-[var(--shadow-elegant)] hover:brightness-110",
         cta: "rounded-full bg-[var(--gradient-cta)] text-primary-foreground ring-1 ring-primary/25 shadow-[var(--shadow-elegant)] hover:brightness-110 active:scale-[0.98]",
+        ctaOutline: "rounded-full bg-background text-primary ring-2 ring-primary/30 hover:bg-muted shadow-[var(--shadow-elegant)]/30 active:scale-[0.98]",
       },
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        lg: "h-12 rounded-full px-8",
         icon: "h-10 w-10",
       },
     },
