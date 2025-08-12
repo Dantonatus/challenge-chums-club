@@ -19,6 +19,7 @@ import { Trends } from "@/components/profile/Trends";
 import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
 import { DateRangeBar } from "@/components/profile/DateRangeBar";
+import ViolationsPerParticipant from "@/components/profile/ViolationsPerParticipant";
 
 const dict = {
   de: {
@@ -29,10 +30,10 @@ const dict = {
     profileInfoDesc: "Vollständigen Namen festlegen und Profilbild ändern.",
     save: "Änderungen speichern",
     upload: "Neues Bild hochladen",
-    stats: { active: "Aktive Challenges", violations30: "Verletzungen (30 Tage)", outstanding: "Offen gesamt" },
+    stats: { active: "Aktive Challenges", violations30: "Verletzungen", outstanding: "Offen gesamt" },
     top: { title: "Top-Challenges", empty: "Keine aktiven Challenges", open: "Öffnen", penalty: "Strafe/Verstoß" },
     feed: { title: "Aktivität", empty: "Noch keine Aktivitäten", youViolation: "Du hast eine Verletzung hinzugefügt in", joinedGroup: "ist deiner Gruppe beigetreten", someone: "Jemand", challenge: "Challenge" },
-    charts: { barTitle: "Verstöße pro Teilnehmer", lineTitle: "Kumulative Strafen (€)", trendsCountsTitle: "Challenges & Verstöße (6 Monate)", challengesLabel: "Challenges", violationsLabel: "Verstöße", empty: "Keine Daten verfügbar" },
+    charts: { barTitle: "Verstöße pro Teilnehmer", lineTitle: "Kumulative Strafen (€)", trendsCountsTitle: "Challenges & Verstöße (Zeitraum)", challengesLabel: "Challenges", violationsLabel: "Verstöße", empty: "Keine Daten verfügbar" },
   },
   en: {
     pageTitle: "Profile | Character Challenge",
@@ -272,18 +273,13 @@ const ProfilePage = () => {
                 <CardTitle>{t.charts.barTitle}</CardTitle>
               </CardHeader>
               <CardContent>
-                {activeCh.isLoading || relParticipants.isLoading ? (
+                {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
                   <Skeleton className="h-48 w-full" />
-                ) : barData.length ? (
-                  <ChartContainer config={{ amount: { label: "€", color: "hsl(var(--primary))" } }}>
-                    <BarChart data={barData}>
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                      <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} height={60} angle={0} dy={10} />
-                      <YAxis tickLine={false} axisLine={false} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="amount" fill="var(--color-amount)" radius={[6,6,0,0]} />
-                    </BarChart>
-                  </ChartContainer>
+                ) : chartParticipants.length ? (
+                  <ViolationsPerParticipant
+                    challengeId={relevantChallengeId}
+                    participants={chartParticipants}
+                  />
                 ) : (
                   <div className="text-sm text-muted-foreground">{t.charts.empty}</div>
                 )}
