@@ -219,7 +219,12 @@ const ProfilePage = () => {
         <h1 className="text-2xl font-semibold">{t.header}</h1>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <DateRangeProvider userId={userId}>
+        <div className="mb-4">
+          <DateRangeBar />
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
         {/* Left column: profile card */}
         <Card>
           <CardHeader>
@@ -298,8 +303,6 @@ const ProfilePage = () => {
                   <CumulativePenaltyChart
                     challengeId={relevantChallengeId}
                     participants={chartParticipants}
-                    defaultStart={sixStart}
-                    defaultEnd={sixEnd}
                   />
                 ) : (
                   <div className="text-sm text-muted-foreground">{t.charts.empty}</div>
@@ -311,7 +314,8 @@ const ProfilePage = () => {
           <ActivityFeed userId={userId || ""} t={t} />
         </div>
       </div>
-    </section>
+    </DateRangeProvider>
+  </section>
   );
 };
 
