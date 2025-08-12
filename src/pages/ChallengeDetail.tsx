@@ -184,7 +184,7 @@ export default function ChallengeDetail() {
       const { error } = await (supabase as any).from('challenges').delete().eq('id', id);
       if (error) throw error;
       toast({ title: 'Challenge gelöscht' });
-      navigate('/challenges');
+      navigate('/app/overview');
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' as any });
     }

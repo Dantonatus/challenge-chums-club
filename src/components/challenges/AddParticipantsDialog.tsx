@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -16,15 +16,15 @@ interface Props {
 const tt = {
   de: {
     title: "Teilnehmer:innen hinzufügen",
-    search: "Freunde suchen",
-    empty: "Keine Freund:innen gefunden.",
+    search: "Gruppenmitglieder suchen",
+    empty: "Keine Gruppenmitglieder gefunden.",
     cancel: "Abbrechen",
     add: "Hinzufügen",
   },
   en: {
     title: "Add participants",
-    search: "Search friends",
-    empty: "No friends found.",
+    search: "Search group members",
+    empty: "No group members found.",
     cancel: "Cancel",
     add: "Add",
   },
@@ -43,38 +43,75 @@ export default function AddParticipantsDialog({ open, onOpenChange, challengeId,
   }, []);
 
   useEffect(() => {
-    const loadFriends = async () => {
-      if (!userId) return;
-      // gather friend ids where status = accepted
-      const { data, error } = await (supabase as any)
-        .from('user_friends')
-        .select('user_id, friend_user_id, status')
-        .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`)
-        .eq('status', 'accepted');
-      if (error) return;
-      const ids = new Set<string>();
-      for (const row of (data || []) as any[]) {
-        ids.add(row.user_id === userId ? row.friend_user_id : row.user_id);
+    const loadMembers = async () => {
+      if (!open) return;
+      try {
+        // 1) Resolve challenge -> group
+        const { data: ch } = await (supabase as any)
+          .from('challenges')
+          .select('id, group_id')
+          .eq('id', challengeId)
+          .maybeSingle();
+        const gid = ch?.group_id as string | undefined;
+        if (!gid) { setFriends([]); return; }
+
+        // 2) Fetch group members and their profiles
+        const { data: gm } = await (supabase as any)
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', gid);
+        const memberIds = (gm || []).map((r: any) => r.user_id);
+
+        // 3) Ensure current user is known
+        if (!userId) {
+          const { data: u } = await supabase.auth.getUser();
+          setUserId(u.user?.id ?? null);
+        }
+
+        // 4) Load profiles for names
+        const { data: profs } = await (supabase as any)
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', memberIds);
+
+        // 5) Already participating -> keep to avoid duplicate inserts
+        const { data: existing } = await (supabase as any)
+          .from('challenge_participants')
+          .select('user_id')
+          .eq('challenge_id', challengeId);
+        const existingSet = new Set((existing || []).map((r: any) => r.user_id));
+
+        const list = (profs || []).map((p: any) => ({ id: p.id, display_name: p.display_name }));
+        setFriends(list);
+
+        // Auto-select all members (user can uncheck)
+        const initSel: Record<string, boolean> = {};
+        for (const id of memberIds) initSel[id] = true;
+        setSelected(initSel);
+
+        // Save existing for filtering on submit
+        (window as any).__cp_existing = existingSet; // lightweight local cache
+      } catch {
+        setFriends([]);
       }
-      if (ids.size === 0) { setFriends([]); return; }
-      const { data: profiles } = await (supabase as any)
-        .from('profiles')
-        .select('id, display_name')
-        .in('id', Array.from(ids));
-      setFriends(((profiles || []) as any[]).map((p: any) => ({ id: p.id, display_name: p.display_name })));
     };
-    loadFriends();
-  }, [userId, open]);
+    loadMembers();
+  }, [open, challengeId]);
 
   const toggle = (id: string) => setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const addSelected = async () => {
     try {
-      const toAdd = Object.entries(selected).filter(([, v]) => v).map(([id]) => ({ challenge_id: challengeId, user_id: id }));
-      if (toAdd.length === 0) { onOpenChange(false); return; }
-      const { error } = await supabase.from('challenge_participants').insert(toAdd);
+      const existingSet: Set<string> | undefined = (window as any).__cp_existing;
+      const chosen = Object.entries(selected).filter(([, v]) => v).map(([id]) => id);
+      const toInsert = chosen
+        .filter((uid) => !(existingSet?.has(uid)))
+        .map((uid) => ({ challenge_id: challengeId, user_id: uid }));
+
+      if (toInsert.length === 0) { onOpenChange(false); return; }
+      const { error } = await supabase.from('challenge_participants').insert(toInsert);
       if (error) throw error;
-      toast({ title: 'Participants added' });
+      toast({ title: tt[lang].add });
       onAdded?.();
       onOpenChange(false);
       setSelected({});
@@ -87,9 +124,10 @@ export default function AddParticipantsDialog({ open, onOpenChange, challengeId,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{tt[lang].title}</DialogTitle>
+          <DialogDescription>Wähle Gruppenmitglieder aus, um sie zur Challenge hinzuzufügen.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <Input placeholder={tt[lang].search} value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -104,9 +142,12 @@ export default function AddParticipantsDialog({ open, onOpenChange, challengeId,
               <div className="text-sm text-muted-foreground">{tt[lang].empty}</div>
             )}
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>{tt[lang].cancel}</Button>
-            <Button onClick={addSelected}>{tt[lang].add}</Button>
+          <div className="flex justify-between gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelected(Object.fromEntries(friends.map(f => [f.id, true])))}>Alle auswählen</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>{tt[lang].cancel}</Button>
+              <Button onClick={addSelected}>{tt[lang].add}</Button>
+            </div>
           </div>
         </div>
       </DialogContent>
