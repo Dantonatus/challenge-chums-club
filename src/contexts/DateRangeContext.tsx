@@ -24,6 +24,7 @@ function endOfDay(d: Date) {
 
 export function DateRangeProvider({ userId, children }: { userId?: string | null; children: React.ReactNode }) {
   const today = endOfDay(new Date());
+  const maxCap = endOfDay(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
   const sixMonthsAgo = startOfDay(new Date(new Date().setMonth(new Date().getMonth() - 6)));
 
   const [minDate, setMinDate] = useState<Date>(startOfDay(new Date(sixMonthsAgo))); // placeholder until fetched
@@ -74,7 +75,7 @@ export function DateRangeProvider({ userId, children }: { userId?: string | null
         // If current start is after new domain max, adjust range conservatively
         setRange((cur) => {
           const start = cur.start < domainMin ? domainMin : cur.start;
-          const end = cur.end > today ? today : cur.end;
+          const end = cur.end > maxCap ? maxCap : cur.end;
           return { start, end };
         });
       } catch (_) {
@@ -88,8 +89,8 @@ export function DateRangeProvider({ userId, children }: { userId?: string | null
     end: range.end,
     setRange: (r) => setRange({ start: startOfDay(r.start), end: endOfDay(r.end) }),
     minDate,
-    maxDate: today,
-  }), [range, minDate, today]);
+    maxDate: maxCap,
+  }), [range, minDate, maxCap]);
 
   return (
     <DateRangeContext.Provider value={value}>

@@ -28,16 +28,16 @@ export const Stats = ({ userId, t }: StatsProps) => {
     }
   });
 
-  // Violations count (fixed 30 days)
+  // Violations count (range)
   const violationsQuery = useQuery({
-    queryKey: ["stats","violations", userId],
+    queryKey: ["stats","violations-range", userId, start.toISOString(), end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("challenge_violations")
-        .select("amount_cents, created_at")
-        .gte("created_at", from30)
+        .select("id")
         .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString());
       if (error) throw error;
       return data || [];
     }

@@ -133,9 +133,17 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             min={minDays}
             max={maxDays}
             step={1}
+            minStepsBetweenThumbs={0}
             value={[sDays, eDays]}
-            onValueChange={(v) => setLocal([Math.min(v[0], v[1]), Math.max(v[0], v[1])])}
-            onValueCommit={(v) => setRange({ start: dateFromLocalDayNumber(Math.min(v[0], v[1])), end: dateFromLocalDayNumber(Math.max(v[0], v[1])) })}
+            onValueChange={(v) => setLocal(([s,e]) => {
+              const [ns, ne] = v as [number, number];
+              if (ns !== s) {
+                return [Math.min(ns, e), e];
+              } else {
+                return [s, Math.max(ne, s)];
+              }
+            })}
+            onValueCommit={(v) => setRange({ start: dateFromLocalDayNumber(v[0]), end: dateFromLocalDayNumber(v[1]) })}
             onPointerDown={() => setDragging(true)}
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}

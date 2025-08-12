@@ -21,11 +21,13 @@ export const Trends = ({ userId, t }: TrendsProps) => {
   }
 
   const challengesQuery = useQuery({
-    queryKey: ["trends","challenges"],
+    queryKey: ["trends","challenges", startISO, endISO],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("challenges")
-        .select("id,start_date,end_date");
+        .select("id,start_date,end_date")
+        .lte("start_date", endISO)
+        .gte("end_date", startISO);
       if (error) throw error;
       return data || [];
     }
@@ -33,13 +35,14 @@ export const Trends = ({ userId, t }: TrendsProps) => {
 
   const violationsQuery = useQuery({
     enabled: !!userId,
-    queryKey: ["trends","violations", userId],
+    queryKey: ["trends","violations", userId, start.toISOString(), end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("challenge_violations")
         .select("amount_cents, created_at")
         .eq("user_id", userId)
-        .gte("created_at", start.toISOString());
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString());
       if (error) throw error;
       return data || [];
     }
