@@ -35,6 +35,7 @@ const AppLayout = () => {
               <NavLink to="/app/ideas" className={linkClass}>Ideas</NavLink>
               <NavLink to="/app/ledger" className={linkClass}>Ledger</NavLink>
               <NavLink to="/app/journal" className={linkClass}>Journal</NavLink>
+              <NavLink to="/app/profile" className={linkClass}>Profile</NavLink>
             </nav>
           </div>
           <Button variant="outline" onClick={handleLogout}>Log out</Button>

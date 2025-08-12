@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { GroupSelect } from '@/components/GroupSelect';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface Payment { id: string; user_id: string; amount_cents: number; type: 'paid'|'owed'|'adjustment'; note: string | null; created_at: string; }
 
@@ -18,6 +23,7 @@ const LedgerPage = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [targetUser, setTargetUser] = useState('');
+  const [entryDate, setEntryDate] = useState<Date | undefined>(new Date());
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null)); }, []);
 
@@ -41,7 +47,8 @@ const LedgerPage = () => {
 
   const addOwedOrAdjustment = async (type: 'owed'|'adjustment') => {
     if (!groupId || !targetUser) return;
-    const { error } = await supabase.from('payments').insert({ group_id: groupId, user_id: targetUser, amount_cents: Math.round(amount * 100), type, note: note || null });
+    const dateStr = (entryDate ?? new Date()).toISOString().slice(0, 10);
+    const { error } = await supabase.from('payments').insert({ group_id: groupId, user_id: targetUser, amount_cents: Math.round(amount * 100), type, note: note || null, period_start: dateStr });
     if (error) return toast({ title: 'Failed to record', description: error.message, variant: 'destructive' as any });
     setAmount(0); setNote(''); setTargetUser('');
     fetchPayments();
@@ -81,7 +88,28 @@ const LedgerPage = () => {
             <CardDescription>Record owed amounts or adjustments for members.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-4 gap-3">
+            <div className="grid md:grid-cols-5 gap-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn("justify-start text-left font-normal", !entryDate && "text-muted-foreground")}
+                    aria-label="Datum auswählen"
+                  >
+                    {entryDate ? format(entryDate, "PPP") : <span>Datum wählen</span>}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={entryDate}
+                    onSelect={setEntryDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
               <Input placeholder="Target user id" value={targetUser} onChange={(e) => setTargetUser(e.target.value)} />
               <Input type="number" step="0.5" min={0} placeholder="Amount ($)" value={amount} onChange={(e) => setAmount(parseFloat(e.target.value || '0'))} />
               <Input placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
