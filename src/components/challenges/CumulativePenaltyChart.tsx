@@ -108,7 +108,7 @@ export default function CumulativePenaltyChart({ challengeId, participants, defa
         </Popover>
       </div>
 
-      <ChartContainer config={chartConfig} className="w-full">
+      <ChartContainer config={chartConfig} className="w-full h-56 md:h-64" withAspect={false}>
         <Recharts.LineChart data={chartData}>
           <Recharts.CartesianGrid strokeDasharray="3 3" />
           <Recharts.XAxis dataKey="date" />

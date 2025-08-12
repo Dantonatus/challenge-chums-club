@@ -19,6 +19,7 @@ import * as Recharts from "recharts";
 import AddParticipantsDialog from "@/components/challenges/AddParticipantsDialog";
 import ChallengeForm from "@/components/challenges/ChallengeForm";
 import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const t = {
   en: {
@@ -330,31 +331,48 @@ export default function ChallengeDetail() {
             ))}
           </div>
 
-          {/* Chart */}
-          <ChartContainer
-            config={Object.fromEntries(rows.map((r, idx) => [r.name, { label: r.name, color: colors[idx % colors.length] }]))}
-            className="w-full"
-          >
-            <Recharts.BarChart data={chartData}>
-              <Recharts.CartesianGrid strokeDasharray="3 3" />
-              <Recharts.XAxis dataKey="name" />
-              <Recharts.YAxis allowDecimals={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Recharts.Bar dataKey="count" name="Violations" radius={[4,4,0,0]}>
-                {chartData.map((entry, index) => (
-                  <Recharts.Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Recharts.Bar>
-            </Recharts.BarChart>
-          </ChartContainer>
+          {/* Charts compact in Tabs */}
+          <Tabs defaultValue="violations" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="violations">Verstöße</TabsTrigger>
+              <TabsTrigger value="cumulative">Kumulierte Strafen</TabsTrigger>
+            </TabsList>
 
-          {/* Kumulative Strafen über Zeitraum */}
-          <CumulativePenaltyChart
-            challengeId={id!}
-            participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
-            defaultStart={new Date(challenge.start_date as any)}
-            defaultEnd={new Date(challenge.end_date as any)}
-          />
+            <TabsContent value="violations">
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Verstöße je Teilnehmer:in</div>
+                <ChartContainer
+                  config={Object.fromEntries(rows.map((r, idx) => [r.name, { label: r.name, color: colors[idx % colors.length] }]))}
+                  className="w-full h-56 md:h-64"
+                  withAspect={false}
+                >
+                  <Recharts.BarChart data={chartData}>
+                    <Recharts.CartesianGrid strokeDasharray="3 3" />
+                    <Recharts.XAxis dataKey="name" />
+                    <Recharts.YAxis allowDecimals={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Recharts.Bar dataKey="count" name="Verstöße" radius={[4,4,0,0]}>
+                      {chartData.map((entry, index) => (
+                        <Recharts.Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Recharts.Bar>
+                  </Recharts.BarChart>
+                </ChartContainer>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="cumulative">
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Kumulierte Strafen nach Zeitraum</div>
+                <CumulativePenaltyChart
+                  challengeId={id!}
+                  participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
+                  defaultStart={new Date(challenge.start_date as any)}
+                  defaultEnd={new Date(challenge.end_date as any)}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {/* Actions per participant */}
           <div className="grid gap-3">
