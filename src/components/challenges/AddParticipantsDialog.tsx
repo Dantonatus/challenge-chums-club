@@ -13,7 +13,25 @@ interface Props {
   onAdded?: () => void;
 }
 
+const tt = {
+  de: {
+    title: "Teilnehmer:innen hinzufügen",
+    search: "Freunde suchen",
+    empty: "Keine Freund:innen gefunden.",
+    cancel: "Abbrechen",
+    add: "Hinzufügen",
+  },
+  en: {
+    title: "Add participants",
+    search: "Search friends",
+    empty: "No friends found.",
+    cancel: "Cancel",
+    add: "Add",
+  },
+};
+
 export default function AddParticipantsDialog({ open, onOpenChange, challengeId, onAdded }: Props) {
+  const lang: keyof typeof tt = 'de';
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
   const [friends, setFriends] = useState<{ id: string; display_name: string | null }[]>([]);
@@ -71,10 +89,10 @@ export default function AddParticipantsDialog({ open, onOpenChange, challengeId,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add participants</DialogTitle>
+          <DialogTitle>{tt[lang].title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="Search friends" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder={tt[lang].search} value={search} onChange={(e) => setSearch(e.target.value)} />
           <div className="max-h-64 overflow-auto space-y-2">
             {filtered.map((f) => (
               <label key={f.id} className="flex items-center gap-3 text-sm">
@@ -83,12 +101,12 @@ export default function AddParticipantsDialog({ open, onOpenChange, challengeId,
               </label>
             ))}
             {filtered.length === 0 && (
-              <div className="text-sm text-muted-foreground">No friends found.</div>
+              <div className="text-sm text-muted-foreground">{tt[lang].empty}</div>
             )}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={addSelected}>Add</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>{tt[lang].cancel}</Button>
+            <Button onClick={addSelected}>{tt[lang].add}</Button>
           </div>
         </div>
       </DialogContent>

@@ -18,16 +18,16 @@ All colors MUST be HSL. */
     --popover-foreground: 222.2 84% 4.9%;
 
     /* Brand */
-    --primary: 252 94% 36%; /* vibrant indigo */
+    --primary: 212 100% 50%; /* Apple-like blue */
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
+    --secondary: 160 30% 96%; /* soft mint surface */
     --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 220 18% 97%;
+    --muted: 210 20% 97%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 270 95% 60%; /* violet accent */
+    --accent: 160 60% 45%; /* mint accent */
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
@@ -35,7 +35,7 @@ All colors MUST be HSL. */
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 252 94% 36%;
+    --ring: 212 100% 50%;
 
     --radius: 0.75rem;
 
@@ -68,16 +68,16 @@ All colors MUST be HSL. */
     --popover: 232 21% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 252 94% 70%;
+    --primary: 212 100% 70%;
     --primary-foreground: 232 21% 10%;
 
-    --secondary: 224 25% 15%;
+    --secondary: 160 15% 16%;
     --secondary-foreground: 210 40% 98%;
 
     --muted: 224 25% 15%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 270 95% 70%;
+    --accent: 160 60% 55%;
     --accent-foreground: 232 21% 10%;
 
     --destructive: 0 62.8% 30.6%;
@@ -85,13 +85,13 @@ All colors MUST be HSL. */
 
     --border: 224 25% 18%;
     --input: 224 25% 18%;
-    --ring: 252 94% 70%;
+    --ring: 212 100% 70%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 252 94% 70%;
+    --sidebar-primary: 212 100% 70%;
     --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent: 160 15% 16%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;

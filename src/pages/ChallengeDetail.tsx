@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { format } from "date-fns";
-import { Plus, Calendar as CalendarIcon, UserPlus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, UserPlus, Pencil, Trash2, ArrowLeft } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,18 @@ const t = {
   en: {
     title: "Challenge",
     participants: "Participants",
-    extend: "Extend Challenge",
+    extend: "Extend challenge",
     addViolation: "Add violation",
     addParticipants: "Add participants",
+    edit: "Edit",
+    delete: "Delete",
+    cancel: "Cancel",
+    save: "Save",
+    pickDate: "Pick a date",
+    perViolation: "per violation",
     until: "until",
+    back: "Back",
+    tagline: "Shake hands, then compete kindly ✦",
   },
   de: {
     title: "Challenge",
@@ -35,7 +43,15 @@ const t = {
     extend: "Challenge verlängern",
     addViolation: "Verstoß eintragen",
     addParticipants: "Teilnehmer:innen hinzufügen",
+    edit: "Bearbeiten",
+    delete: "Löschen",
+    cancel: "Abbrechen",
+    save: "Speichern",
+    pickDate: "Datum wählen",
+    perViolation: "pro Verstoß",
     until: "bis",
+    back: "Zurück",
+    tagline: "Hände schütteln, dann freundlich wetteifern ✦",
   },
 };
 
@@ -48,6 +64,7 @@ export default function ChallengeDetail() {
   const [extendDate, setExtendDate] = useState<Date | undefined>();
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const lang: keyof typeof t = 'de';
 
   const { data: challenge, refetch } = useQuery({
     queryKey: ["challenge", id],
@@ -185,17 +202,22 @@ export default function ChallengeDetail() {
         <link rel="canonical" href={`/challenges/${challenge.id}`} />
       </Helmet>
 
-      {/* fun tiny animation */}
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <svg width="44" height="28" viewBox="0 0 44 28" className="animate-fade-in">
-          <circle cx="10" cy="14" r="6" fill="hsl(var(--primary))" opacity="0.9">
-            <animate attributeName="cx" values="8;12;8" dur="1.6s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="34" cy="14" r="6" fill="hsl(var(--secondary))" opacity="0.9">
-            <animate attributeName="cx" values="36;32;36" dur="1.6s" repeatCount="indefinite" />
-          </circle>
-        </svg>
-        <span className="text-sm">Shake hands, then compete kindly ✦</span>
+      {/* Back + fun tiny animation */}
+      <div className="flex items-center justify-between text-muted-foreground">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} aria-label={t[lang].back}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> {t[lang].back}
+        </Button>
+        <div className="flex items-center gap-2">
+          <svg width="44" height="28" viewBox="0 0 44 28" className="animate-fade-in">
+            <circle cx="10" cy="14" r="6" fill="hsl(var(--primary))" opacity="0.9">
+              <animate attributeName="cx" values="8;12;8" dur="1.6s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="34" cy="14" r="6" fill="hsl(var(--secondary))" opacity="0.9">
+              <animate attributeName="cx" values="36;32;36" dur="1.6s" repeatCount="indefinite" />
+            </circle>
+          </svg>
+          <span className="text-sm">{t[lang].tagline}</span>
+        </div>
       </div>
 
       <Card>
@@ -237,12 +259,12 @@ export default function ChallengeDetail() {
               </Dialog>
 
               {/* Add participants */}
-              <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}><UserPlus className="mr-1 h-4 w-4" /> Add</Button>
+              <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}><UserPlus className="mr-1 h-4 w-4" /> {t[lang].addParticipants}</Button>
 
               {/* Edit challenge */}
               <Dialog open={editOpen} onOpenChange={setEditOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm"><Pencil className="mr-1 h-4 w-4" /> Edit</Button>
+                  <Button variant="outline" size="sm"><Pencil className="mr-1 h-4 w-4" /> {t[lang].edit}</Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
@@ -267,7 +289,7 @@ export default function ChallengeDetail() {
               {/* Delete challenge */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm"><Trash2 className="mr-1 h-4 w-4" /> Delete</Button>
+                  <Button variant="destructive" size="sm"><Trash2 className="mr-1 h-4 w-4" /> {t[lang].delete}</Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -275,8 +297,8 @@ export default function ChallengeDetail() {
                     <AlertDialogDescription>Diese Aktion kann nicht rückgängig gemacht werden.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => deleteChallenge()}>Löschen</AlertDialogAction>
+                    <AlertDialogCancel>{t[lang].cancel}</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => deleteChallenge()}>{t[lang].delete}</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
