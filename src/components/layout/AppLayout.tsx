@@ -29,9 +29,14 @@ const AppLayout = () => {
               <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
             </Button>
 
-            <Button variant="hero" size="sm" asChild className="hover-scale animate-enter" aria-label="Startseite">
+            <Button variant="cta" size="lg" asChild className="hover-scale animate-enter" aria-label="Startseite">
               <Link to="/">
-                <Home className="mr-1 h-4 w-4" /> Start
+                <span className="flex items-center gap-3">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-primary/30">
+                    <Home className="h-4 w-4" />
+                  </span>
+                  Start
+                </span>
               </Link>
             </Button>
 
