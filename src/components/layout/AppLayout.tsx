@@ -26,7 +26,7 @@ const AppLayout = () => {
           <nav className="flex items-center gap-1">
             <NavLink to="/" className={linkClass}>Home</NavLink>
             <NavLink to="/app/groups" className={linkClass}>Groups</NavLink>
-            <NavLink to="/app/challenges" className={linkClass}>Challenges</NavLink>
+            <NavLink to="/challenges" className={linkClass}>Challenges</NavLink>
             <NavLink to="/app/ideas" className={linkClass}>Ideas</NavLink>
             <NavLink to="/app/ledger" className={linkClass}>Ledger</NavLink>
             <NavLink to="/app/journal" className={linkClass}>Journal</NavLink>

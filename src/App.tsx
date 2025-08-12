@@ -15,6 +15,8 @@ import IdeasPage from "./pages/app/Ideas";
 import LedgerPage from "./pages/app/Ledger";
 import JournalPage from "./pages/app/Journal";
 import Features from "./pages/Features";
+import ChallengesList from "./pages/ChallengesList";
+import ChallengeDetail from "./pages/ChallengeDetail";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +46,9 @@ const App = () => (
               <Route path="ledger" element={<LedgerPage />} />
               <Route path="journal" element={<JournalPage />} />
             </Route>
+            {/* Top-level protected routes */}
+            <Route path="/challenges" element={<ProtectedRoute><ChallengesList /></ProtectedRoute>} />
+            <Route path="/challenges/:id" element={<ProtectedRoute><ChallengeDetail /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
