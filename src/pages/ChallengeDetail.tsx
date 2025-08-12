@@ -64,6 +64,9 @@ export default function ChallengeDetail() {
   const [extendDate, setExtendDate] = useState<Date | undefined>();
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [violationOpen, setViolationOpen] = useState(false);
+  const [violationDate, setViolationDate] = useState<Date | undefined>(new Date());
+  const [selectedRow, setSelectedRow] = useState<any>(null);
   const lang: keyof typeof t = 'de';
 
   const { data: challenge, refetch } = useQuery({
@@ -141,14 +144,22 @@ export default function ChallengeDetail() {
 
   const chartData = rows.map((r, idx) => ({ name: r.name, count: r.penalty_count, fill: colors[idx % colors.length] }));
 
-  const addViolation = async (r: { id: string; user_id: string; penalty_count: number; penalty_override_cents?: number | null }) => {
+  const addViolation = async (
+    r: { id: string; user_id: string; penalty_count: number; penalty_override_cents?: number | null },
+    createdAt?: Date
+  ) => {
     try {
       const amountCents = (r.penalty_override_cents ?? challenge?.penalty_cents ?? Math.round((challenge?.penalty_amount || 0) * 100)) as number;
 
       // 1) Insert violation row for time-based charting
       const { error: insertErr } = await (supabase as any)
         .from('challenge_violations')
-        .insert({ challenge_id: id, user_id: r.user_id, amount_cents: amountCents });
+        .insert({
+          challenge_id: id,
+          user_id: r.user_id,
+          amount_cents: amountCents,
+          created_at: createdAt ? createdAt.toISOString() : undefined,
+        });
       if (insertErr) throw insertErr;
 
       // 2) Keep simple counter in participants table
@@ -359,10 +370,53 @@ export default function ChallengeDetail() {
                     <div className="text-sm text-muted-foreground">{r.penalty_count} × €{penalty.toFixed(2)} = €{(r.penalty_count * penalty).toFixed(2)}</div>
                   </div>
                 </div>
-                <Button size="sm" onClick={() => addViolation(r)}><Plus className="mr-1 h-4 w-4" /> Add</Button>
+                <Button size="sm" onClick={() => { setSelectedRow(r); setViolationDate(new Date()); setViolationOpen(true); }}>
+                  <Plus className="mr-1 h-4 w-4" /> {t[lang].addViolation}
+                </Button>
               </div>
             ))}
           </div>
+
+          {/* Add violation dialog (with date) */}
+          <Dialog open={violationOpen} onOpenChange={(v) => { setViolationOpen(v); if (!v) setSelectedRow(null); }}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t[lang].addViolation}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start">
+                      <CalendarIcon className="mr-2 h-4 w-4" /> {violationDate ? format(violationDate, 'PPP') : t[lang].pickDate}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={violationDate}
+                      onSelect={setViolationDate}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setViolationOpen(false)}>{t[lang].cancel}</Button>
+                  <Button
+                    onClick={async () => {
+                      if (!selectedRow || !violationDate) return;
+                      await addViolation(selectedRow, violationDate);
+                      setViolationOpen(false);
+                      setSelectedRow(null);
+                    }}
+                    disabled={!violationDate}
+                  >
+                    {t[lang].save}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
 
