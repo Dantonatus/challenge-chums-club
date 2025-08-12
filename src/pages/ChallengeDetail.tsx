@@ -367,8 +367,6 @@ export default function ChallengeDetail() {
                 <CumulativePenaltyChart
                   challengeId={id!}
                   participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
-                  defaultStart={new Date(challenge.start_date as any)}
-                  defaultEnd={new Date(challenge.end_date as any)}
                 />
               </div>
             </TabsContent>

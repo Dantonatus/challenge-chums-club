@@ -12,23 +12,13 @@ import { TopChallenges } from "@/components/profile/TopChallenges";
 import { ActivityFeed } from "@/components/profile/ActivityFeed";
 import { useQuery } from "@tanstack/react-query";
 import { formatEUR } from "@/lib/currency";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  LineChart,
-  Line,
-} from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trends } from "@/components/profile/Trends";
 import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
+import { DateRangeProvider } from "@/contexts/DateRangeContext";
+import { DateRangeBar } from "@/components/profile/DateRangeBar";
 
 const dict = {
   de: {
