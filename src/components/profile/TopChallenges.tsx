@@ -86,7 +86,7 @@ export const TopChallenges = ({ userId, t }: TopChallengesProps) => {
 
   if (loading) {
     return (
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
         <Skeleton className="h-40 rounded-xl" />
         <Skeleton className="h-40 rounded-xl" />
         <Skeleton className="h-40 rounded-xl" />
@@ -104,7 +104,7 @@ export const TopChallenges = ({ userId, t }: TopChallengesProps) => {
   }
 
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
       {cards.map(({ c, participants }) => {
         const leaderboard = [...participants].sort((a,b) => (b.penalty_count||0) - (a.penalty_count||0)).slice(0,3);
         return (
