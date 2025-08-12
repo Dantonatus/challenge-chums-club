@@ -220,9 +220,6 @@ const ProfilePage = () => {
       </header>
 
       <DateRangeProvider userId={userId}>
-        <div className="mb-4">
-          <DateRangeBar />
-        </div>
 
         <div className="grid gap-6 md:grid-cols-3">
         {/* Left column: profile card */}
@@ -263,6 +260,7 @@ const ProfilePage = () => {
 
         {/* Right column: content */}
         <div className="md:col-span-2 grid gap-6">
+          <DateRangeBar />
           <Stats userId={userId || ""} t={t} />
           <div className="grid gap-6 md:grid-cols-2">
             <TopChallenges userId={userId || ""} t={t} />

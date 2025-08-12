@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+aimport { useQuery } from "@tanstack/react-query";
 import { formatEUR } from "@/lib/currency";
+import { useDateRange } from "@/contexts/DateRangeContext";
 
 interface StatsProps { userId: string; t: any }
 
