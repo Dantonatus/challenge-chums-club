@@ -200,13 +200,30 @@ const ProfilePage = () => {
   });
 
   const lineData = useMemo(() => {
-    let sum = 0;
-    return (myViolations.data||[]).map(v => {
-      sum += v.amount_cents || 0;
-      const date = new Date(v.created_at);
-      const label = `${date.getMonth()+1}/${date.getDate()}`;
-      return { date: label, total: (sum/100).toFixed(2) };
+    // Always render a 30-day window ending today with cumulative totals.
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const start = new Date(Date.now() - 29 * DAY_MS);
+
+    // Sum violations per day in cents
+    const perDayCents: Record<string, number> = {};
+    (myViolations.data || []).forEach((v) => {
+      const d = new Date(v.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      perDayCents[key] = (perDayCents[key] || 0) + (v.amount_cents || 0);
     });
+
+    // Build cumulative euros per day; if there are no violations it becomes a flat 0 line
+    const out: { date: string; total: number }[] = [];
+    let cumulative = 0;
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(start.getTime() + i * DAY_MS);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      cumulative += perDayCents[key] || 0;
+      const label = `${d.getMonth() + 1}/${d.getDate()}`;
+      out.push({ date: label, total: Math.round((cumulative / 100) * 100) / 100 });
+    }
+
+    return out;
   }, [myViolations.data]);
 
   return (
