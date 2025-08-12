@@ -177,12 +177,32 @@ const ProfilePage = () => {
     }
   });
 
+  const relViolations = useQuery({
+    enabled: !!relevantChallengeId,
+    queryKey: ["profile","rel-violations", relevantChallengeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("challenge_violations")
+        .select("user_id, amount_cents")
+        .eq("challenge_id", relevantChallengeId!);
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
   const barData = useMemo(() => {
-    return (relParticipants.data||[]).map(p => ({
+    // Sum all violation amounts per user for the relevant challenge, up to today
+    const sums = new Map<string, number>();
+    (relViolations.data || []).forEach((v: any) => {
+      const cents = v.amount_cents || 0;
+      sums.set(v.user_id, (sums.get(v.user_id) || 0) + cents);
+    });
+    // Include participants with 0€ as well for completeness
+    return (relParticipants.data || []).map((p: any) => ({
       name: relProfiles.data?.get(p.user_id) || p.user_id,
-      count: p.penalty_count || 0,
+      amount: Math.round(((sums.get(p.user_id) || 0) / 100) * 100) / 100,
     }));
-  }, [relParticipants.data, relProfiles.data]);
+  }, [relViolations.data, relParticipants.data, relProfiles.data]);
 
   const myViolations = useQuery({
     enabled: !!userId,
@@ -291,13 +311,13 @@ const ProfilePage = () => {
                 {activeCh.isLoading || relParticipants.isLoading ? (
                   <Skeleton className="h-48 w-full" />
                 ) : barData.length ? (
-                  <ChartContainer config={{ count: { label: "Count", color: "hsl(var(--primary))" } }}>
+                  <ChartContainer config={{ amount: { label: "€", color: "hsl(var(--primary))" } }}>
                     <BarChart data={barData}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" />
                       <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} height={60} angle={0} dy={10} />
-                      <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                      <YAxis tickLine={false} axisLine={false} />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="count" fill="var(--color-count)" radius={[6,6,0,0]} />
+                      <Bar dataKey="amount" fill="var(--color-amount)" radius={[6,6,0,0]} />
                     </BarChart>
                   </ChartContainer>
                 ) : (
