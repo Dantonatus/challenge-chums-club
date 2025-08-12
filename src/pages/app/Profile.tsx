@@ -28,6 +28,7 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trends } from "@/components/profile/Trends";
+import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
 
 const dict = {
   de: {
@@ -112,9 +113,7 @@ const ProfilePage = () => {
 
   const initials = (displayName || "").trim().split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase() || "?";
 
-  // Data for charts
   const today = new Date().toISOString().slice(0,10);
-  const from30 = new Date(Date.now() - 30*24*60*60*1000).toISOString();
 
   const myParts = useQuery({
     enabled: !!userId,
@@ -204,47 +203,19 @@ const ProfilePage = () => {
     }));
   }, [relViolations.data, relParticipants.data, relProfiles.data]);
 
-  const myViolations = useQuery({
-    enabled: !!userId,
-    queryKey: ["profile","violations", userId, from30],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("challenge_violations")
-        .select("created_at, amount_cents")
-        .eq("user_id", userId!)
-        .gte("created_at", from30)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    }
-  });
 
-  const lineData = useMemo(() => {
-    // Always render a 30-day window ending today with cumulative totals.
-    const DAY_MS = 24 * 60 * 60 * 1000;
-    const start = new Date(Date.now() - 29 * DAY_MS);
+  // Participants with names for the cumulative chart
+  const chartParticipants = useMemo(() => {
+    return (relParticipants.data || []).map((p: any) => ({
+      user_id: p.user_id,
+      name: relProfiles.data?.get(p.user_id) || p.user_id,
+    }));
+  }, [relParticipants.data, relProfiles.data]);
 
-    // Sum violations per day in cents
-    const perDayCents: Record<string, number> = {};
-    (myViolations.data || []).forEach((v) => {
-      const d = new Date(v.created_at);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      perDayCents[key] = (perDayCents[key] || 0) + (v.amount_cents || 0);
-    });
-
-    // Build cumulative euros per day; if there are no violations it becomes a flat 0 line
-    const out: { date: string; total: number }[] = [];
-    let cumulative = 0;
-    for (let i = 0; i < 30; i++) {
-      const d = new Date(start.getTime() + i * DAY_MS);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      cumulative += perDayCents[key] || 0;
-      const label = `${d.getMonth() + 1}/${d.getDate()}`;
-      out.push({ date: label, total: Math.round((cumulative / 100) * 100) / 100 });
-    }
-
-    return out;
-  }, [myViolations.data]);
+  // Default range: last 6 months up to today
+  const sixEnd = new Date();
+  const sixStart = new Date(sixEnd);
+  sixStart.setMonth(sixStart.getMonth() - 6);
 
   return (
     <section>
@@ -331,18 +302,15 @@ const ProfilePage = () => {
                 <CardTitle>{t.charts.lineTitle}</CardTitle>
               </CardHeader>
               <CardContent>
-                {myViolations.isLoading ? (
-                  <Skeleton className="h-48 w-full" />
-                ) : lineData.length ? (
-                  <ChartContainer config={{ total: { label: "€", color: "hsl(var(--primary))" } }}>
-                    <LineChart data={lineData}>
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                      <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                      <YAxis tickLine={false} axisLine={false} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line type="monotone" dataKey="total" stroke="var(--color-total)" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ChartContainer>
+                {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
+                  <Skeleton className="h-56 w-full" />
+                ) : chartParticipants.length ? (
+                  <CumulativePenaltyChart
+                    challengeId={relevantChallengeId}
+                    participants={chartParticipants}
+                    defaultStart={sixStart}
+                    defaultEnd={sixEnd}
+                  />
                 ) : (
                   <div className="text-sm text-muted-foreground">{t.charts.empty}</div>
                 )}
