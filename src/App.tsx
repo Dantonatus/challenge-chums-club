@@ -18,6 +18,7 @@ import Features from "./pages/Features";
 import ChallengesList from "./pages/ChallengesList";
 import ChallengeDetail from "./pages/ChallengeDetail";
 import ProfilePage from "./pages/app/Profile";
+import { DateRangeProvider } from "@/contexts/DateRangeContext";
 
 const queryClient = new QueryClient();
 
@@ -25,36 +26,38 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <HelmetProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/features" element={<Features />} />
-            <Route
-              path="/app"
-              element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Navigate to="/app/overview" replace />} />
-              <Route path="overview" element={<OverviewPage />} />
-              <Route path="groups" element={<GroupsPage />} />
-              <Route path="ideas" element={<IdeasPage />} />
-              <Route path="ledger" element={<LedgerPage />} />
-              <Route path="journal" element={<JournalPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-            </Route>
-            {/* Top-level protected routes */}
-            <Route path="/challenges" element={<ProtectedRoute><ChallengesList /></ProtectedRoute>} />
-            <Route path="/challenges/:id" element={<ProtectedRoute><ChallengeDetail /></ProtectedRoute>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <DateRangeProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/features" element={<Features />} />
+              <Route
+                path="/app"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="/app/overview" replace />} />
+                <Route path="overview" element={<OverviewPage />} />
+                <Route path="groups" element={<GroupsPage />} />
+                <Route path="ideas" element={<IdeasPage />} />
+                <Route path="ledger" element={<LedgerPage />} />
+                <Route path="journal" element={<JournalPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+              </Route>
+              {/* Top-level protected routes */}
+              <Route path="/challenges" element={<ProtectedRoute><ChallengesList /></ProtectedRoute>} />
+              <Route path="/challenges/:id" element={<ProtectedRoute><ChallengeDetail /></ProtectedRoute>} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </DateRangeProvider>
       </TooltipProvider>
     </HelmetProvider>
   </QueryClientProvider>
