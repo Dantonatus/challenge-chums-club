@@ -8,6 +8,7 @@ import { Plus, Calendar as CalendarIcon, UserPlus, Pencil, Trash2 } from "lucide
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -68,7 +69,7 @@ export default function ChallengeDetail() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("challenge_participants")
-        .select("id, user_id, penalty_count")
+        .select("id, user_id, penalty_count, penalty_override_cents")
         .eq("challenge_id", id);
       if (error) throw error;
       return data || [];
@@ -113,6 +114,7 @@ export default function ChallengeDetail() {
         name: profile?.display_name || p.user_id.slice(0, 6),
         avatar_url: profile?.avatar_url || undefined,
         penalty_count: p.penalty_count || 0,
+        penalty_override_cents: (p as any).penalty_override_cents ?? null,
       };
     });
     return list;
@@ -122,14 +124,25 @@ export default function ChallengeDetail() {
 
   const chartData = rows.map((r, idx) => ({ name: r.name, count: r.penalty_count, fill: colors[idx % colors.length] }));
 
-  const addViolation = async (cpId: string, current: number) => {
+  const addViolation = async (r: { id: string; user_id: string; penalty_count: number; penalty_override_cents?: number | null }) => {
     try {
+      const amountCents = (r.penalty_override_cents ?? challenge?.penalty_cents ?? Math.round((challenge?.penalty_amount || 0) * 100)) as number;
+
+      // 1) Insert violation row for time-based charting
+      const { error: insertErr } = await (supabase as any)
+        .from('challenge_violations')
+        .insert({ challenge_id: id, user_id: r.user_id, amount_cents: amountCents });
+      if (insertErr) throw insertErr;
+
+      // 2) Keep simple counter in participants table
       const { error } = await (supabase as any)
-        .from("challenge_participants")
-        .update({ penalty_count: current + 1 })
-        .eq("id", cpId);
+        .from('challenge_participants')
+        .update({ penalty_count: r.penalty_count + 1 })
+        .eq('id', r.id);
       if (error) throw error;
+
       refetchCps();
+      qc.invalidateQueries({ queryKey: ["challenge_violations"] });
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' as any });
     }
@@ -143,6 +156,18 @@ export default function ChallengeDetail() {
       if (error) throw error;
       setExtendOpen(false);
       refetch();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' as any });
+    }
+  };
+
+  const deleteChallenge = async () => {
+    if (!id) return;
+    try {
+      const { error } = await (supabase as any).from('challenges').delete().eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Challenge gelöscht' });
+      navigate('/challenges');
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' as any });
     }
@@ -178,6 +203,7 @@ export default function ChallengeDetail() {
           <CardTitle className="flex items-center justify-between">
             <span>{challenge.title}</span>
             <div className="flex gap-2">
+              {/* Extend */}
               <Dialog open={extendOpen} onOpenChange={setExtendOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm"><CalendarIcon className="mr-1 h-4 w-4" /> Extend</Button>
@@ -210,7 +236,50 @@ export default function ChallengeDetail() {
                 </DialogContent>
               </Dialog>
 
+              {/* Add participants */}
               <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}><UserPlus className="mr-1 h-4 w-4" /> Add</Button>
+
+              {/* Edit challenge */}
+              <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm"><Pencil className="mr-1 h-4 w-4" /> Edit</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Edit Challenge</DialogTitle>
+                  </DialogHeader>
+                  <ChallengeForm
+                    groupId={challenge.group_id}
+                    challengeId={challenge.id}
+                    initialValues={{
+                      title: challenge.title,
+                      description: challenge.description,
+                      start_date: new Date(challenge.start_date as any) as any,
+                      end_date: new Date(challenge.end_date as any) as any,
+                      penalty_amount: challenge.penalty_amount,
+                    }}
+                    onSaved={() => { setEditOpen(false); refetch(); }}
+                    onCancel={() => setEditOpen(false)}
+                  />
+                </DialogContent>
+              </Dialog>
+
+              {/* Delete challenge */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm"><Trash2 className="mr-1 h-4 w-4" /> Delete</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Challenge löschen?</AlertDialogTitle>
+                    <AlertDialogDescription>Diese Aktion kann nicht rückgängig gemacht werden.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => deleteChallenge()}>Löschen</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardTitle>
           <CardDescription>
@@ -246,6 +315,14 @@ export default function ChallengeDetail() {
             </Recharts.BarChart>
           </ChartContainer>
 
+          {/* Kumulative Strafen über Zeitraum */}
+          <CumulativePenaltyChart
+            challengeId={id!}
+            participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
+            defaultStart={new Date(challenge.start_date as any)}
+            defaultEnd={new Date(challenge.end_date as any)}
+          />
+
           {/* Actions per participant */}
           <div className="grid gap-3">
             {rows.map((r) => (
@@ -260,7 +337,7 @@ export default function ChallengeDetail() {
                     <div className="text-sm text-muted-foreground">{r.penalty_count} × €{penalty.toFixed(2)} = €{(r.penalty_count * penalty).toFixed(2)}</div>
                   </div>
                 </div>
-                <Button size="sm" onClick={() => addViolation(r.id, r.penalty_count)}><Plus className="mr-1 h-4 w-4" /> Add</Button>
+                <Button size="sm" onClick={() => addViolation(r)}><Plus className="mr-1 h-4 w-4" /> Add</Button>
               </div>
             ))}
           </div>
