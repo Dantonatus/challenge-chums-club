@@ -19,6 +19,7 @@ export type Database = {
           challenge_id: string
           created_at: string
           id: string
+          penalty_count: number
           penalty_override_cents: number | null
           user_id: string
         }
@@ -26,6 +27,7 @@ export type Database = {
           challenge_id: string
           created_at?: string
           id?: string
+          penalty_count?: number
           penalty_override_cents?: number | null
           user_id: string
         }
@@ -33,6 +35,7 @@ export type Database = {
           challenge_id?: string
           created_at?: string
           id?: string
+          penalty_count?: number
           penalty_override_cents?: number | null
           user_id?: string
         }
@@ -46,6 +49,30 @@ export type Database = {
           },
         ]
       }
+      challenge_violations: {
+        Row: {
+          amount_cents: number
+          challenge_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          challenge_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       challenges: {
         Row: {
           created_at: string
@@ -53,11 +80,14 @@ export type Database = {
           description: string | null
           duration_count: number | null
           duration_type: Database["public"]["Enums"]["challenge_duration_type"]
+          end_date: string
           frequency: Database["public"]["Enums"]["challenge_frequency"]
           frequency_count: number | null
           group_id: string
           id: string
+          penalty_amount: number
           penalty_cents: number
+          start_date: string
           status: Database["public"]["Enums"]["challenge_status"]
           strike_allowance: number
           title: string
@@ -69,11 +99,14 @@ export type Database = {
           description?: string | null
           duration_count?: number | null
           duration_type?: Database["public"]["Enums"]["challenge_duration_type"]
+          end_date: string
           frequency?: Database["public"]["Enums"]["challenge_frequency"]
           frequency_count?: number | null
           group_id: string
           id?: string
+          penalty_amount?: number
           penalty_cents?: number
+          start_date: string
           status?: Database["public"]["Enums"]["challenge_status"]
           strike_allowance?: number
           title: string
@@ -85,11 +118,14 @@ export type Database = {
           description?: string | null
           duration_count?: number | null
           duration_type?: Database["public"]["Enums"]["challenge_duration_type"]
+          end_date?: string
           frequency?: Database["public"]["Enums"]["challenge_frequency"]
           frequency_count?: number | null
           group_id?: string
           id?: string
+          penalty_amount?: number
           penalty_cents?: number
+          start_date?: string
           status?: Database["public"]["Enums"]["challenge_status"]
           strike_allowance?: number
           title?: string
@@ -458,6 +494,30 @@ export type Database = {
           },
         ]
       }
+      user_friends: {
+        Row: {
+          created_at: string
+          friend_user_id: string
+          id: string
+          status: Database["public"]["Enums"]["friend_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_user_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["friend_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_user_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["friend_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -480,6 +540,7 @@ export type Database = {
       challenge_duration_type: "weeks" | "months" | "continuous"
       challenge_frequency: "daily" | "weekly" | "times_per_week" | "whole_week"
       challenge_status: "active" | "paused" | "ended"
+      friend_status: "pending" | "accepted" | "blocked"
       group_role: "owner" | "admin" | "member"
       idea_status: "proposed" | "approved" | "rejected"
       payment_type: "owed" | "paid" | "adjustment"
@@ -613,6 +674,7 @@ export const Constants = {
       challenge_duration_type: ["weeks", "months", "continuous"],
       challenge_frequency: ["daily", "weekly", "times_per_week", "whole_week"],
       challenge_status: ["active", "paused", "ended"],
+      friend_status: ["pending", "accepted", "blocked"],
       group_role: ["owner", "admin", "member"],
       idea_status: ["proposed", "approved", "rejected"],
       payment_type: ["owed", "paid", "adjustment"],
