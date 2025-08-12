@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Home } from "lucide-react";
 
 const AppLayout = () => {
   const navigate = useNavigate();
@@ -28,6 +28,13 @@ const AppLayout = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)} aria-label="Zurück">
               <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
             </Button>
+
+            <Button variant="hero" size="sm" asChild className="hover-scale animate-enter" aria-label="Startseite">
+              <Link to="/">
+                <Home className="mr-1 h-4 w-4" /> Start
+              </Link>
+            </Button>
+
             <nav className="flex items-center gap-1">
               <NavLink to="/app/overview" className={linkClass}>Overview</NavLink>
               <NavLink to="/app/groups" className={linkClass}>Groups</NavLink>
