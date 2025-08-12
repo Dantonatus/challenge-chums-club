@@ -47,6 +47,9 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
   const minDays = React.useMemo(() => daysSinceEpochLocal(minDate), [minDate]);
   const maxDays = React.useMemo(() => daysSinceEpochLocal(maxDate), [maxDate]);
   const [local, setLocal] = React.useState<[number, number]>([daysSinceEpochLocal(start), daysSinceEpochLocal(end)]);
+  const [dragging, setDragging] = React.useState(false);
+  const [hover, setHover] = React.useState(false);
+  const showTips = dragging || hover;
 
   // Keep local in sync with provider
   React.useEffect(() => {
@@ -113,7 +116,7 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
       </CardHeader>
       <CardContent>
         <div className="relative pt-6 pb-3">
-          <div className="absolute inset-x-0 top-0 h-5">
+          <div className="absolute inset-x-0 top-0 h-5 pointer-events-none">
             {/* month ticks */}
             <div className="relative h-full">
               {monthTicks.map((t, i) => (
@@ -126,13 +129,16 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
           </div>
 
           <SliderPrimitive.Root
-            className="relative flex w-full select-none items-center"
+            className="relative flex w-full select-none touch-none items-center"
             min={minDays}
             max={maxDays}
             step={1}
             value={[sDays, eDays]}
             onValueChange={(v) => setLocal([Math.min(v[0], v[1]), Math.max(v[0], v[1])])}
             onValueCommit={(v) => setRange({ start: dateFromLocalDayNumber(Math.min(v[0], v[1])), end: dateFromLocalDayNumber(Math.max(v[0], v[1])) })}
+            onPointerDown={() => setDragging(true)}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
             aria-label={t.title}
           >
             <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
@@ -142,24 +148,26 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             {/* Start thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.startThumb}
-              className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="block h-6 w-6 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
             {/* End thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.endThumb}
-              className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="block h-6 w-6 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </SliderPrimitive.Root>
 
           {/* tooltips near thumbs */}
-          <div className="mt-3 relative h-0">
-            <div className="absolute -translate-x-1/2 -translate-y-full text-xs px-2 py-1 rounded bg-popover text-popover-foreground shadow" style={{ left: `${((sDays - minDays) / (maxDays - minDays)) * 100}%` }}>
-              {formatPPP(sDate)}
+          {showTips && (
+            <div className="mt-2 relative h-5 pointer-events-none">
+              <div className="absolute top-0 -translate-x-1/2 text-xs px-2 py-1 rounded bg-popover text-popover-foreground shadow" style={{ left: `${((sDays - minDays) / (maxDays - minDays)) * 100}%` }}>
+                {formatPPP(sDate)}
+              </div>
+              <div className="absolute top-0 -translate-x-1/2 text-xs px-2 py-1 rounded bg-popover text-popover-foreground shadow" style={{ left: `${((eDays - minDays) / (maxDays - minDays)) * 100}%` }}>
+                {formatPPP(eDate)}
+              </div>
             </div>
-            <div className="absolute -translate-x-1/2 -translate-y-full text-xs px-2 py-1 rounded bg-popover text-popover-foreground shadow" style={{ left: `${((eDays - minDays) / (maxDays - minDays)) * 100}%` }}>
-              {formatPPP(eDate)}
-            </div>
-          </div>
+          )}
 
           <p className="mt-4 text-xs text-muted-foreground">{t.appliesNote}</p>
         </div>
