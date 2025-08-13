@@ -134,7 +134,7 @@ export const FriendsInvites = ({ userId, t }: FriendsInvitesProps) => {
   const decline = async (id: string) => {
     const prev = pendingQuery.data || [];
     qc.setQueryData(["friends", "pending", userId], prev.filter((r: any) => r.id !== id));
-    const { error } = await supabase.from("user_friends").update({ status: "declined" }).eq("id", id);
+    const { error } = await supabase.from("user_friends").update({ status: "blocked" }).eq("id", id);
     if (error) {
       qc.setQueryData(["friends", "pending", userId], prev);
       toast({ title: t.friends?.error || "Fehler", description: error.message, variant: "destructive" as any });
