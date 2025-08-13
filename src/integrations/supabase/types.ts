@@ -75,6 +75,7 @@ export type Database = {
       }
       challenges: {
         Row: {
+          challenge_type: Database["public"]["Enums"]["challenge_type"]
           created_at: string
           created_by: string
           description: string | null
@@ -94,6 +95,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          challenge_type?: Database["public"]["Enums"]["challenge_type"]
           created_at?: string
           created_by: string
           description?: string | null
@@ -113,6 +115,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          challenge_type?: Database["public"]["Enums"]["challenge_type"]
           created_at?: string
           created_by?: string
           description?: string | null
@@ -340,6 +343,88 @@ export type Database = {
           },
         ]
       }
+      kpi_definitions: {
+        Row: {
+          aggregation_method: string
+          challenge_id: string
+          created_at: string
+          id: string
+          kpi_type: string
+          measurement_frequency: string
+          target_value: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          aggregation_method?: string
+          challenge_id: string
+          created_at?: string
+          id?: string
+          kpi_type: string
+          measurement_frequency?: string
+          target_value: number
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          aggregation_method?: string
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          kpi_type?: string
+          measurement_frequency?: string
+          target_value?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_kpi_definitions_challenge"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_measurements: {
+        Row: {
+          created_at: string
+          id: string
+          kpi_definition_id: string
+          measured_value: number
+          measurement_date: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kpi_definition_id: string
+          measured_value: number
+          measurement_date: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kpi_definition_id?: string
+          measured_value?: number
+          measurement_date?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_kpi_measurements_definition"
+            columns: ["kpi_definition_id"]
+            isOneToOne: false
+            referencedRelation: "kpi_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       logs: {
         Row: {
           challenge_id: string
@@ -547,6 +632,7 @@ export type Database = {
       challenge_duration_type: "weeks" | "months" | "continuous"
       challenge_frequency: "daily" | "weekly" | "times_per_week" | "whole_week"
       challenge_status: "active" | "paused" | "ended"
+      challenge_type: "habit" | "kpi"
       friend_status: "pending" | "accepted" | "blocked"
       group_role: "owner" | "admin" | "member"
       idea_status: "proposed" | "approved" | "rejected"
@@ -681,6 +767,7 @@ export const Constants = {
       challenge_duration_type: ["weeks", "months", "continuous"],
       challenge_frequency: ["daily", "weekly", "times_per_week", "whole_week"],
       challenge_status: ["active", "paused", "ended"],
+      challenge_type: ["habit", "kpi"],
       friend_status: ["pending", "accepted", "blocked"],
       group_role: ["owner", "admin", "member"],
       idea_status: ["proposed", "approved", "rejected"],

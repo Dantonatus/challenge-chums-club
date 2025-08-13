@@ -21,6 +21,8 @@ import { DateRangeProvider } from "@/contexts/DateRangeContext";
 import { DateRangeBar } from "@/components/profile/DateRangeBar";
 import ViolationsPerParticipant from "@/components/profile/ViolationsPerParticipant";
 import { ColorPicker } from "@/components/profile/ColorPicker";
+import { KPIAnalytics } from "@/components/profile/KPIAnalytics";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const dict = {
   de: {
@@ -302,47 +304,62 @@ const ProfilePage = () => {
         <div className="md:col-span-2 grid gap-6">
           <DateRangeBar />
           <Stats userId={userId || ""} t={t} />
-          <div className="grid gap-6 md:grid-cols-2">
-            <TopChallenges userId={userId || ""} t={t} />
-            <Trends userId={userId || ""} t={t} />
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.charts.barTitle}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
-                  <Skeleton className="h-48 w-full" />
-                ) : chartParticipants.length ? (
-                  <ViolationsPerParticipant
-                    challengeId={relevantChallengeId}
-                    participants={chartParticipants}
-                  />
-                ) : (
-                  <div className="text-sm text-muted-foreground">{t.charts.empty}</div>
-                )}
-              </CardContent>
-            </Card>
+          
+          {/* Analytics Tabs */}
+          <Tabs defaultValue="habit" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="habit">Habit Analytics</TabsTrigger>
+              <TabsTrigger value="kpi">KPI Analytics</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="habit" className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <TopChallenges userId={userId || ""} t={t} />
+                <Trends userId={userId || ""} t={t} />
+              </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{t.charts.barTitle}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
+                      <Skeleton className="h-48 w-full" />
+                    ) : chartParticipants.length ? (
+                      <ViolationsPerParticipant
+                        challengeId={relevantChallengeId}
+                        participants={chartParticipants}
+                      />
+                    ) : (
+                      <div className="text-sm text-muted-foreground">{t.charts.empty}</div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.charts.lineTitle}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
-                  <Skeleton className="h-56 w-full" />
-                ) : chartParticipants.length ? (
-                  <CumulativePenaltyChart
-                    challengeId={relevantChallengeId}
-                    participants={chartParticipants}
-                  />
-                ) : (
-                  <div className="text-sm text-muted-foreground">{t.charts.empty}</div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{t.charts.lineTitle}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
+                      <Skeleton className="h-56 w-full" />
+                    ) : chartParticipants.length ? (
+                      <CumulativePenaltyChart
+                        challengeId={relevantChallengeId}
+                        participants={chartParticipants}
+                      />
+                    ) : (
+                      <div className="text-sm text-muted-foreground">{t.charts.empty}</div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="kpi" className="space-y-6">
+              {userId && <KPIAnalytics userId={userId} />}
+            </TabsContent>
+          </Tabs>
 
           <ActivityFeed userId={userId || ""} t={t} />
         </div>
