@@ -165,8 +165,12 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
   };
 
   const measuredValue = form.watch("measured_value");
+  
+  // Calculate target percentage based on goal direction
   const targetPercentage = measuredValue 
-    ? Math.round((measuredValue / kpiDef.target_value) * 100)
+    ? kpiDef.goal_direction === "higher_better"
+      ? Math.round((measuredValue / kpiDef.target_value) * 100)
+      : Math.round((kpiDef.target_value / measuredValue) * 100) // Inverted for lower_better
     : 0;
   
   const goalAchieved = measuredValue 
