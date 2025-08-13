@@ -39,6 +39,18 @@ function formatPPP(d: Date) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+function startOfLocalDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function endOfLocalDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+}
+function endOfLocalDayFromDayNumber(n: number) {
+  const d = dateFromLocalDayNumber(n);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 export function DateRangeBar({ className, sticky = true }: { className?: string; sticky?: boolean }) {
   const { start, end, minDate, maxDate, now, setRange } = useDateRange();
   const lang = (navigator.language?.startsWith("de") ? "de" : "en") as keyof typeof dict;
@@ -75,7 +87,7 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
 
   const applyPreset = (key: string) => {
     const ref = now ?? new Date();
-    const endDate = ref;
+    const endDate = ref; // preserve current time-of-day for "today"
     let startDate: Date;
     switch (key) {
       case "7d": startDate = new Date(ref.getTime() - 7 * MS_DAY); break;
@@ -89,9 +101,18 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
     }
     const sVal = Math.max(daysSinceEpochLocal(startDate), minDays);
     const eVal = Math.min(daysSinceEpochLocal(endDate), maxDays);
-    // keep local unsorted to allow independent thumbs; commit will order
+
+    // reflect on the slider (kept ordered by clamping logic elsewhere)
     setLocal([sVal, eVal]);
-    setRange({ start: dateFromLocalDayNumber(Math.min(sVal, eVal)), end: dateFromLocalDayNumber(Math.max(sVal, eVal)) });
+
+    const todayN = daysSinceEpochLocal(ref);
+    const loN = Math.min(sVal, eVal);
+    const hiN = Math.max(sVal, eVal);
+
+    const commitStart = dateFromLocalDayNumber(loN); // start of day
+    const commitEnd = hiN === todayN ? new Date(ref) : endOfLocalDayFromDayNumber(hiN);
+
+    setRange({ start: commitStart, end: commitEnd });
   };
 
 // built-in keyboard support from Radix will handle arrow keys
@@ -137,7 +158,7 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             max={maxDays}
             step={1}
             minStepsBetweenThumbs={0}
-            value={[loDays, hiDays]}
+            value={[sDays, eDays]}
             onValueChange={(v) => {
               const [a, b] = v as [number, number];
               setLocal(([s, e]) => {
@@ -153,12 +174,18 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
                 return [Math.min(a, b), Math.max(a, b)];
               });
             }}
-            onValueCommit={(v) =>
-              setRange({
-                start: dateFromLocalDayNumber(Math.min(v[0], v[1])),
-                end: dateFromLocalDayNumber(Math.max(v[0], v[1])),
-              })
-            }
+            onValueCommit={(v) => {
+              const [a, b] = v as [number, number];
+              const sN = Math.min(a, b);
+              const eN = Math.max(a, b);
+              const refNow = now ?? new Date();
+              const todayN = daysSinceEpochLocal(refNow);
+
+              const startDate = dateFromLocalDayNumber(sN); // start of day local
+              const endDate = eN === todayN ? new Date(refNow) : endOfLocalDayFromDayNumber(eN);
+
+              setRange({ start: startDate, end: endDate });
+            }}
             onPointerDown={() => setDragging(true)}
             onPointerUp={() => { setDragging(false); setActive(null); }}
             onMouseEnter={() => setHover(true)}
