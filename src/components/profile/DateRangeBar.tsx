@@ -232,7 +232,6 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             </div>
           )}
 
-          <p className="mt-4 text-xs text-muted-foreground">{t.appliesNote}</p>
         </div>
       </CardContent>
     </Card>
