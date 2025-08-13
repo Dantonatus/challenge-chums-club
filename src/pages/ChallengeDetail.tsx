@@ -19,6 +19,7 @@ import * as Recharts from "recharts";
 import AddParticipantsDialog from "@/components/challenges/AddParticipantsDialog";
 import ChallengeForm from "@/components/challenges/ChallengeForm";
 import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
+import { KPIDetailChart } from "@/components/challenges/KPIDetailChart";
 import { KPIDataEntry } from "@/components/challenges/KPIDataEntry";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateParticipantColorMap } from "@/lib/participant-colors";
@@ -73,6 +74,12 @@ export default function ChallengeDetail() {
   const [violationDate, setViolationDate] = useState<Date | undefined>(new Date());
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const lang: keyof typeof t = 'de';
+
+  // Get current user ID
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
+  }, []);
 
   const { data: challenge, refetch } = useQuery({
     queryKey: ["challenge", id],
@@ -388,7 +395,7 @@ export default function ChallengeDetail() {
           </div>
 
           {/* Charts/Data Section - Different for KPI vs Habit */}
-          {isKPIChallenge ? (
+          {isKPIChallenge && kpiDefinition ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">KPI Monitoring</h3>
@@ -401,14 +408,12 @@ export default function ChallengeDetail() {
                 </Button>
               </div>
               
-              {/* KPI Chart wird hier später eingefügt - für jetzt Placeholder */}
-              <Card className="p-6">
-                <div className="text-center text-muted-foreground">
-                  <div className="text-4xl mb-2">{kpiDefinition && getKPIIcon(kpiDefinition.kpi_type)}</div>
-                  <h4 className="font-medium mb-1">KPI Verlauf wird hier angezeigt</h4>
-                  <p className="text-sm">Trage deine ersten Daten ein, um Charts zu sehen</p>
-                </div>
-              </Card>
+              {/* Real KPI Chart */}
+              <KPIDetailChart 
+                challengeId={challenge.id}
+                kpiDefinition={kpiDefinition}
+                userId={currentUserId || ""}
+              />
             </div>
           ) : (
             /* Original Habit Challenge Charts */

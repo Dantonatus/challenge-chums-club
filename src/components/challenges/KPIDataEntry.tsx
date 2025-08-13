@@ -47,11 +47,30 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const kpiDef = challenge.kpi_definitions[0]; // Assuming one KPI per challenge for now
 
+  // Calculate default date based on measurement frequency
+  const getDefaultDate = () => {
+    const today = new Date();
+    switch (kpiDef.measurement_frequency) {
+      case "weekly":
+        // For weekly, default to end of current week (Sunday)
+        const endOfWeek = new Date(today);
+        endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
+        return endOfWeek.toISOString().split('T')[0];
+      case "monthly":
+        // For monthly, default to end of current month
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        return endOfMonth.toISOString().split('T')[0];
+      default:
+        // Daily - today
+        return today.toISOString().split('T')[0];
+    }
+  };
+
   const form = useForm<KPIEntryFormData>({
     resolver: zodResolver(kpiEntrySchema),
     defaultValues: {
       measured_value: 0,
-      measurement_date: new Date().toISOString().split('T')[0],
+      measurement_date: getDefaultDate(),
       notes: "",
     },
   });
@@ -66,6 +85,29 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
     }
   };
 
+  const getFrequencyLabel = () => {
+    switch (kpiDef.measurement_frequency) {
+      case "weekly": return "wöchentlich";
+      case "monthly": return "monatlich";
+      default: return "täglich";
+    }
+  };
+
+  const getDateLabel = () => {
+    switch (kpiDef.measurement_frequency) {
+      case "weekly": return "Woche (Ende der Woche)";
+      case "monthly": return "Monat (Ende des Monats)";
+      default: return "Datum";
+    }
+  };
+
+  const getDateHelperText = () => {
+    switch (kpiDef.measurement_frequency) {
+      case "weekly": return "Trage den Gesamtwert für die ganze Woche ein";
+      case "monthly": return "Trage den Gesamtwert für den ganzen Monat ein";
+      default: return "Trage den Wert für diesen Tag ein";
+    }
+  };
   const getKPILabel = (kpiType: string) => {
     switch (kpiType) {
       case "steps": return "Schritte";
@@ -124,17 +166,20 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
           <span className="text-2xl">{getKPIIcon(kpiDef.kpi_type)}</span>
           <div>
             <CardTitle className="text-lg">{getKPILabel(kpiDef.kpi_type)} eingeben</CardTitle>
-            <CardDescription>{challenge.title}</CardDescription>
+            <CardDescription>{challenge.title} · {getFrequencyLabel()}</CardDescription>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Target className="h-4 w-4" />
-            <span>Ziel: {kpiDef.target_value} {kpiDef.unit}</span>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Target className="h-4 w-4" />
+              <span>Ziel: {kpiDef.target_value} {kpiDef.unit}</span>
+            </div>
+            <Badge variant={targetPercentage >= 100 ? "default" : "secondary"}>
+              {targetPercentage}% vom Ziel
+            </Badge>
           </div>
-          <Badge variant={targetPercentage >= 100 ? "default" : "secondary"}>
-            {targetPercentage}% vom Ziel
-          </Badge>
+          <p className="text-xs text-muted-foreground">{getDateHelperText()}</p>
         </div>
       </CardHeader>
       <CardContent>
@@ -171,7 +216,7 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Datum
+                    {getDateLabel()}
                   </FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
