@@ -276,8 +276,10 @@ export default function ChallengeDetail() {
 
       {/* Back + fun tiny animation */}
       <div className="flex items-center justify-between text-muted-foreground">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} aria-label={t[lang].back}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> {t[lang].back}
+        <Button variant="ghost" size="sm" asChild aria-label={t[lang].back}>
+          <Link to="/app/challenges">
+            <ArrowLeft className="h-4 w-4 mr-1" /> {t[lang].back}
+          </Link>
         </Button>
         <div className="flex items-center gap-2">
           <svg width="44" height="28" viewBox="0 0 44 28" className="animate-fade-in">
