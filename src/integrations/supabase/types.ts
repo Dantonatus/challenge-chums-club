@@ -523,6 +523,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_server_time: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       is_group_member: {
         Args: { _group_id: string; _user_id?: string }
         Returns: boolean

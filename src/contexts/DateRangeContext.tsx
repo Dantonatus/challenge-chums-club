@@ -6,7 +6,8 @@ export type DateRange = { start: Date; end: Date };
 interface DateRangeContextValue extends DateRange {
   setRange: (r: DateRange) => void;
   minDate: Date; // earliest domain start
-  maxDate: Date; // latest domain end (today)
+  maxDate: Date; // latest domain end (today + buffer)
+  now: Date; // server reference "current" time
 }
 
 const DateRangeContext = createContext<DateRangeContextValue | undefined>(undefined);
@@ -23,12 +24,28 @@ function endOfDay(d: Date) {
 }
 
 export function DateRangeProvider({ userId, children }: { userId?: string | null; children: React.ReactNode }) {
-  const today = endOfDay(new Date());
-  const maxCap = endOfDay(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-  const sixMonthsAgo = startOfDay(new Date(new Date().setMonth(new Date().getMonth() - 6)));
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  // Server reference time ("today"), fetched from Supabase
+  const [now, setNow] = useState<Date>(new Date());
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.rpc("get_server_time");
+        if (data) setNow(new Date(data as any));
+      } catch (_) {
+        // fallback to client time
+      }
+    })();
+  }, []);
+
+  const today = endOfDay(new Date(now));
+  const maxCap = endOfDay(new Date(now.getTime() + 7 * DAY_MS));
+  const sixMonthsAgo = startOfDay(new Date(new Date(now).setMonth(now.getMonth() - 6)));
 
   const [minDate, setMinDate] = useState<Date>(startOfDay(new Date(sixMonthsAgo))); // placeholder until fetched
   const [range, setRange] = useState<DateRange>({ start: sixMonthsAgo, end: today });
+
 
   // Discover earliest relevant date for the user and expand domain accordingly
   useEffect(() => {
@@ -82,7 +99,7 @@ export function DateRangeProvider({ userId, children }: { userId?: string | null
         // keep defaults silently
       }
     })();
-  }, [userId]);
+  }, [userId, sixMonthsAgo, maxCap]);
 
   const value = useMemo<DateRangeContextValue>(() => ({
     start: range.start,
@@ -90,7 +107,8 @@ export function DateRangeProvider({ userId, children }: { userId?: string | null
     setRange: (r) => setRange({ start: startOfDay(r.start), end: endOfDay(r.end) }),
     minDate,
     maxDate: maxCap,
-  }), [range, minDate, maxCap]);
+    now,
+  }), [range, minDate, maxCap, now]);
 
   return (
     <DateRangeContext.Provider value={value}>

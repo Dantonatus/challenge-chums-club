@@ -40,13 +40,14 @@ function formatPPP(d: Date) {
 }
 
 export function DateRangeBar({ className, sticky = true }: { className?: string; sticky?: boolean }) {
-  const { start, end, minDate, maxDate, setRange } = useDateRange();
+  const { start, end, minDate, maxDate, now, setRange } = useDateRange();
   const lang = (navigator.language?.startsWith("de") ? "de" : "en") as keyof typeof dict;
   const t = dict[lang];
 
   const minDays = React.useMemo(() => daysSinceEpochLocal(minDate), [minDate]);
   const maxDays = React.useMemo(() => daysSinceEpochLocal(maxDate), [maxDate]);
   const [local, setLocal] = React.useState<[number, number]>([daysSinceEpochLocal(start), daysSinceEpochLocal(end)]);
+  const [active, setActive] = React.useState<"s" | "e" | null>(null);
   const [dragging, setDragging] = React.useState(false);
   const [hover, setHover] = React.useState(false);
   const showTips = dragging || hover;
@@ -73,38 +74,40 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
   }, [minDate, maxDate, minDays, maxDays]);
 
   const applyPreset = (key: string) => {
-    const today = new Date();
-    const endDate = today;
+    const ref = now ?? new Date();
+    const endDate = ref;
     let startDate: Date;
     switch (key) {
-      case "7d": startDate = new Date(today.getTime() - 7*86400000); break;
-      case "30d": startDate = new Date(today.getTime() - 30*86400000); break;
-      case "90d": startDate = new Date(today.getTime() - 90*86400000); break;
-      case "6M": startDate = new Date(today); startDate.setMonth(today.getMonth() - 6); break;
-      case "YTD": startDate = new Date(today.getFullYear(), 0, 1); break;
-      case "1Y": startDate = new Date(today); startDate.setFullYear(today.getFullYear() - 1); break;
+      case "7d": startDate = new Date(ref.getTime() - 7 * MS_DAY); break;
+      case "30d": startDate = new Date(ref.getTime() - 30 * MS_DAY); break;
+      case "90d": startDate = new Date(ref.getTime() - 90 * MS_DAY); break;
+      case "6M": startDate = new Date(ref); startDate.setMonth(ref.getMonth() - 6); break;
+      case "YTD": startDate = new Date(ref.getFullYear(), 0, 1); break;
+      case "1Y": startDate = new Date(ref); startDate.setFullYear(ref.getFullYear() - 1); break;
       case "All": startDate = new Date(minDate); break;
       default: startDate = new Date(minDate);
     }
     const sVal = Math.max(daysSinceEpochLocal(startDate), minDays);
     const eVal = Math.min(daysSinceEpochLocal(endDate), maxDays);
-    const next: [number, number] = [Math.min(sVal, eVal), Math.max(sVal, eVal)];
-    setLocal(next);
-    setRange({ start: dateFromLocalDayNumber(next[0]), end: dateFromLocalDayNumber(next[1]) });
+    // keep local unsorted to allow independent thumbs; commit will order
+    setLocal([sVal, eVal]);
+    setRange({ start: dateFromLocalDayNumber(Math.min(sVal, eVal)), end: dateFromLocalDayNumber(Math.max(sVal, eVal)) });
   };
 
 // built-in keyboard support from Radix will handle arrow keys
 
   const [sDays, eDays] = local;
-  const sDate = dateFromLocalDayNumber(sDays);
-  const eDate = dateFromLocalDayNumber(eDays);
+  const loDays = Math.min(sDays, eDays);
+  const hiDays = Math.max(sDays, eDays);
+  const loDate = dateFromLocalDayNumber(loDays);
+  const hiDate = dateFromLocalDayNumber(hiDays);
 
   return (
     <Card className={cn("rounded-xl shadow-sm border bg-gradient-to-r from-background to-muted/30", sticky && "sticky top-0 z-30")}> 
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <CardTitle className="text-sm text-muted-foreground">{t.title}</CardTitle>
-          <div className="text-sm font-medium tabular-nums">{formatPPP(sDate)} — {formatPPP(eDate)}</div>
+          <div className="text-sm font-medium tabular-nums">{formatPPP(loDate)} — {formatPPP(hiDate)}</div>
           <div className="flex items-center gap-1">
             {t.presetsList.map((key) => (
               <Button key={key} size="sm" variant="secondary" className="h-7 px-2" onClick={() => applyPreset(key)}>
@@ -135,15 +138,8 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             step={1}
             minStepsBetweenThumbs={0}
             value={[sDays, eDays]}
-            onValueChange={(v) => setLocal(([s,e]) => {
-              const [ns, ne] = v as [number, number];
-              if (ns !== s) {
-                return [Math.min(ns, e), e];
-              } else {
-                return [s, Math.max(ne, s)];
-              }
-            })}
-            onValueCommit={(v) => setRange({ start: dateFromLocalDayNumber(v[0]), end: dateFromLocalDayNumber(v[1]) })}
+            onValueChange={(v) => setLocal(v as [number, number])}
+            onValueCommit={(v) => setRange({ start: dateFromLocalDayNumber(Math.min(v[0], v[1])), end: dateFromLocalDayNumber(Math.max(v[0], v[1])) })}
             onPointerDown={() => setDragging(true)}
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
@@ -168,11 +164,11 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
           {/* tooltips near thumbs */}
           {showTips && (
             <div className="mt-2 relative h-5 pointer-events-none">
-              <div className="absolute top-0 -translate-x-1/2 text-xs px-2 py-1 rounded bg-popover text-popover-foreground shadow" style={{ left: `${((sDays - minDays) / (maxDays - minDays)) * 100}%` }}>
-                {formatPPP(sDate)}
+              <div className="absolute top-0 -translate-x-1/2 text-xs px-2 py-1 rounded bg-popover text-popover-foreground shadow" style={{ left: `${((loDays - minDays) / (maxDays - minDays)) * 100}%` }}>
+                {formatPPP(loDate)}
               </div>
-              <div className="absolute top-0 -translate-x-1/2 text-xs px-2 py-1 rounded bg-popover text-popover-foreground shadow" style={{ left: `${((eDays - minDays) / (maxDays - minDays)) * 100}%` }}>
-                {formatPPP(eDate)}
+              <div className="absolute top-0 -translate-x-1/2 text-xs px-2 py-1 rounded bg-popover text-popover-foreground shadow" style={{ left: `${((hiDays - minDays) / (maxDays - minDays)) * 100}%` }}>
+                {formatPPP(hiDate)}
               </div>
             </div>
           )}
