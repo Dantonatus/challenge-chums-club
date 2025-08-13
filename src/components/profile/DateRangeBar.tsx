@@ -66,10 +66,13 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
 
   // Keep local in sync with provider
   React.useEffect(() => {
-    setLocal([daysSinceEpochLocal(start), daysSinceEpochLocal(end)]);
+    const startDays = daysSinceEpochLocal(start);
+    const endDays = daysSinceEpochLocal(end);
+    setLocal([startDays, endDays]);
   }, [start, end]);
 
-// commit updates on drag end via onValueCommit for reliability
+  // Throttle updates during dragging to improve performance
+  const updateTimeoutRef = React.useRef<NodeJS.Timeout>();
 
   // Month ticks
   const monthTicks = React.useMemo(() => {
@@ -160,23 +163,40 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             minStepsBetweenThumbs={0}
             value={[sDays, eDays]}
             onValueChange={(v) => {
-              const [a, b] = v as [number, number];
-              setLocal(([s, e]) => {
-                const clamp = (x: number) => Math.min(Math.max(x, minDays), maxDays);
-                if (active === "s") return [clamp(a), e];
-                if (active === "e") return [s, clamp(b)];
-                return [clamp(a), clamp(b)];
-              });
+              // Throttle updates for better performance
+              if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+              }
+              
+              updateTimeoutRef.current = setTimeout(() => {
+                const [a, b] = v as [number, number];
+                setLocal(([s, e]) => {
+                  const clamp = (x: number) => Math.min(Math.max(x, minDays), maxDays);
+                  if (active === "s") return [clamp(a), e];
+                  if (active === "e") return [s, clamp(b)];
+                  return [clamp(a), clamp(b)];
+                });
+              }, 0);
             }}
             onValueCommit={(v) => {
+              // Clear any pending throttled updates
+              if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+                updateTimeoutRef.current = undefined;
+              }
+
               const [a, b] = v as [number, number];
-              const sN = Math.min(a, b);
-              const eN = Math.max(a, b);
+              
+              // Don't force ordering - use actual thumb positions
               const refNow = now ?? new Date();
               const todayN = daysSinceEpochLocal(refNow);
 
-              const startDate = dateFromLocalDayNumber(sN); // start of day local
-              const endDate = eN === todayN ? new Date(refNow) : endOfLocalDayFromDayNumber(eN);
+              // Use actual start and end values from the thumbs
+              const startDays = active === "s" ? a : (active === "e" ? local[0] : Math.min(a, b));
+              const endDays = active === "e" ? b : (active === "s" ? local[1] : Math.max(a, b));
+
+              const startDate = startOfLocalDay(dateFromLocalDayNumber(startDays));
+              const endDate = endDays === todayN ? new Date(refNow) : endOfLocalDay(dateFromLocalDayNumber(endDays));
 
               setRange({ start: startDate, end: endDate });
             }}
