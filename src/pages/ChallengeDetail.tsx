@@ -141,7 +141,14 @@ export default function ChallengeDetail() {
     return list;
   }, [cps, profiles]);
 
-  const colors = ["hsl(var(--primary))", "hsl(var(--secondary))", "#6f8cff", "#f39c12", "#2ecc71", "#e74c3c"];
+  const colors = [
+    "hsl(var(--primary))", 
+    "hsl(217 91% 60%)", // Bright blue - good contrast
+    "hsl(142 76% 36%)", // Strong green  
+    "hsl(38 92% 50%)", // Vibrant orange
+    "hsl(348 83% 47%)", // Strong red
+    "hsl(271 81% 56%)" // Purple
+  ];
 
   const chartData = rows.map((r, idx) => ({ name: r.name, count: r.penalty_count, fill: colors[idx % colors.length] }));
 

@@ -163,20 +163,16 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             minStepsBetweenThumbs={0}
             value={[sDays, eDays]}
             onValueChange={(v) => {
-              // Throttle updates for better performance
-              if (updateTimeoutRef.current) {
-                clearTimeout(updateTimeoutRef.current);
-              }
-              
-              updateTimeoutRef.current = setTimeout(() => {
-                const [a, b] = v as [number, number];
-                setLocal(([s, e]) => {
-                  const clamp = (x: number) => Math.min(Math.max(x, minDays), maxDays);
-                  if (active === "s") return [clamp(a), e];
-                  if (active === "e") return [s, clamp(b)];
-                  return [clamp(a), clamp(b)];
-                });
-              }, 0);
+              // Only update the active thumb to prevent coupling
+              const [a, b] = v as [number, number];
+              setLocal(([s, e]) => {
+                const clamp = (x: number) => Math.min(Math.max(x, minDays), maxDays);
+                // Only update the specific thumb that's being dragged
+                if (active === "s") return [clamp(a), e];
+                if (active === "e") return [s, clamp(b)];
+                // If no active thumb, don't update
+                return [s, e];
+              });
             }}
             onValueCommit={(v) => {
               // Clear any pending throttled updates
