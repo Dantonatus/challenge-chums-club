@@ -19,6 +19,7 @@ import * as Recharts from "recharts";
 import AddParticipantsDialog from "@/components/challenges/AddParticipantsDialog";
 import ChallengeForm from "@/components/challenges/ChallengeForm";
 import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
+import { KPIDataEntry } from "@/components/challenges/KPIDataEntry";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateParticipantColorMap } from "@/lib/participant-colors";
 
@@ -44,6 +45,7 @@ const t = {
     participants: "Teilnehmer:innen",
     extend: "Challenge verlängern",
     addViolation: "Verstoß eintragen",
+    addKPIData: "KPI Daten eingeben",
     addParticipants: "Teilnehmer:innen hinzufügen",
     edit: "Bearbeiten",
     delete: "Löschen",
@@ -67,6 +69,7 @@ export default function ChallengeDetail() {
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [violationOpen, setViolationOpen] = useState(false);
+  const [kpiDataOpen, setKpiDataOpen] = useState(false);
   const [violationDate, setViolationDate] = useState<Date | undefined>(new Date());
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const lang: keyof typeof t = 'de';
@@ -77,7 +80,25 @@ export default function ChallengeDetail() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("challenges")
-        .select("id, title, description, start_date, end_date, penalty_amount, penalty_cents, group_id")
+        .select(`
+          id, 
+          title, 
+          description, 
+          start_date, 
+          end_date, 
+          penalty_amount, 
+          penalty_cents, 
+          group_id,
+          challenge_type,
+          kpi_definitions (
+            id,
+            kpi_type,
+            target_value,
+            unit,
+            measurement_frequency,
+            aggregation_method
+          )
+        `)
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -213,6 +234,18 @@ export default function ChallengeDetail() {
   if (!challenge) return null;
 
   const penalty = challenge.penalty_amount || 0;
+  const isKPIChallenge = challenge.challenge_type === 'kpi';
+  const kpiDefinition = challenge.kpi_definitions?.[0];
+
+  const getKPIIcon = (kpiType: string) => {
+    switch (kpiType) {
+      case "steps": return "🚶";
+      case "sleep_hours": return "😴";
+      case "hrv": return "❤️";
+      case "resting_hr": return "💓";
+      default: return "📊";
+    }
+  };
 
   return (
     <section className="space-y-6 animate-enter">
@@ -243,7 +276,17 @@ export default function ChallengeDetail() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>{challenge.title}</span>
+            <div className="flex items-center gap-3">
+              {isKPIChallenge && kpiDefinition && (
+                <span className="text-2xl">{getKPIIcon(kpiDefinition.kpi_type)}</span>
+              )}
+              <span>{challenge.title}</span>
+              {isKPIChallenge && (
+                <span className="px-2 py-1 text-xs bg-primary/10 text-primary rounded-full">
+                  KPI
+                </span>
+              )}
+            </div>
             <div className="flex gap-2">
               {/* Extend */}
               <Dialog open={extendOpen} onOpenChange={setExtendOpen}>
@@ -325,7 +368,12 @@ export default function ChallengeDetail() {
             </div>
           </CardTitle>
           <CardDescription>
-            {format(new Date(challenge.start_date as any), 'PPP')} – {format(new Date(challenge.end_date as any), 'PPP')} · €{penalty.toFixed(2)} per violation
+            {format(new Date(challenge.start_date as any), 'PPP')} – {format(new Date(challenge.end_date as any), 'PPP')}
+            {isKPIChallenge && kpiDefinition ? (
+              <span> · Ziel: {kpiDefinition.target_value} {kpiDefinition.unit}</span>
+            ) : (
+              <span> · €{penalty.toFixed(2)} per violation</span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -339,48 +387,73 @@ export default function ChallengeDetail() {
             ))}
           </div>
 
-          {/* Charts compact in Tabs */}
-          <Tabs defaultValue="violations" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="violations">Verstöße</TabsTrigger>
-              <TabsTrigger value="cumulative">Kumulierte Strafen</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="violations">
-              <div className="space-y-2">
-                <div className="text-sm text-muted-foreground">Verstöße je Teilnehmer:in</div>
-                <ChartContainer
-                  config={Object.fromEntries(rows.map(r => [r.name, { label: r.name, color: colorMap[r.user_id] }]))}
-                  className="w-full h-56 md:h-64"
-                  withAspect={false}
+          {/* Charts/Data Section - Different for KPI vs Habit */}
+          {isKPIChallenge ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">KPI Monitoring</h3>
+                <Button 
+                  onClick={() => setKpiDataOpen(true)}
+                  className="flex items-center gap-2"
                 >
-                  <Recharts.BarChart data={chartData}>
-                    <Recharts.CartesianGrid strokeDasharray="3 3" />
-                    <Recharts.XAxis dataKey="name" />
-                    <Recharts.YAxis allowDecimals={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Recharts.Bar dataKey="count" name="Verstöße" radius={[4,4,0,0]}>
-                      {chartData.map((entry, index) => (
-                        <Recharts.Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Recharts.Bar>
-                  </Recharts.BarChart>
-                </ChartContainer>
+                  <Plus className="h-4 w-4" />
+                  {t[lang].addKPIData}
+                </Button>
               </div>
-            </TabsContent>
+              
+              {/* KPI Chart wird hier später eingefügt - für jetzt Placeholder */}
+              <Card className="p-6">
+                <div className="text-center text-muted-foreground">
+                  <div className="text-4xl mb-2">{kpiDefinition && getKPIIcon(kpiDefinition.kpi_type)}</div>
+                  <h4 className="font-medium mb-1">KPI Verlauf wird hier angezeigt</h4>
+                  <p className="text-sm">Trage deine ersten Daten ein, um Charts zu sehen</p>
+                </div>
+              </Card>
+            </div>
+          ) : (
+            /* Original Habit Challenge Charts */
+            <Tabs defaultValue="violations" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="violations">Verstöße</TabsTrigger>
+                <TabsTrigger value="cumulative">Kumulierte Strafen</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="cumulative">
-              <div className="space-y-2">
-                <div className="text-sm text-muted-foreground">Kumulierte Strafen nach Zeitraum</div>
-                <CumulativePenaltyChart
-                  challengeId={id!}
-                  participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="violations">
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Verstöße je Teilnehmer:in</div>
+                  <ChartContainer
+                    config={Object.fromEntries(rows.map(r => [r.name, { label: r.name, color: colorMap[r.user_id] }]))}
+                    className="w-full h-56 md:h-64"
+                    withAspect={false}
+                  >
+                    <Recharts.BarChart data={chartData}>
+                      <Recharts.CartesianGrid strokeDasharray="3 3" />
+                      <Recharts.XAxis dataKey="name" />
+                      <Recharts.YAxis allowDecimals={false} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Recharts.Bar dataKey="count" name="Verstöße" radius={[4,4,0,0]}>
+                        {chartData.map((entry, index) => (
+                          <Recharts.Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Recharts.Bar>
+                    </Recharts.BarChart>
+                  </ChartContainer>
+                </div>
+              </TabsContent>
 
-          {/* Actions per participant */}
+              <TabsContent value="cumulative">
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Kumulierte Strafen nach Zeitraum</div>
+                  <CumulativePenaltyChart
+                    challengeId={id!}
+                    participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+
+          {/* Actions per participant - Different for KPI vs Habit */}
           <div className="grid gap-3">
             {rows.map((r) => (
               <div key={r.id} className="flex items-center justify-between rounded-lg border p-3">
@@ -391,58 +464,86 @@ export default function ChallengeDetail() {
                   </Avatar>
                   <div>
                     <div className="font-medium">{r.name}</div>
-                    <div className="text-sm text-muted-foreground">{r.penalty_count} × €{penalty.toFixed(2)} = €{(r.penalty_count * penalty).toFixed(2)}</div>
+                    {isKPIChallenge ? (
+                      <div className="text-sm text-muted-foreground">
+                        KPI Teilnehmer - Daten über "KPI Daten eingeben" Button oben
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        {r.penalty_count} × €{penalty.toFixed(2)} = €{(r.penalty_count * penalty).toFixed(2)}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <Button size="sm" onClick={() => { setSelectedRow(r); setViolationDate(new Date()); setViolationOpen(true); }}>
-                  <Plus className="mr-1 h-4 w-4" /> {t[lang].addViolation}
-                </Button>
+                {!isKPIChallenge && (
+                  <Button size="sm" onClick={() => { setSelectedRow(r); setViolationDate(new Date()); setViolationOpen(true); }}>
+                    <Plus className="mr-1 h-4 w-4" /> {t[lang].addViolation}
+                  </Button>
+                )}
               </div>
             ))}
           </div>
 
-          {/* Add violation dialog (with date) */}
-          <Dialog open={violationOpen} onOpenChange={(v) => { setViolationOpen(v); if (!v) setSelectedRow(null); }}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{t[lang].addViolation}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="justify-start">
-                      <CalendarIcon className="mr-2 h-4 w-4" /> {violationDate ? format(violationDate, 'PPP') : t[lang].pickDate}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={violationDate}
-                      onSelect={setViolationDate}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setViolationOpen(false)}>{t[lang].cancel}</Button>
-                  <Button
-                    onClick={async () => {
-                      if (!selectedRow || !violationDate) return;
-                      await addViolation(selectedRow, violationDate);
-                      setViolationOpen(false);
-                      setSelectedRow(null);
-                    }}
-                    disabled={!violationDate}
-                  >
-                    {t[lang].save}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
         </CardContent>
       </Card>
+
+      {/* Add violation dialog (with date) - Only for Habit Challenges */}
+      {!isKPIChallenge && (
+        <Dialog open={violationOpen} onOpenChange={(v) => { setViolationOpen(v); if (!v) setSelectedRow(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t[lang].addViolation}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="justify-start">
+                    <CalendarIcon className="mr-2 h-4 w-4" /> {violationDate ? format(violationDate, 'PPP') : t[lang].pickDate}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={violationDate}
+                    onSelect={setViolationDate}
+                    disabled={(date) => date > new Date() || date < new Date(challenge.start_date as any)}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setViolationOpen(false)}>{t[lang].cancel}</Button>
+                <Button onClick={() => { if (selectedRow && violationDate) addViolation(selectedRow, violationDate); setViolationOpen(false); }} disabled={!violationDate}>
+                  {t[lang].save}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* KPI Data Entry Dialog - Only for KPI Challenges */}
+      {isKPIChallenge && kpiDefinition && (
+        <Dialog open={kpiDataOpen} onOpenChange={setKpiDataOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>KPI Daten eingeben</DialogTitle>
+            </DialogHeader>
+            <KPIDataEntry 
+              challenge={{
+                id: challenge.id,
+                title: challenge.title,
+                kpi_definitions: [kpiDefinition]
+              }}
+              onSuccess={() => {
+                setKpiDataOpen(false);
+                refetch();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       <AddParticipantsDialog open={addOpen} onOpenChange={setAddOpen} challengeId={id!} onAdded={() => refetchCps()} />
     </section>
