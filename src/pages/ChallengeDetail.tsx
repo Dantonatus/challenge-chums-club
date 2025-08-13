@@ -115,7 +115,8 @@ export default function ChallengeDetail() {
             target_value,
             unit,
             measurement_frequency,
-            aggregation_method
+            aggregation_method,
+            goal_direction
           )
         `)
         .eq("id", id)

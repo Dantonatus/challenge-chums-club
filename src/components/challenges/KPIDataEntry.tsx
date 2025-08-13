@@ -178,11 +178,6 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
         : measuredValue <= kpiDef.target_value)
     : false;
 
-  console.log("Goal Direction:", kpiDef.goal_direction);
-  console.log("Measured Value:", measuredValue);
-  console.log("Target Value:", kpiDef.target_value);
-  console.log("Goal Achieved:", goalAchieved);
-
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
