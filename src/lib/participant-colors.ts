@@ -3,20 +3,18 @@
  * Provides consistent, accessible colors for participants across all charts and visualizations
  */
 
-// High contrast, accessible color palette optimized for charts and dashboards
+// Custom color palette with 10 distinct colors for participants
 const PARTICIPANT_COLORS = [
-  "hsl(var(--primary))",        // Primary brand color
-  "hsl(217 91% 60%)",          // Bright blue - excellent contrast
-  "hsl(142 76% 36%)",          // Strong green - nature inspired
-  "hsl(38 92% 50%)",           // Vibrant orange - warm accent
-  "hsl(348 83% 47%)",          // Strong red - attention grabbing
-  "hsl(271 81% 56%)",          // Purple - creative energy
-  "hsl(195 85% 41%)",          // Teal - professional calm
-  "hsl(55 92% 50%)",           // Bright yellow - energetic
-  "hsl(314 100% 45%)",         // Magenta - distinctive
-  "hsl(24 100% 50%)",          // Deep orange - warm balance
-  "hsl(262 83% 58%)",          // Violet - elegant depth
-  "hsl(173 80% 40%)",          // Aqua - refreshing
+  "#D32F2F",  // C1 – Tiefes Rubinrot
+  "#FBC02D",  // C2 – Strahlendes Goldgelb
+  "#388E3C",  // C3 – Sattes Smaragdgrün
+  "#7B1FA2",  // C4 – Königliches Violett
+  "#F57C00",  // C5 – Intensives Herbstorange
+  "#0097A7",  // C6 – Kühles Tief-Türkis
+  "#C2185B",  // C7 – Kraftvolles Magenta
+  "#AFB42B",  // C8 – Sanftes Olivgold
+  "#5D4037",  // C9 – Dunkles Schokoladenbraun
+  "#455A64",  // C10 – Kühles Stahlgrau-Blau
 ];
 
 /**
