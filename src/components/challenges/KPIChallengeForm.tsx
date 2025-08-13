@@ -23,6 +23,7 @@ const kpiChallengeSchema = z.object({
   measurement_frequency: z.enum(["daily", "weekly", "monthly"]),
   aggregation_method: z.enum(["average", "sum", "max", "min"]),
   penalty_amount: z.number().min(0.01, "Strafe muss größer als 0 sein"),
+  goal_direction: z.enum(["higher_better", "lower_better"]),
 });
 
 type KPIChallengeFormData = z.infer<typeof kpiChallengeSchema>;
@@ -33,11 +34,11 @@ interface KPIChallengeFormProps {
 }
 
 const KPI_TEMPLATES = [
-  { type: "steps", label: "Schritte", unit: "Schritte", icon: "🚶", aggregation: "sum" as const },
-  { type: "sleep_hours", label: "Schlafstunden", unit: "Stunden", icon: "😴", aggregation: "average" as const },
-  { type: "hrv", label: "Herzratenvariabilität", unit: "ms", icon: "❤️", aggregation: "average" as const },
-  { type: "resting_hr", label: "Ruhepuls", unit: "bpm", icon: "💓", aggregation: "average" as const },
-  { type: "custom", label: "Benutzerdefiniert", unit: "", icon: "📊", aggregation: "average" as const },
+  { type: "steps", label: "Schritte", unit: "Schritte", icon: "🚶", aggregation: "sum" as const, goalDirection: "higher_better" as const },
+  { type: "sleep_hours", label: "Schlafstunden", unit: "Stunden", icon: "😴", aggregation: "average" as const, goalDirection: "higher_better" as const },
+  { type: "hrv", label: "Herzratenvariabilität", unit: "ms", icon: "❤️", aggregation: "average" as const, goalDirection: "higher_better" as const },
+  { type: "resting_hr", label: "Ruhepuls", unit: "bpm", icon: "💓", aggregation: "average" as const, goalDirection: "lower_better" as const },
+  { type: "custom", label: "Benutzerdefiniert", unit: "", icon: "📊", aggregation: "average" as const, goalDirection: "higher_better" as const },
 ];
 
 export function KPIChallengeForm({ groupId, onSuccess }: KPIChallengeFormProps) {
@@ -58,6 +59,7 @@ export function KPIChallengeForm({ groupId, onSuccess }: KPIChallengeFormProps) 
       measurement_frequency: "daily",
       aggregation_method: "average",
       penalty_amount: 1.0,
+      goal_direction: "higher_better",
     },
   });
 
@@ -68,6 +70,7 @@ export function KPIChallengeForm({ groupId, onSuccess }: KPIChallengeFormProps) 
       form.setValue("kpi_type", template.type);
       form.setValue("unit", template.unit);
       form.setValue("aggregation_method", template.aggregation);
+      form.setValue("goal_direction", template.goalDirection);
       
       // Set suggested titles and targets
       switch (template.type) {
@@ -131,6 +134,7 @@ export function KPIChallengeForm({ groupId, onSuccess }: KPIChallengeFormProps) 
           unit: data.unit,
           measurement_frequency: data.measurement_frequency,
           aggregation_method: data.aggregation_method,
+          goal_direction: data.goal_direction,
         });
 
       if (kpiError) throw kpiError;
@@ -320,6 +324,30 @@ export function KPIChallengeForm({ groupId, onSuccess }: KPIChallengeFormProps) 
                       <SelectItem value="daily">Täglich</SelectItem>
                       <SelectItem value="weekly">Wöchentlich</SelectItem>
                       <SelectItem value="monthly">Monatlich</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField
+              control={form.control}
+              name="goal_direction"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Zielrichtung</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wählen..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="higher_better">↑ Höher ist besser</SelectItem>
+                      <SelectItem value="lower_better">↓ Niedriger ist besser</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -348,6 +348,7 @@ export type Database = {
           aggregation_method: string
           challenge_id: string
           created_at: string
+          goal_direction: string
           id: string
           kpi_type: string
           measurement_frequency: string
@@ -359,6 +360,7 @@ export type Database = {
           aggregation_method?: string
           challenge_id: string
           created_at?: string
+          goal_direction?: string
           id?: string
           kpi_type: string
           measurement_frequency?: string
@@ -370,6 +372,7 @@ export type Database = {
           aggregation_method?: string
           challenge_id?: string
           created_at?: string
+          goal_direction?: string
           id?: string
           kpi_type?: string
           measurement_frequency?: string
@@ -395,6 +398,7 @@ export type Database = {
           measured_value: number
           measurement_date: string
           notes: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -404,6 +408,7 @@ export type Database = {
           measured_value: number
           measurement_date: string
           notes?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -413,6 +418,7 @@ export type Database = {
           measured_value?: number
           measurement_date?: string
           notes?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [

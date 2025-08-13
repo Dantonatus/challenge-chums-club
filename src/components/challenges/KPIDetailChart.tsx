@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -5,9 +6,11 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } fro
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Target, TrendingUp, TrendingDown, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Target, TrendingUp, TrendingDown, Calendar, Edit } from "lucide-react";
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { de } from "date-fns/locale";
+import { KPIEditDialog } from "./KPIEditDialog";
 
 interface KPIDefinition {
   id: string;
@@ -16,6 +19,16 @@ interface KPIDefinition {
   unit: string;
   measurement_frequency: string;
   aggregation_method: string;
+  goal_direction: string;
+}
+
+interface KPIMeasurement {
+  id: string;
+  measured_value: number;
+  measurement_date: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface KPIDetailChartProps {
@@ -25,8 +38,10 @@ interface KPIDetailChartProps {
 }
 
 export function KPIDetailChart({ challengeId, kpiDefinition, userId }: KPIDetailChartProps) {
+  const [editingMeasurement, setEditingMeasurement] = useState<KPIMeasurement | null>(null);
+  
   // Fetch KPI measurements
-  const { data: measurements, isLoading } = useQuery({
+  const { data: measurements, isLoading, refetch } = useQuery({
     queryKey: ["kpi-measurements", kpiDefinition.id, userId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -109,13 +124,19 @@ export function KPIDetailChart({ challengeId, kpiDefinition, userId }: KPIDetail
     const firstValue = values[0];
     const lastValue = values[values.length - 1];
     const trend = values.length > 1 ? ((lastValue - firstValue) / firstValue) * 100 : 0;
+    
+    // Calculate overall goal achievement based on goal direction
+    const overallGoalAchieved = kpiDefinition.goal_direction === "higher_better" 
+      ? current >= kpiDefinition.target_value
+      : current <= kpiDefinition.target_value;
 
     return {
       current,
       achievement,
       trend,
       lastValue,
-      measurementCount: values.length
+      measurementCount: values.length,
+      overallGoalAchieved
     };
   };
 
@@ -179,8 +200,8 @@ export function KPIDetailChart({ challengeId, kpiDefinition, userId }: KPIDetail
                 <p className="text-sm font-medium text-muted-foreground">Zielerreichung</p>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl font-bold">{Math.round(stats.achievement)}%</span>
-                  <Badge variant={stats.achievement >= 100 ? "default" : "secondary"}>
-                    {stats.achievement >= 100 ? "Erreicht" : "In Arbeit"}
+                  <Badge variant={stats.overallGoalAchieved ? "default" : "secondary"}>
+                    {stats.overallGoalAchieved ? "Erreicht ✅" : "In Arbeit"}
                   </Badge>
                 </div>
               </div>
@@ -287,6 +308,59 @@ export function KPIDetailChart({ challengeId, kpiDefinition, userId }: KPIDetail
           </ChartContainer>
         </CardContent>
       </Card>
+
+      {/* Measurements List with Edit Functionality */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Alle Messungen</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {measurements?.map((measurement: KPIMeasurement) => {
+              const goalAchieved = kpiDefinition.goal_direction === "higher_better" 
+                ? measurement.measured_value >= kpiDefinition.target_value
+                : measurement.measured_value <= kpiDefinition.target_value;
+              
+              return (
+                <div key={measurement.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm text-muted-foreground">
+                      {format(parseISO(measurement.measurement_date), 'dd.MM.yyyy', { locale: de })}
+                    </div>
+                    <div className="font-medium">
+                      {measurement.measured_value} {kpiDefinition.unit}
+                    </div>
+                    <Badge variant={goalAchieved ? "default" : "destructive"} className="text-xs">
+                      {goalAchieved ? "✅" : "❌"}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingMeasurement(measurement)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Edit Dialog */}
+      {editingMeasurement && (
+        <KPIEditDialog
+          open={!!editingMeasurement}
+          onOpenChange={(open) => !open && setEditingMeasurement(null)}
+          measurement={editingMeasurement}
+          kpiDefinition={kpiDefinition}
+          onSuccess={() => {
+            refetch();
+            setEditingMeasurement(null);
+          }}
+        />
+      )}
     </div>
   );
 }

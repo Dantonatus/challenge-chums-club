@@ -29,6 +29,7 @@ interface KPIDefinition {
   unit: string;
   measurement_frequency: string;
   aggregation_method: string;
+  goal_direction: string;
 }
 
 interface ChallengeWithKPI {
@@ -136,9 +137,17 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
 
       if (error) throw error;
 
+      // Check if goal was achieved
+      const goalAchieved = kpiDef.goal_direction === "higher_better" 
+        ? data.measured_value >= kpiDef.target_value
+        : data.measured_value <= kpiDef.target_value;
+
       toast({
-        title: "Messwert eingetragen",
-        description: `${data.measured_value} ${kpiDef.unit} wurde erfolgreich eingetragen.`,
+        title: goalAchieved ? "Ziel erreicht! ✅" : "Ziel verfehlt ❌",
+        description: goalAchieved 
+          ? `${data.measured_value} ${kpiDef.unit} wurde erfolgreich eingetragen.`
+          : `${data.measured_value} ${kpiDef.unit} eingetragen - Strafe wird automatisch berechnet.`,
+        variant: goalAchieved ? "default" : "destructive",
       });
 
       onSuccess();
@@ -155,9 +164,14 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
     }
   };
 
-  const targetPercentage = form.watch("measured_value") 
-    ? Math.round((form.watch("measured_value") / kpiDef.target_value) * 100)
+  const measuredValue = form.watch("measured_value");
+  const targetPercentage = measuredValue 
+    ? Math.round((measuredValue / kpiDef.target_value) * 100)
     : 0;
+  
+  const goalAchieved = measuredValue 
+    ? (kpiDef.goal_direction === "higher_better" ? measuredValue >= kpiDef.target_value : measuredValue <= kpiDef.target_value)
+    : false;
 
   return (
     <Card className="w-full max-w-md">
@@ -173,10 +187,10 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Target className="h-4 w-4" />
-              <span>Ziel: {kpiDef.target_value} {kpiDef.unit}</span>
+              <span>Ziel: {kpiDef.goal_direction === "higher_better" ? "≥" : "≤"} {kpiDef.target_value} {kpiDef.unit}</span>
             </div>
-            <Badge variant={targetPercentage >= 100 ? "default" : "secondary"}>
-              {targetPercentage}% vom Ziel
+            <Badge variant={goalAchieved ? "default" : "secondary"}>
+              {goalAchieved ? "Ziel erreicht ✅" : `${targetPercentage}% vom Ziel`}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">{getDateHelperText()}</p>
