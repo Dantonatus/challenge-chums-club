@@ -9,6 +9,7 @@ import { useDateRange } from "@/contexts/DateRangeContext";
 import { Target, TrendingUp, TrendingDown, Calendar } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 interface KPIAnalyticsProps {
   userId: string;
@@ -16,6 +17,7 @@ interface KPIAnalyticsProps {
 
 export function KPIAnalytics({ userId }: KPIAnalyticsProps) {
   const { start, end } = useDateRange();
+  const navigate = useNavigate();
 
   // Fetch KPI challenges and measurements
   const { data: kpiData, isLoading } = useQuery({
@@ -171,7 +173,11 @@ export function KPIAnalytics({ userId }: KPIAnalyticsProps) {
             const stats = calculateKPIStats(kpiDef, kpiData.measurements);
             
             return (
-              <Card key={kpiDef.id}>
+              <Card 
+                key={kpiDef.id} 
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate(`/app/challenges/${challenge.id}?tab=monitoring`)}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">

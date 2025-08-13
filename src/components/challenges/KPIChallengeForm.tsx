@@ -22,6 +22,7 @@ const kpiChallengeSchema = z.object({
   unit: z.string().min(1, "Einheit ist erforderlich"),
   measurement_frequency: z.enum(["daily", "weekly", "monthly"]),
   aggregation_method: z.enum(["average", "sum", "max", "min"]),
+  penalty_amount: z.number().min(0.01, "Strafe muss größer als 0 sein"),
 });
 
 type KPIChallengeFormData = z.infer<typeof kpiChallengeSchema>;
@@ -56,6 +57,7 @@ export function KPIChallengeForm({ groupId, onSuccess }: KPIChallengeFormProps) 
       unit: "",
       measurement_frequency: "daily",
       aggregation_method: "average",
+      penalty_amount: 1.0,
     },
   });
 
@@ -110,7 +112,8 @@ export function KPIChallengeForm({ groupId, onSuccess }: KPIChallengeFormProps) 
           group_id: groupId,
           created_by: user.user.id,
           challenge_type: "kpi",
-          penalty_cents: 0, // KPI challenges use different penalty system
+          penalty_amount: data.penalty_amount,
+          penalty_cents: Math.round(data.penalty_amount * 100),
           strike_allowance: 0,
         })
         .select()
@@ -224,6 +227,26 @@ export function KPIChallengeForm({ groupId, onSuccess }: KPIChallengeFormProps) 
                       type="number"
                       step="0.1"
                       placeholder="z.B. 10000"
+                      {...field}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="penalty_amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Strafe (€)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="z.B. 1.00"
                       {...field}
                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     />
