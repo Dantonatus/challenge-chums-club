@@ -20,6 +20,7 @@ import AddParticipantsDialog from "@/components/challenges/AddParticipantsDialog
 import ChallengeForm from "@/components/challenges/ChallengeForm";
 import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { generateParticipantColorMap } from "@/lib/participant-colors";
 
 const t = {
   en: {
@@ -141,16 +142,16 @@ export default function ChallengeDetail() {
     return list;
   }, [cps, profiles]);
 
-  const colors = [
-    "hsl(var(--primary))", 
-    "hsl(217 91% 60%)", // Bright blue - good contrast
-    "hsl(142 76% 36%)", // Strong green  
-    "hsl(38 92% 50%)", // Vibrant orange
-    "hsl(348 83% 47%)", // Strong red
-    "hsl(271 81% 56%)" // Purple
-  ];
+  const colorMap = useMemo(() => {
+    if (!rows.length) return {};
+    return generateParticipantColorMap(rows.map(r => ({ user_id: r.user_id, name: r.name })));
+  }, [rows]);
 
-  const chartData = rows.map((r, idx) => ({ name: r.name, count: r.penalty_count, fill: colors[idx % colors.length] }));
+  const chartData = rows.map((r) => ({ 
+    name: r.name, 
+    count: r.penalty_count, 
+    fill: colorMap[r.user_id] 
+  }));
 
   const addViolation = async (
     r: { id: string; user_id: string; penalty_count: number; penalty_override_cents?: number | null },
@@ -349,7 +350,7 @@ export default function ChallengeDetail() {
               <div className="space-y-2">
                 <div className="text-sm text-muted-foreground">Verstöße je Teilnehmer:in</div>
                 <ChartContainer
-                  config={Object.fromEntries(rows.map((r, idx) => [r.name, { label: r.name, color: colors[idx % colors.length] }]))}
+                  config={Object.fromEntries(rows.map(r => [r.name, { label: r.name, color: colorMap[r.user_id] }]))}
                   className="w-full h-56 md:h-64"
                   withAspect={false}
                 >

@@ -5,6 +5,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDateRange } from "@/contexts/DateRangeContext";
+import { generateParticipantColorMap } from "@/lib/participant-colors";
 
 interface Participant { user_id: string; name: string }
 
@@ -26,6 +27,8 @@ export default function ViolationsPerParticipant({ challengeId, participants }: 
     }
   });
 
+  const colorMap = useMemo(() => generateParticipantColorMap(participants), [participants]);
+
   const barData = useMemo(() => {
     const sums = new Map<string, number>();
     (data || []).forEach((v: any) => {
@@ -34,8 +37,9 @@ export default function ViolationsPerParticipant({ challengeId, participants }: 
     return participants.map((p) => ({
       name: p.name,
       amount: Math.round(((sums.get(p.user_id) || 0) / 100) * 100) / 100,
+      fill: colorMap[p.user_id],
     }));
-  }, [data, participants]);
+  }, [data, participants, colorMap]);
 
   if (isLoading) return <Skeleton className="h-48 w-full" />;
 
@@ -48,7 +52,7 @@ export default function ViolationsPerParticipant({ challengeId, participants }: 
         <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} height={60} angle={0} dy={10} />
         <YAxis tickLine={false} axisLine={false} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="amount" fill="var(--color-amount)" radius={[6,6,0,0]} />
+        <Bar dataKey="amount" radius={[6,6,0,0]} />
       </BarChart>
     </ChartContainer>
   );
