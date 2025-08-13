@@ -278,7 +278,7 @@ export default function ChallengeDetail() {
       {/* Back + fun tiny animation */}
       <div className="flex items-center justify-between text-muted-foreground">
         <Button variant="ghost" size="sm" asChild aria-label={t[lang].back}>
-          <Link to="/app/challenges">
+          <Link to="/challenges">
             <ArrowLeft className="h-4 w-4 mr-1" /> {t[lang].back}
           </Link>
         </Button>
