@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ChallengeForm from "@/components/challenges/ChallengeForm";
+import { ChallengeTypeToggle } from "@/components/challenges/ChallengeTypeToggle";
+import { KPIChallengeForm } from "@/components/challenges/KPIChallengeForm";
 import { supabase } from "@/integrations/supabase/client";
 
 const t = {
@@ -35,6 +37,7 @@ export default function OverviewPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [groupToCreate, setGroupToCreate] = useState<string | null>(null);
+  const [challengeType, setChallengeType] = useState<'habit' | 'kpi'>('habit');
   const openCreate = (gid: string) => { setGroupToCreate(gid); setOpen(true); };
 
   const { data: groups } = useQuery({
@@ -58,7 +61,22 @@ export default function OverviewPage() {
       const today = new Date().toISOString().slice(0, 10);
       const { data, error } = await (supabase as any)
         .from("challenges")
-        .select("id, title, description, start_date, end_date, penalty_amount, group_id")
+        .select(`
+          id, 
+          title, 
+          description, 
+          start_date, 
+          end_date, 
+          penalty_amount, 
+          group_id,
+          challenge_type,
+          kpi_definitions (
+            id,
+            kpi_type,
+            target_value,
+            unit
+          )
+        `)
         .in("group_id", groupIds)
         .lte("start_date", today)
         .gte("end_date", today)
@@ -132,9 +150,30 @@ export default function OverviewPage() {
               {(byGroup[g.id] || []).map((c: any) => (
                 <div key={c.id} className="flex items-center justify-between rounded-lg border p-3">
                   <div>
-                    <div className="font-medium">{c.title}</div>
+                    <div className="flex items-center gap-2 font-medium">
+                      {c.challenge_type === 'kpi' && c.kpi_definitions?.[0] && (
+                        <span className="text-lg">
+                          {c.kpi_definitions[0].kpi_type === 'steps' ? '🚶' : 
+                           c.kpi_definitions[0].kpi_type === 'sleep_hours' ? '😴' : 
+                           c.kpi_definitions[0].kpi_type === 'hrv' ? '❤️' : 
+                           c.kpi_definitions[0].kpi_type === 'resting_hr' ? '💓' : '📊'}
+                        </span>
+                      )}
+                      {c.title}
+                      {c.challenge_type === 'kpi' && (
+                        <span className="px-2 py-1 text-xs bg-primary/10 text-primary rounded-full">
+                          KPI
+                        </span>
+                      )}
+                    </div>
                     <div className="text-sm text-muted-foreground">
-                      {format(new Date(c.start_date as any), 'PPP')} – {format(new Date(c.end_date as any), 'PPP')} · €{(c.penalty_amount || 0).toFixed(2)} {t[lang].perViolation}
+                      {format(new Date(c.start_date as any), 'PPP')} – {format(new Date(c.end_date as any), 'PPP')}
+                      {c.challenge_type === 'habit' && (
+                        <span> · €{(c.penalty_amount || 0).toFixed(2)} {t[lang].perViolation}</span>
+                      )}
+                      {c.challenge_type === 'kpi' && c.kpi_definitions?.[0] && (
+                        <span> · Ziel: {c.kpi_definitions[0].target_value} {c.kpi_definitions[0].unit}</span>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {t[lang].participants(countByChallenge[c.id] || 0)}
@@ -150,22 +189,39 @@ export default function OverviewPage() {
         ))}
       </div>
 
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setGroupToCreate(null); }}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setGroupToCreate(null); setChallengeType('habit'); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t[lang].create}</DialogTitle>
           </DialogHeader>
           {groupToCreate && (
-            <ChallengeForm
-              groupId={groupToCreate}
-              locale={lang}
-              onCancel={() => setOpen(false)}
-              onSaved={() => {
-                setOpen(false);
-                setGroupToCreate(null);
-                queryClient.invalidateQueries();
-              }}
-            />
+            <div className="space-y-4">
+              <ChallengeTypeToggle value={challengeType} onValueChange={setChallengeType} />
+              
+              {challengeType === 'habit' ? (
+                <ChallengeForm
+                  groupId={groupToCreate}
+                  locale={lang}
+                  onCancel={() => setOpen(false)}
+                  onSaved={() => {
+                    setOpen(false);
+                    setGroupToCreate(null);
+                    setChallengeType('habit');
+                    queryClient.invalidateQueries();
+                  }}
+                />
+              ) : (
+                <KPIChallengeForm
+                  groupId={groupToCreate}
+                  onSuccess={() => {
+                    setOpen(false);
+                    setGroupToCreate(null);
+                    setChallengeType('habit');
+                    queryClient.invalidateQueries();
+                  }}
+                />
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>
