@@ -166,16 +166,22 @@ export function KPIDataEntry({ challenge, onSuccess }: KPIDataEntryProps) {
 
   const measuredValue = form.watch("measured_value");
   
-  // Calculate target percentage based on goal direction
+  // Calculate target percentage - always show progress towards target
   const targetPercentage = measuredValue 
-    ? kpiDef.goal_direction === "higher_better"
-      ? Math.round((measuredValue / kpiDef.target_value) * 100)
-      : Math.round((kpiDef.target_value / measuredValue) * 100) // Inverted for lower_better
+    ? Math.round((measuredValue / kpiDef.target_value) * 100)
     : 0;
   
-  const goalAchieved = measuredValue 
-    ? (kpiDef.goal_direction === "higher_better" ? measuredValue >= kpiDef.target_value : measuredValue <= kpiDef.target_value)
+  // Goal achievement logic
+  const goalAchieved = measuredValue > 0
+    ? (kpiDef.goal_direction === "higher_better" 
+        ? measuredValue >= kpiDef.target_value 
+        : measuredValue <= kpiDef.target_value)
     : false;
+
+  console.log("Goal Direction:", kpiDef.goal_direction);
+  console.log("Measured Value:", measuredValue);
+  console.log("Target Value:", kpiDef.target_value);
+  console.log("Goal Achieved:", goalAchieved);
 
   return (
     <Card className="w-full max-w-md">
