@@ -20,6 +20,7 @@ import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyCha
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
 import { DateRangeBar } from "@/components/profile/DateRangeBar";
 import ViolationsPerParticipant from "@/components/profile/ViolationsPerParticipant";
+import { ColorPicker } from "@/components/profile/ColorPicker";
 
 const dict = {
   de: {
@@ -58,7 +59,9 @@ const ProfilePage = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [customColor, setCustomColor] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [colorLoading, setColorLoading] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -73,11 +76,12 @@ const ProfilePage = () => {
       } catch (_) {}
       const { data } = await supabase
         .from("profiles")
-        .select("display_name, avatar_url")
+        .select("display_name, avatar_url, custom_color")
         .eq("id", id)
         .maybeSingle();
       setDisplayName(data?.display_name || "");
       setAvatarUrl(data?.avatar_url || "");
+      setCustomColor(data?.custom_color || "");
     };
     init();
   }, []);
@@ -100,6 +104,28 @@ const ProfilePage = () => {
     try {
       await supabase.from("profiles").update({ avatar_url: url }).eq("id", userId);
     } catch {}
+  };
+
+  const handleColorSave = async () => {
+    if (!userId || !customColor) return;
+    setColorLoading(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ custom_color: customColor })
+      .eq("id", userId);
+    setColorLoading(false);
+    if (error) {
+      toast({ 
+        title: lang === "de" ? "Farbe speichern fehlgeschlagen" : "Color save failed", 
+        description: error.message, 
+        variant: "destructive" as any 
+      });
+    } else {
+      toast({ 
+        title: lang === "de" ? "Farbe gespeichert" : "Color saved",
+        description: lang === "de" ? "Deine Farbe wurde erfolgreich aktualisiert" : "Your color has been updated successfully"
+      });
+    }
   };
 
   const initials = (displayName || "").trim().split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase() || "?";
@@ -158,11 +184,11 @@ const ProfilePage = () => {
       const ids = Array.from(new Set((relParticipants.data||[]).map(p => p.user_id)));
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name")
+        .select("id, display_name, custom_color")
         .in("id", ids);
       if (error) throw error;
-      const map = new Map<string,string>();
-      (data||[]).forEach(p => map.set(p.id, p.display_name || ""));
+      const map = new Map<string,{name: string, color?: string}>();
+      (data||[]).forEach(p => map.set(p.id, { name: p.display_name || "", color: p.custom_color }));
       return map;
     }
   });
@@ -189,18 +215,22 @@ const ProfilePage = () => {
     });
     // Include participants with 0€ as well for completeness
     return (relParticipants.data || []).map((p: any) => ({
-      name: relProfiles.data?.get(p.user_id) || p.user_id,
+      name: relProfiles.data?.get(p.user_id)?.name || p.user_id,
       amount: Math.round(((sums.get(p.user_id) || 0) / 100) * 100) / 100,
     }));
   }, [relViolations.data, relParticipants.data, relProfiles.data]);
 
 
-  // Participants with names for the cumulative chart
+  // Participants with names and colors for the cumulative chart
   const chartParticipants = useMemo(() => {
-    return (relParticipants.data || []).map((p: any) => ({
-      user_id: p.user_id,
-      name: relProfiles.data?.get(p.user_id) || p.user_id,
-    }));
+    return (relParticipants.data || []).map((p: any) => {
+      const profile = relProfiles.data?.get(p.user_id);
+      return {
+        user_id: p.user_id,
+        name: profile?.name || p.user_id,
+        custom_color: profile?.color,
+      };
+    });
   }, [relParticipants.data, relProfiles.data]);
 
   // Default range: last 6 months up to today
@@ -223,41 +253,50 @@ const ProfilePage = () => {
       <DateRangeProvider userId={userId}>
 
         <div className="grid gap-6 md:grid-cols-3">
-        {/* Left column: profile card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t.profileInfo}</CardTitle>
-            <CardDescription>{t.profileInfoDesc}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center gap-4">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-              <div>
-                {userId ? (
-                  <AvatarUploader userId={userId} onUploaded={handleAvatarUploaded} />
-                ) : (
-                  <Button type="button" variant="outline" size="sm" disabled>
-                    {t.upload}
-                  </Button>
-                )}
-              </div>
-              <div className="w-full max-w-sm mx-auto grid gap-3">
-                <Input
-                  placeholder={lang === "de" ? "Vollständiger Name" : "Full name"}
-                  aria-label={lang === "de" ? "Vollständiger Name" : "Full name"}
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                />
-                <div className="flex justify-center">
-                  <Button onClick={handleSave} disabled={loading}>{t.save}</Button>
+        {/* Left column: profile cards */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.profileInfo}</CardTitle>
+              <CardDescription>{t.profileInfoDesc}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
+                  <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+                <div>
+                  {userId ? (
+                    <AvatarUploader userId={userId} onUploaded={handleAvatarUploaded} />
+                  ) : (
+                    <Button type="button" variant="outline" size="sm" disabled>
+                      {t.upload}
+                    </Button>
+                  )}
+                </div>
+                <div className="w-full max-w-sm mx-auto grid gap-3">
+                  <Input
+                    placeholder={lang === "de" ? "Vollständiger Name" : "Full name"}
+                    aria-label={lang === "de" ? "Vollständiger Name" : "Full name"}
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                  <div className="flex justify-center">
+                    <Button onClick={handleSave} disabled={loading}>{t.save}</Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <ColorPicker
+            selectedColor={customColor}
+            onColorSelect={setCustomColor}
+            onSave={handleColorSave}
+            loading={colorLoading}
+          />
+        </div>
 
         {/* Right column: content */}
         <div className="md:col-span-2 grid gap-6">

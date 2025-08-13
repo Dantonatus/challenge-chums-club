@@ -35,14 +35,18 @@ export function getParticipantColors(): string[] {
 /**
  * Generate a color map for participants based on their user IDs
  * This ensures consistent colors for the same participant across different charts
+ * Now supports custom user colors from their profile
  */
-export function generateParticipantColorMap(participants: Array<{ user_id: string; name?: string }>): Record<string, string> {
+export function generateParticipantColorMap(
+  participants: Array<{ user_id: string; name?: string; custom_color?: string }>
+): Record<string, string> {
   // Sort participants by user_id to ensure consistent color assignment
   const sortedParticipants = [...participants].sort((a, b) => a.user_id.localeCompare(b.user_id));
   
   const colorMap: Record<string, string> = {};
   sortedParticipants.forEach((participant, index) => {
-    colorMap[participant.user_id] = getParticipantColor(index);
+    // Use custom color if available, otherwise fall back to default palette
+    colorMap[participant.user_id] = participant.custom_color || getParticipantColor(index);
   });
   
   return colorMap;
