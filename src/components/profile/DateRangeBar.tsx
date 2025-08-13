@@ -158,24 +158,14 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             max={maxDays}
             step={1}
             minStepsBetweenThumbs={0}
-            value={[loDays, hiDays]}
+            value={[sDays, eDays]}
             onValueChange={(v) => {
               const [a, b] = v as [number, number];
               setLocal(([s, e]) => {
                 const clamp = (x: number) => Math.min(Math.max(x, minDays), maxDays);
-                if (active === "s") {
-                  const candidate = Math.abs(a - s) <= Math.abs(b - s) ? a : b;
-                  return [clamp(candidate), e];
-                }
-                if (active === "e") {
-                  const candidate = Math.abs(a - e) <= Math.abs(b - e) ? a : b;
-                  return [s, clamp(candidate)];
-                }
-                // No active thumb (keyboard): choose minimal-change assignment
-                const cost1 = Math.abs(a - s) + Math.abs(b - e); // s->a, e->b
-                const cost2 = Math.abs(b - s) + Math.abs(a - e); // s->b, e->a
-                if (cost1 <= cost2) return [clamp(a), clamp(b)];
-                return [clamp(b), clamp(a)];
+                if (active === "s") return [clamp(a), e];
+                if (active === "e") return [s, clamp(b)];
+                return [clamp(a), clamp(b)];
               });
             }}
             onValueCommit={(v) => {
@@ -203,13 +193,13 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             {/* Start thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.startThumb}
-              onPointerDown={() => setActive(sDays <= eDays ? "s" : "e")}
+              onPointerDown={() => setActive("s")}
               className="block h-6 w-6 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
             {/* End thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.endThumb}
-              onPointerDown={() => setActive(sDays <= eDays ? "e" : "s")}
+              onPointerDown={() => setActive("e")}
               className="block h-6 w-6 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </SliderPrimitive.Root>
