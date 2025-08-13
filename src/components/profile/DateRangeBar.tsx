@@ -158,20 +158,24 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             max={maxDays}
             step={1}
             minStepsBetweenThumbs={0}
-            value={[sDays, eDays]}
+            value={[loDays, hiDays]}
             onValueChange={(v) => {
               const [a, b] = v as [number, number];
               setLocal(([s, e]) => {
+                const clamp = (x: number) => Math.min(Math.max(x, minDays), maxDays);
                 if (active === "s") {
-                  const nextS = Math.min(Math.max(a, minDays), e);
-                  return [nextS, e];
+                  const candidate = Math.abs(a - s) <= Math.abs(b - s) ? a : b;
+                  return [clamp(candidate), e];
                 }
                 if (active === "e") {
-                  const nextE = Math.max(Math.min(b, maxDays), s);
-                  return [s, nextE];
+                  const candidate = Math.abs(a - e) <= Math.abs(b - e) ? a : b;
+                  return [s, clamp(candidate)];
                 }
-                // Fallback: keep sorted incoming values
-                return [Math.min(a, b), Math.max(a, b)];
+                // No active thumb (keyboard): choose minimal-change assignment
+                const cost1 = Math.abs(a - s) + Math.abs(b - e); // s->a, e->b
+                const cost2 = Math.abs(b - s) + Math.abs(a - e); // s->b, e->a
+                if (cost1 <= cost2) return [clamp(a), clamp(b)];
+                return [clamp(b), clamp(a)];
               });
             }}
             onValueCommit={(v) => {
@@ -199,13 +203,13 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             {/* Start thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.startThumb}
-              onPointerDown={() => setActive("s")}
+              onPointerDown={() => setActive(sDays <= eDays ? "s" : "e")}
               className="block h-6 w-6 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
             {/* End thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.endThumb}
-              onPointerDown={() => setActive("e")}
+              onPointerDown={() => setActive(sDays <= eDays ? "e" : "s")}
               className="block h-6 w-6 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </SliderPrimitive.Root>
