@@ -10,6 +10,7 @@ import { de, enUS } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Calendar, Users, TrendingUp, Target } from "lucide-react";
+import { Timeline } from "@/components/summary/Timeline";
 
 const Summary = () => {
   const { start, end } = useDateRange();
@@ -232,6 +233,9 @@ const Summary = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Timeline */}
+      <Timeline />
 
       {/* Challenges List */}
       <div className="space-y-4">
