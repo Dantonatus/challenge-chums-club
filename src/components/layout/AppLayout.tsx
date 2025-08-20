@@ -57,9 +57,10 @@ const AppLayout = () => {
             </Button>
 
             <nav className="flex items-center gap-1">
-              <NavLink to="/app/overview" className={linkClass}>Overview</NavLink>
+              <NavLink to="/app/overview" className={linkClass}>
+                {navigator.language.startsWith('de') ? 'Challenges' : 'Challenges'}
+              </NavLink>
               <NavLink to="/app/groups" className={linkClass}>Groups</NavLink>
-              <NavLink to="/challenges" className={linkClass}>Challenges</NavLink>
               <NavLink to="/app/ideas" className={linkClass}>Ideas</NavLink>
               <NavLink to="/app/ledger" className={linkClass}>Ledger</NavLink>
               <NavLink to="/app/journal" className={linkClass}>Journal</NavLink>

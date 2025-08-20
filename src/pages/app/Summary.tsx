@@ -85,7 +85,7 @@ const Summary = () => {
 
       const groupIds = [...new Set(userParticipations.map(p => (p.challenges as any).group_id))];
       
-      // Get all participants from these groups
+      // Get all participants from these groups (not just current user's)
       const { data: allParticipants } = await supabase
         .from('challenge_participants')
         .select(`
