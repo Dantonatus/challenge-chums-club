@@ -59,11 +59,14 @@ const AppLayout = () => {
             <nav className="flex items-center gap-1">
               <NavLink to="/app/overview" className={linkClass}>Overview</NavLink>
               <NavLink to="/app/groups" className={linkClass}>Groups</NavLink>
-              <NavLink to="/app/overview" className={linkClass}>Challenges</NavLink>
+              <NavLink to="/challenges" className={linkClass}>Challenges</NavLink>
               <NavLink to="/app/ideas" className={linkClass}>Ideas</NavLink>
               <NavLink to="/app/ledger" className={linkClass}>Ledger</NavLink>
               <NavLink to="/app/journal" className={linkClass}>Journal</NavLink>
               <NavLink to="/app/profile" className={linkClass}>Profile</NavLink>
+              <NavLink to="/app/summary" className={linkClass}>
+                {navigator.language.startsWith('de') ? 'Übersicht' : 'Summary'}
+              </NavLink>
             </nav>
           </div>
           <Button variant="outline" onClick={handleLogout}>Log out</Button>
