@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +10,24 @@ import { format } from "date-fns";
 import { de, enUS } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Calendar, Users, TrendingUp, Target } from "lucide-react";
+import { Calendar, Users, TrendingUp, Target, Sparkles } from "lucide-react";
 import { Timeline } from "@/components/summary/Timeline";
+import { FilterBar } from "@/components/summary/FilterBar";
+import { ParticipantRanking } from "@/components/summary/ParticipantRanking";
+import { ChallengeRanking } from "@/components/summary/ChallengeRanking";
+import { ExportButton } from "@/components/summary/ExportButton";
 
 const Summary = () => {
   const { start, end } = useDateRange();
   const lang = navigator.language.startsWith('de') ? 'de' : 'en';
   const locale = lang === 'de' ? de : enUS;
+
+  // Filter state
+  const [filters, setFilters] = useState({
+    participants: [] as string[],
+    challengeTypes: [] as string[],
+    groups: [] as string[]
+  });
 
   const t = {
     de: {
@@ -32,6 +44,9 @@ const Summary = () => {
       kpi: "KPI",
       period: "Zeitraum",
       noChallenges: "Keine Challenges im gewählten Zeitraum gefunden.",
+      loadingAnimation: "Lade Übersicht...",
+      emptyState: "Noch keine Challenges – starte eine neue!",
+      createChallenge: "Challenge erstellen"
     },
     en: {
       title: "Summary",
@@ -47,15 +62,71 @@ const Summary = () => {
       kpi: "KPI",
       period: "Period",
       noChallenges: "No challenges found in the selected time period.",
+      loadingAnimation: "Loading overview...",
+      emptyState: "No challenges yet – create a new one!",
+      createChallenge: "Create Challenge"
     }
   };
 
-  // Fetch challenges with participants and violations data
-  const { data: challengesData, isLoading } = useQuery({
-    queryKey: ['challenges-summary', start, end],
+  // Fetch all available participants and groups for filters
+  const { data: filterOptions } = useQuery({
+    queryKey: ['filter-options'],
     queryFn: async () => {
-      // Fetch challenges that overlap with the date range
-      const { data: challenges, error: challengesError } = await supabase
+      // Get all participants from user's challenges
+      const { data: userParticipations } = await supabase
+        .from('challenge_participants')
+        .select(`
+          challenge_id,
+          challenges!inner(group_id)
+        `)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+
+      if (!userParticipations) return { participants: [], groups: [] };
+
+      const groupIds = [...new Set(userParticipations.map(p => (p.challenges as any).group_id))];
+      
+      // Get all participants from these groups
+      const { data: allParticipants } = await supabase
+        .from('challenge_participants')
+        .select(`
+          user_id,
+          profiles!inner(display_name),
+          challenges!inner(group_id)
+        `)
+        .in('challenges.group_id', groupIds);
+
+      // Get group info
+      const { data: groups } = await supabase
+        .from('groups')
+        .select('id, name')
+        .in('id', groupIds);
+
+      // Deduplicate participants
+      const uniqueParticipants = Array.from(
+        new Map(
+          (allParticipants || []).map(p => [
+            p.user_id, 
+            { 
+              user_id: p.user_id, 
+              display_name: (p.profiles as any)?.display_name || 'Unknown' 
+            }
+          ])
+        ).values()
+      );
+
+      return {
+        participants: uniqueParticipants,
+        groups: groups || []
+      };
+    }
+  });
+
+  // Fetch challenges with participants and violations data (with filters applied)
+  const { data: challengesData, isLoading } = useQuery({
+    queryKey: ['challenges-summary', start, end, filters],
+    queryFn: async () => {
+      // Build base query for challenges that overlap with the date range
+      let challengesQuery = supabase
         .from('challenges')
         .select(`
           id,
@@ -65,6 +136,7 @@ const Summary = () => {
           end_date,
           penalty_amount,
           description,
+          group_id,
           kpi_definitions!inner(
             id,
             kpi_type,
@@ -75,10 +147,21 @@ const Summary = () => {
         .lte('start_date', end)
         .gte('end_date', start);
 
+      // Apply challenge type filter
+      if (filters.challengeTypes.length > 0) {
+        challengesQuery = challengesQuery.in('challenge_type', filters.challengeTypes);
+      }
+
+      // Apply group filter
+      if (filters.groups.length > 0) {
+        challengesQuery = challengesQuery.in('group_id', filters.groups);
+      }
+
+      const { data: challenges, error: challengesError } = await challengesQuery;
       if (challengesError) throw challengesError;
 
       // Also fetch habit challenges (those without KPI definitions)
-      const { data: habitChallenges, error: habitError } = await supabase
+      let habitQuery = supabase
         .from('challenges')
         .select(`
           id,
@@ -87,18 +170,30 @@ const Summary = () => {
           start_date,
           end_date,
           penalty_amount,
-          description
+          description,
+          group_id
         `)
         .eq('challenge_type', 'habit')
         .lte('start_date', end)
         .gte('end_date', start);
 
+      // Apply challenge type filter
+      if (filters.challengeTypes.length > 0 && !filters.challengeTypes.includes('habit')) {
+        habitQuery = habitQuery.limit(0); // Don't fetch if habit not in filter
+      }
+
+      // Apply group filter
+      if (filters.groups.length > 0) {
+        habitQuery = habitQuery.in('group_id', filters.groups);
+      }
+
+      const { data: habitChallenges, error: habitError } = await habitQuery;
       if (habitError) throw habitError;
 
       // Combine all challenges
       const allChallenges = [
-        ...challenges.map(c => ({ ...c, hasKpi: true })),
-        ...habitChallenges.map(c => ({ ...c, hasKpi: false, kpi_definitions: [] }))
+        ...(challenges || []).map(c => ({ ...c, hasKpi: true })),
+        ...(habitChallenges || []).map(c => ({ ...c, hasKpi: false, kpi_definitions: [] }))
       ];
 
       // Remove duplicates by id
@@ -106,32 +201,124 @@ const Summary = () => {
         index === self.findIndex(c => c.id === challenge.id)
       );
 
+      if (uniqueChallenges.length === 0) {
+        return {
+          challenges: [],
+          stats: {
+            totalChallenges: 0,
+            uniqueParticipants: 0,
+            totalPenalties: 0
+          }
+        };
+      }
+
       // Fetch participants for each challenge
       const challengeIds = uniqueChallenges.map(c => c.id);
-      const { data: participants, error: participantsError } = await supabase
+      let participantsQuery = supabase
         .from('challenge_participants')
-        .select('challenge_id, user_id')
+        .select(`
+          challenge_id, 
+          user_id,
+          profiles!inner(display_name)
+        `)
         .in('challenge_id', challengeIds);
 
+      // Apply participant filter
+      if (filters.participants.length > 0) {
+        participantsQuery = participantsQuery.in('user_id', filters.participants);
+      }
+
+      const { data: participants, error: participantsError } = await participantsQuery;
       if (participantsError) throw participantsError;
 
       // Fetch violations for each challenge
-      const { data: violations, error: violationsError } = await supabase
+      let violationsQuery = supabase
         .from('challenge_violations')
-        .select('challenge_id, amount_cents, created_at')
+        .select('challenge_id, user_id, amount_cents, created_at')
         .in('challenge_id', challengeIds)
         .gte('created_at', start + 'T00:00:00')
         .lte('created_at', end + 'T23:59:59');
 
+      // Apply participant filter
+      if (filters.participants.length > 0) {
+        violationsQuery = violationsQuery.in('user_id', filters.participants);
+      }
+
+      const { data: violations, error: violationsError } = await violationsQuery;
       if (violationsError) throw violationsError;
 
-      // Calculate statistics for each challenge
-      const challengesWithStats = uniqueChallenges.map(challenge => {
-        const challengeParticipants = participants.filter(p => p.challenge_id === challenge.id);
-        const challengeViolations = violations.filter(v => v.challenge_id === challenge.id);
-        
+      // Fetch KPI measurements for KPI challenges
+      const kpiChallengeIds = uniqueChallenges
+        .filter(c => c.challenge_type === 'kpi')
+        .map(c => c.id);
+
+      let kpiMeasurements: any[] = [];
+      if (kpiChallengeIds.length > 0) {
+        let kpiQuery = supabase
+          .from('kpi_measurements')
+          .select(`
+            kpi_definition_id,
+            user_id,
+            measured_value,
+            measurement_date,
+            kpi_definitions!inner(
+              challenge_id,
+              target_value
+            )
+          `)
+          .gte('measurement_date', start)
+          .lte('measurement_date', end);
+
+        // Apply participant filter
+        if (filters.participants.length > 0) {
+          kpiQuery = kpiQuery.in('user_id', filters.participants);
+        }
+
+        const { data: kpiData, error: kpiError } = await kpiQuery;
+        if (kpiError) throw kpiError;
+        kpiMeasurements = kpiData || [];
+      }
+
+      // Process data for each challenge
+      const processedChallenges = uniqueChallenges.map(challenge => {
+        const challengeParticipants = (participants || [])
+          .filter(p => p.challenge_id === challenge.id)
+          .map(p => ({
+            user_id: p.user_id,
+            display_name: (p.profiles as any)?.display_name || 'Unknown'
+          }));
+
+        const challengeViolations = (violations || [])
+          .filter(v => v.challenge_id === challenge.id)
+          .map(v => ({
+            date: format(new Date(v.created_at), 'yyyy-MM-dd'),
+            user_id: v.user_id,
+            amount_cents: v.amount_cents
+          }));
+
+        let challengeKpiMeasurements: any[] = [];
+        if (challenge.challenge_type === 'kpi') {
+          challengeKpiMeasurements = kpiMeasurements
+            .filter(m => (m.kpi_definitions as any).challenge_id === challenge.id)
+            .map(m => ({
+              date: m.measurement_date,
+              user_id: m.user_id,
+              measured_value: m.measured_value,
+              target_value: (m.kpi_definitions as any).target_value
+            }));
+        }
+
         return {
-          ...challenge,
+          id: challenge.id,
+          title: challenge.title,
+          challenge_type: challenge.challenge_type,
+          start_date: challenge.start_date,
+          end_date: challenge.end_date,
+          penalty_amount: challenge.penalty_amount,
+          description: challenge.description,
+          participants: challengeParticipants,
+          violations: challengeViolations,
+          kpi_measurements: challengeKpiMeasurements,
           participantCount: challengeParticipants.length,
           totalViolationAmount: challengeViolations.reduce((sum, v) => sum + v.amount_cents, 0),
           violationCount: challengeViolations.length
@@ -139,12 +326,12 @@ const Summary = () => {
       });
 
       // Calculate overall statistics
-      const totalChallenges = challengesWithStats.length;
-      const uniqueParticipants = new Set(participants.map(p => p.user_id)).size;
-      const totalPenalties = violations.reduce((sum, v) => sum + v.amount_cents, 0);
+      const totalChallenges = processedChallenges.length;
+      const uniqueParticipants = new Set((participants || []).map(p => p.user_id)).size;
+      const totalPenalties = (violations || []).reduce((sum, v) => sum + v.amount_cents, 0);
 
       return {
-        challenges: challengesWithStats,
+        challenges: processedChallenges,
         stats: {
           totalChallenges,
           uniqueParticipants,
@@ -155,15 +342,32 @@ const Summary = () => {
     enabled: !!start && !!end
   });
 
+  // Filter data based on current filters
+  const filteredData = useMemo(() => {
+    if (!challengesData) return null;
+    
+    return challengesData; // Filtering is already applied in the query
+  }, [challengesData]);
+
+  const handleFilterChange = {
+    participants: (participants: string[]) => setFilters(prev => ({ ...prev, participants })),
+    challengeTypes: (challengeTypes: string[]) => setFilters(prev => ({ ...prev, challengeTypes })),
+    groups: (groups: string[]) => setFilters(prev => ({ ...prev, groups })),
+    clearAll: () => setFilters({ participants: [], challengeTypes: [], groups: [] })
+  };
+
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         <Helmet>
           <title>{t[lang].title}</title>
           <meta name="description" content={t[lang].description} />
         </Helmet>
         <div className="space-y-4">
-          <div className="h-8 bg-muted rounded animate-pulse" />
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-6 w-6 animate-pulse text-primary" />
+            <div className="h-8 bg-muted rounded animate-pulse flex-1" />
+          </div>
           <div className="h-4 bg-muted rounded animate-pulse w-1/2" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -176,14 +380,17 @@ const Summary = () => {
             </Card>
           ))}
         </div>
+        <div className="text-center text-muted-foreground animate-pulse">
+          {t[lang].loadingAnimation}
+        </div>
       </div>
     );
   }
 
-  const { challenges = [], stats = { totalChallenges: 0, uniqueParticipants: 0, totalPenalties: 0 } } = challengesData || {};
+  const { challenges = [], stats = { totalChallenges: 0, uniqueParticipants: 0, totalPenalties: 0 } } = filteredData || {};
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <Helmet>
         <title>{t[lang].title}</title>
         <meta name="description" content={t[lang].description} />
@@ -191,9 +398,38 @@ const Summary = () => {
 
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">{t[lang].title}</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight">{t[lang].title}</h1>
+          </div>
+          {filteredData && (
+            <ExportButton 
+              data={filteredData} 
+              filters={filters}
+              dateRange={{ start: start.toString(), end: end.toString() }}
+              lang={lang}
+            />
+          )}
+        </div>
         <p className="text-muted-foreground">{t[lang].description}</p>
       </div>
+
+      {/* Filter Bar */}
+      {filterOptions && (
+        <FilterBar
+          participants={filterOptions.participants}
+          groups={filterOptions.groups}
+          selectedParticipants={filters.participants}
+          selectedChallengeTypes={filters.challengeTypes}
+          selectedGroups={filters.groups}
+          onParticipantsChange={handleFilterChange.participants}
+          onChallengeTypesChange={handleFilterChange.challengeTypes}
+          onGroupsChange={handleFilterChange.groups}
+          onClearAll={handleFilterChange.clearAll}
+          lang={lang}
+        />
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -237,20 +473,36 @@ const Summary = () => {
       {/* Timeline */}
       <Timeline />
 
+      {/* Analytics Widgets */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ParticipantRanking data={[{ challenges }]} lang={lang} />
+        <ChallengeRanking data={[{ challenges }]} lang={lang} />
+      </div>
+
       {/* Challenges List */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">{t[lang].challengesList}</h2>
         
         {challenges.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-muted-foreground">{t[lang].noChallenges}</p>
+          <Card className="animate-scale-in">
+            <CardContent className="pt-6 text-center py-12">
+              <div className="flex flex-col items-center gap-4">
+                <div className="text-6xl">🎯</div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">{t[lang].emptyState}</h3>
+                  <Button asChild>
+                    <Link to="/challenges">
+                      {t[lang].createChallenge}
+                    </Link>
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {challenges.map((challenge) => (
-              <Card key={challenge.id} className="hover:shadow-md transition-shadow">
+            {challenges.map((challenge, index) => (
+              <Card key={challenge.id} className="hover:shadow-md transition-all duration-200 hover-scale animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1 flex-1">
