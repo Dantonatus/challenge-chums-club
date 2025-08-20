@@ -60,7 +60,7 @@ export const ParticipantRanking = ({ data, lang }: ParticipantRankingProps) => {
           });
         }
 
-        // Process KPI measurements
+        // Process KPI measurements - count as single fail per deviation
         if (challenge.challenge_type === 'kpi' && challenge.kpi_measurements) {
           challenge.kpi_measurements.forEach(measurement => {
             const participant = challenge.participants.find(p => p.user_id === measurement.user_id);
@@ -72,10 +72,10 @@ export const ParticipantRanking = ({ data, lang }: ParticipantRankingProps) => {
                 kpiDeviations: 0
               };
               
-              // Calculate deviation percentage
+              // Count as single deviation if target not met
               const achievement = measurement.measured_value / measurement.target_value;
               if (achievement < 1.0) {
-                existing.kpiDeviations += Math.round((1 - achievement) * 100);
+                existing.kpiDeviations += 1;
               }
               participantStats.set(key, existing);
             }
@@ -92,11 +92,11 @@ export const ParticipantRanking = ({ data, lang }: ParticipantRankingProps) => {
   const chartConfig = {
     violations: {
       label: t[lang].violations,
-      color: "hsl(var(--chart-1))",
+      color: "hsl(var(--destructive))",
     },
     kpiDeviations: {
       label: t[lang].kpiDeviations,
-      color: "hsl(var(--chart-2))",
+      color: "hsl(var(--primary))",
     },
   };
 

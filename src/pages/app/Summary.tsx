@@ -16,6 +16,8 @@ import { FilterBar } from "@/components/summary/FilterBar";
 import { ParticipantRanking } from "@/components/summary/ParticipantRanking";
 import { ChallengeRanking } from "@/components/summary/ChallengeRanking";
 import { ExportButton } from "@/components/summary/ExportButton";
+import { WeeklyTimeline } from "@/components/summary/WeeklyTimeline";
+import { FailsTrendChart } from "@/components/summary/FailsTrendChart";
 
 const Summary = () => {
   const { start, end } = useDateRange();
@@ -37,6 +39,7 @@ const Summary = () => {
       totalChallenges: "Challenges gesamt",
       totalParticipants: "Teilnehmer",
       totalPenalties: "Gesamtstrafen",
+      weeklyOverview: "Wöchentliche Übersicht",
       challengesList: "Alle Challenges",
       participants: "Teilnehmer",
       penalties: "Strafen",
@@ -55,6 +58,7 @@ const Summary = () => {
       totalChallenges: "Total Challenges",
       totalParticipants: "Participants",
       totalPenalties: "Total Penalties",
+      weeklyOverview: "Weekly Overview",
       challengesList: "All Challenges",
       participants: "Participants",
       penalties: "Penalties",
@@ -469,39 +473,48 @@ const totalChallenges = processedChallenges.length;
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-blue-500">
+        <Card className="border-l-4 border-l-accent">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{t[lang].totalParticipants}</p>
                 <p className="text-2xl font-bold">{stats.uniqueParticipants}</p>
               </div>
-              <Users className="h-8 w-8 text-blue-500" />
+              <Users className="h-8 w-8 text-accent" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-red-500">
+        <Card className="border-l-4 border-l-destructive">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{t[lang].totalPenalties}</p>
                 <p className="text-2xl font-bold">{formatEUR(stats.totalPenalties)}</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-red-500" />
+              <TrendingUp className="h-8 w-8 text-destructive" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Timeline */}
-      <Timeline />
+      {/* Weekly Overview */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">{t[lang].weeklyOverview}</h2>
+        <div className="space-y-6">
+          <WeeklyTimeline lang={lang} />
+          <FailsTrendChart lang={lang} />
+        </div>
+      </div>
 
       {/* Analytics Widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ParticipantRanking data={[{ challenges }]} lang={lang} />
         <ChallengeRanking data={[{ challenges }]} lang={lang} />
       </div>
+
+      {/* Timeline */}
+      <Timeline />
 
       {/* Challenges List */}
       <div className="space-y-4">
