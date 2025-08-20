@@ -122,7 +122,7 @@ export default function ChallengesPage() {
       <Helmet>
         <title>{t[lang].title} | Challenges</title>
         <meta name="description" content="Personalisierte Übersicht deiner Gruppen und aktiven Strafen-Challenges" />
-        <link rel="canonical" href="/app/overview" />
+        <link rel="canonical" href="/app/challenges" />
       </Helmet>
 
       <header>

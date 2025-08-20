@@ -245,7 +245,7 @@ export default function ChallengeDetail() {
       const { error } = await (supabase as any).from('challenges').delete().eq('id', id);
       if (error) throw error;
       toast({ title: 'Challenge gelöscht' });
-      navigate('/app/overview');
+      navigate('/app/challenges');
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' as any });
     }
@@ -278,7 +278,7 @@ export default function ChallengeDetail() {
       {/* Back + fun tiny animation */}
       <div className="flex items-center justify-between text-muted-foreground">
         <Button variant="ghost" size="sm" asChild aria-label={t[lang].back}>
-          <Link to="/app/overview">
+          <Link to="/app/challenges">
             <ArrowLeft className="h-4 w-4 mr-1" /> {t[lang].back}
           </Link>
         </Button>

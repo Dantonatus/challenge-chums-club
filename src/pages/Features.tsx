@@ -28,7 +28,7 @@ const Features = () => {
             <p className="text-lg text-muted-foreground">1) Create a group. 2) Create a challenge with penalty and strikes. 3) Join participants. 4) Log success daily/weekly.</p>
             <div className="flex gap-3">
               <Link to="/app/groups"><Button variant="hero" className="hover-scale">Create a group</Button></Link>
-              <Link to="/app/overview"><Button variant="outline">Create a challenge</Button></Link>
+              <Link to="/app/challenges"><Button variant="outline">Create a challenge</Button></Link>
             </div>
           </div>
           <div className="rounded-2xl overflow-hidden shadow-[var(--shadow-elegant)]">
@@ -52,7 +52,7 @@ const Features = () => {
               <CardDescription>Set frequency, strikes, and penalties. You’re auto-added as participant.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to="/app/overview"><Button size="sm">Open Challenges</Button></Link>
+              <Link to="/app/challenges"><Button size="sm">Open Challenges</Button></Link>
             </CardContent>
           </Card>
           <Card>
@@ -61,7 +61,7 @@ const Features = () => {
               <CardDescription>Tap once per day to mark success. See streaks and tallies.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to="/app/overview"><Button size="sm">Start Logging</Button></Link>
+              <Link to="/app/challenges"><Button size="sm">Start Logging</Button></Link>
             </CardContent>
           </Card>
           <Card>

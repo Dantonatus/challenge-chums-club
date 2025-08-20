@@ -43,8 +43,8 @@ const App = () => (
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/app/overview" replace />} />
-                <Route path="overview" element={<ChallengesPage />} />
+                <Route index element={<Navigate to="/app/challenges" replace />} />
+                <Route path="challenges" element={<ChallengesPage />} />
                 <Route path="groups" element={<GroupsPage />} />
                 <Route path="ideas" element={<IdeasPage />} />
                 <Route path="ledger" element={<LedgerPage />} />
