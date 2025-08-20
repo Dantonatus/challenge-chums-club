@@ -72,52 +72,67 @@ const Summary = () => {
   const { data: filterOptions } = useQuery({
     queryKey: ['filter-options'],
     queryFn: async () => {
-      // Get all participants from user's challenges
-      const { data: userParticipations } = await supabase
-        .from('challenge_participants')
-        .select(`
-          challenge_id,
-          challenges!inner(group_id)
-        `)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      try {
+        // Get all groups the user is a member of
+        const { data: userGroups } = await supabase
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
 
-      if (!userParticipations) return { participants: [], groups: [] };
+        if (!userGroups || userGroups.length === 0) {
+          return { participants: [], groups: [] };
+        }
 
-      const groupIds = [...new Set(userParticipations.map(p => (p.challenges as any).group_id))];
-      
-      // Get all participants from these groups (not just current user's)
-      const { data: allParticipants } = await supabase
-        .from('challenge_participants')
-        .select(`
-          user_id,
-          profiles!inner(display_name),
-          challenges!inner(group_id)
-        `)
-        .in('challenges.group_id', groupIds);
+        const groupIds = userGroups.map(g => g.group_id);
 
-      // Get group info
-      const { data: groups } = await supabase
-        .from('groups')
-        .select('id, name')
-        .in('id', groupIds);
+        // Get all challenges from these groups (current and past)
+        const { data: allChallenges } = await supabase
+          .from('challenges')
+          .select('id, group_id')
+          .in('group_id', groupIds);
 
-      // Deduplicate participants
-      const uniqueParticipants = Array.from(
-        new Map(
-          (allParticipants || []).map(p => [
-            p.user_id, 
-            { 
-              user_id: p.user_id, 
-              display_name: (p.profiles as any)?.display_name || 'Unknown' 
-            }
-          ])
-        ).values()
-      );
+        if (!allChallenges || allChallenges.length === 0) {
+          return { participants: [], groups: [] };
+        }
 
-      return {
-        participants: uniqueParticipants,
-        groups: groups || []
-      };
+        const challengeIds = allChallenges.map(c => c.id);
+
+        // Get all participants from these challenges
+        const { data: allParticipants } = await supabase
+          .from('challenge_participants')
+          .select(`
+            user_id,
+            profiles!inner(display_name)
+          `)
+          .in('challenge_id', challengeIds);
+
+        // Get group info
+        const { data: groups } = await supabase
+          .from('groups')
+          .select('id, name')
+          .in('id', groupIds);
+
+        // Deduplicate participants
+        const uniqueParticipants = Array.from(
+          new Map(
+            (allParticipants || []).map(p => [
+              p.user_id, 
+              { 
+                user_id: p.user_id, 
+                display_name: (p.profiles as any)?.display_name || 'Unknown' 
+              }
+            ])
+          ).values()
+        );
+
+        return {
+          participants: uniqueParticipants,
+          groups: groups || []
+        };
+      } catch (error) {
+        console.error('Error fetching filter options:', error);
+        return { participants: [], groups: [] };
+      }
     }
   });
 
