@@ -10,7 +10,7 @@ import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import GroupsPage from "./pages/app/Groups";
-import OverviewPage from "./pages/app/Overview";
+import ChallengesPage from "./pages/app/Challenges";
 import IdeasPage from "./pages/app/Ideas";
 import LedgerPage from "./pages/app/Ledger";
 import JournalPage from "./pages/app/Journal";
@@ -44,7 +44,7 @@ const App = () => (
                 }
               >
                 <Route index element={<Navigate to="/app/overview" replace />} />
-                <Route path="overview" element={<OverviewPage />} />
+                <Route path="overview" element={<ChallengesPage />} />
                 <Route path="groups" element={<GroupsPage />} />
                 <Route path="ideas" element={<IdeasPage />} />
                 <Route path="ledger" element={<LedgerPage />} />
