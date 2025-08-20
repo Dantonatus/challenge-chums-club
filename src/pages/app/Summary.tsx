@@ -19,9 +19,10 @@ import { ExportButton } from "@/components/summary/ExportButton";
 
 const Summary = () => {
   const { start, end } = useDateRange();
+  const startStr = format(start, 'yyyy-MM-dd');
+  const endStr = format(end, 'yyyy-MM-dd');
   const lang = navigator.language.startsWith('de') ? 'de' : 'en';
   const locale = lang === 'de' ? de : enUS;
-
   // Filter state
   const [filters, setFilters] = useState({
     participants: [] as string[],
@@ -97,38 +98,39 @@ const Summary = () => {
 
         const challengeIds = allChallenges.map(c => c.id);
 
-        // Get all participants from these challenges
-        const { data: allParticipants } = await supabase
-          .from('challenge_participants')
-          .select(`
-            user_id,
-            profiles!inner(display_name)
-          `)
-          .in('challenge_id', challengeIds);
+// Get all participants from these challenges (distinct user IDs)
+const { data: allParticipantsRaw } = await supabase
+  .from('challenge_participants')
+  .select('user_id')
+  .in('challenge_id', challengeIds);
 
-        // Get group info
-        const { data: groups } = await supabase
-          .from('groups')
-          .select('id, name')
-          .in('id', groupIds);
+// Resolve profiles for those user IDs
+const userIds = Array.from(new Set((allParticipantsRaw || []).map(p => p.user_id)));
+let participantProfiles: Array<{ id: string; display_name: string | null }> = [];
+if (userIds.length > 0) {
+  const { data: profs } = await supabase
+    .from('profiles')
+    .select('id, display_name')
+    .in('id', userIds);
+  participantProfiles = profs || [];
+}
 
-        // Deduplicate participants
-        const uniqueParticipants = Array.from(
-          new Map(
-            (allParticipants || []).map(p => [
-              p.user_id, 
-              { 
-                user_id: p.user_id, 
-                display_name: (p.profiles as any)?.display_name || 'Unknown' 
-              }
-            ])
-          ).values()
-        );
+// Get group info
+const { data: groups } = await supabase
+  .from('groups')
+  .select('id, name')
+  .in('id', groupIds);
 
-        return {
-          participants: uniqueParticipants,
-          groups: groups || []
-        };
+// Build participant list with display names
+const uniqueParticipants = participantProfiles.map((p) => ({
+  user_id: p.id,
+  display_name: p.display_name || 'Unknown'
+}));
+
+return {
+  participants: uniqueParticipants,
+  groups: groups || []
+};
       } catch (error) {
         console.error('Error fetching filter options:', error);
         return { participants: [], groups: [] };
@@ -159,8 +161,8 @@ const Summary = () => {
             unit
           )
         `)
-        .lte('start_date', end)
-        .gte('end_date', start);
+.lte('start_date', endStr)
+        .gte('end_date', startStr);
 
       // Apply challenge type filter
       if (filters.challengeTypes.length > 0) {
@@ -189,8 +191,8 @@ const Summary = () => {
           group_id
         `)
         .eq('challenge_type', 'habit')
-        .lte('start_date', end)
-        .gte('end_date', start);
+.lte('start_date', endStr)
+        .gte('end_date', startStr);
 
       // Apply challenge type filter
       if (filters.challengeTypes.length > 0 && !filters.challengeTypes.includes('habit')) {
@@ -229,13 +231,9 @@ const Summary = () => {
 
       // Fetch participants for each challenge
       const challengeIds = uniqueChallenges.map(c => c.id);
-      let participantsQuery = supabase
+let participantsQuery = supabase
         .from('challenge_participants')
-        .select(`
-          challenge_id, 
-          user_id,
-          profiles!inner(display_name)
-        `)
+        .select('challenge_id, user_id')
         .in('challenge_id', challengeIds);
 
       // Apply participant filter
@@ -243,16 +241,27 @@ const Summary = () => {
         participantsQuery = participantsQuery.in('user_id', filters.participants);
       }
 
-      const { data: participants, error: participantsError } = await participantsQuery;
+      const { data: participantsRaw, error: participantsError } = await participantsQuery;
       if (participantsError) throw participantsError;
+
+      // Build profile map for participant names
+      const participantUserIds = Array.from(new Set((participantsRaw || []).map(p => p.user_id)));
+      let profilesMap: Record<string, string> = {};
+      if (participantUserIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', participantUserIds);
+        profilesMap = Object.fromEntries((profs || []).map(p => [p.id, p.display_name || 'Unknown']));
+      }
 
       // Fetch violations for each challenge
       let violationsQuery = supabase
         .from('challenge_violations')
         .select('challenge_id, user_id, amount_cents, created_at')
         .in('challenge_id', challengeIds)
-        .gte('created_at', start + 'T00:00:00')
-        .lte('created_at', end + 'T23:59:59');
+.gte('created_at', `${startStr}T00:00:00`)
+        .lte('created_at', `${endStr}T23:59:59`);
 
       // Apply participant filter
       if (filters.participants.length > 0) {
@@ -281,8 +290,8 @@ const Summary = () => {
               target_value
             )
           `)
-          .gte('measurement_date', start)
-          .lte('measurement_date', end);
+.gte('measurement_date', startStr)
+          .lte('measurement_date', endStr);
 
         // Apply participant filter
         if (filters.participants.length > 0) {
@@ -296,11 +305,11 @@ const Summary = () => {
 
       // Process data for each challenge
       const processedChallenges = uniqueChallenges.map(challenge => {
-        const challengeParticipants = (participants || [])
+const challengeParticipants = (participantsRaw || [])
           .filter(p => p.challenge_id === challenge.id)
           .map(p => ({
             user_id: p.user_id,
-            display_name: (p.profiles as any)?.display_name || 'Unknown'
+            display_name: profilesMap[p.user_id] || 'Unknown'
           }));
 
         const challengeViolations = (violations || [])
@@ -341,8 +350,8 @@ const Summary = () => {
       });
 
       // Calculate overall statistics
-      const totalChallenges = processedChallenges.length;
-      const uniqueParticipants = new Set((participants || []).map(p => p.user_id)).size;
+const totalChallenges = processedChallenges.length;
+      const uniqueParticipants = new Set((participantsRaw || []).map(p => p.user_id)).size;
       const totalPenalties = (violations || []).reduce((sum, v) => sum + v.amount_cents, 0);
 
       return {
