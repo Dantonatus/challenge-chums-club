@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
 import { Resend } from "npm:resend@4.0.0";
 
 // Resend is initialized lazily inside the handler to avoid crashing on missing secrets
+// Force redeploy: 2025-08-21T21:16:00Z
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
