@@ -83,6 +83,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Approving user:", userId);
 
+    // First, confirm the user's email (since admin approval serves as verification)
+    const { error: confirmError } = await supabaseClient.auth.admin.updateUserById(userId, {
+      email_confirm: true
+    });
+
+    if (confirmError) {
+      console.error("Error confirming user email:", confirmError);
+      // Continue anyway - the role approval is more important
+    } else {
+      console.log("User email confirmed:", userId);
+    }
+
     // Approve the user by calling the approve_user function
     const { data, error } = await supabaseClient.rpc('approve_user', {
       target_user_id: userId
