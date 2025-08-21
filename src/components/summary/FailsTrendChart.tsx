@@ -238,8 +238,8 @@ export const FailsTrendChart = ({ lang }: FailsTrendChartProps) => {
         <CardTitle>{t[lang].title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+        <ChartContainer config={chartConfig} className="h-[500px]">
+          <ResponsiveContainer width="100%" height={500}>
             <LineChart data={trendData.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis 
@@ -266,18 +266,22 @@ export const FailsTrendChart = ({ lang }: FailsTrendChartProps) => {
                   fontSize: '12px'
                 }}
               />
-              {trendData.participants.map((participant, index) => (
-                <Line
-                  key={participant}
-                  type="monotone"
-                  dataKey={participant}
-                  stroke={chartConfig[participant]?.color || `hsl(${index * 40}, 70%, 50%)`}
-                  strokeWidth={2}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 6, strokeWidth: 2 }}
-                  connectNulls={false}
-                />
-              ))}
+               {trendData.participants.map((participant, index) => (
+                 <Line
+                   key={participant}
+                   type="monotone"
+                   dataKey={participant}
+                   stroke={`hsl(var(--primary))`}
+                   strokeWidth={3}
+                   dot={{ fill: `hsl(var(--primary))`, strokeWidth: 2, r: 5 }}
+                   activeDot={{ r: 7, strokeWidth: 2 }}
+                   connectNulls={false}
+                   style={{ 
+                     filter: `hue-rotate(${(index * 60) % 360}deg)`,
+                     opacity: 0.9 
+                   }}
+                 />
+               ))}
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>

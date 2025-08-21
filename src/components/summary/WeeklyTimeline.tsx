@@ -17,18 +17,20 @@ interface WeeklyTimelineProps {
 interface WeekData {
   week: Date;
   weekNumber: number;
-  participants: {
-    [userId: string]: {
-      display_name: string;
-      habitViolations: number;
-      kpiDeviations: number;
-      totalPenalty: number;
-      challenges: Array<{
-        id: string;
-        title: string;
-        challenge_type: 'habit' | 'kpi';
+  challenges: {
+    [challengeId: string]: {
+      id: string;
+      title: string;
+      challenge_type: 'habit' | 'kpi';
+      participants: Array<{
+        user_id: string;
+        display_name: string;
+        habitViolations: number;
+        kpiDeviations: number;
+        totalPenalty: number;
+        status: 'success' | 'warning' | 'danger' | 'inactive';
       }>;
-      status: 'success' | 'warning' | 'danger' | 'inactive';
+      weeklyTotalPenalty: number;
     };
   };
 }
@@ -150,19 +152,7 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
         const weekEnd = endOfWeek(week, { weekStartsOn: 1 });
         const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4 });
 
-        const participants: WeekData['participants'] = {};
-
-        // Initialize all participants
-        userIds.forEach(userId => {
-          participants[userId] = {
-            display_name: profilesMap[userId],
-            habitViolations: 0,
-            kpiDeviations: 0,
-            totalPenalty: 0,
-            challenges: [],
-            status: 'inactive'
-          };
-        });
+        const challengesInWeek: WeekData['challenges'] = {};
 
         // Process challenges active in this week
         challenges.forEach(challenge => {
@@ -178,16 +168,22 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
               .filter(p => p.challenge_id === challenge.id)
               .map(p => p.user_id);
 
-            challengeParticipants.forEach(userId => {
-              if (participants[userId]) {
-                participants[userId].challenges.push({
-                  id: challenge.id,
-                  title: challenge.title,
-                  challenge_type: challenge.challenge_type
-                });
-                participants[userId].status = 'success'; // Default to success
-              }
-            });
+            const participantData = challengeParticipants.map(userId => ({
+              user_id: userId,
+              display_name: profilesMap[userId] || 'Unknown',
+              habitViolations: 0,
+              kpiDeviations: 0,
+              totalPenalty: 0,
+              status: 'success' as const
+            }));
+
+            challengesInWeek[challenge.id] = {
+              id: challenge.id,
+              title: challenge.title,
+              challenge_type: challenge.challenge_type,
+              participants: participantData,
+              weeklyTotalPenalty: 0
+            };
           }
         });
 
@@ -195,11 +191,15 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
         (violations || []).forEach(violation => {
           const violationDate = new Date(violation.created_at);
           if (isWithinInterval(violationDate, { start: weekStart, end: weekEnd })) {
-            if (participants[violation.user_id]) {
-              participants[violation.user_id].habitViolations += 1;
-              participants[violation.user_id].totalPenalty += violation.amount_cents;
-              participants[violation.user_id].status = 'danger';
-            }
+            Object.values(challengesInWeek).forEach(challenge => {
+              const participant = challenge.participants.find(p => p.user_id === violation.user_id);
+              if (participant) {
+                participant.habitViolations += 1;
+                participant.totalPenalty += violation.amount_cents;
+                participant.status = 'danger';
+                challenge.weeklyTotalPenalty += violation.amount_cents;
+              }
+            });
           }
         });
 
@@ -207,23 +207,29 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
         (kpiMeasurements || []).forEach(measurement => {
           const measurementDate = new Date(measurement.measurement_date);
           if (isWithinInterval(measurementDate, { start: weekStart, end: weekEnd })) {
-            if (participants[measurement.user_id]) {
-              const kpiDef = measurement.kpi_definitions as any;
-              const achievement = measurement.measured_value / kpiDef.target_value;
-              
-              if (kpiDef.goal_direction === 'higher_better' && achievement < 1.0) {
-                participants[measurement.user_id].kpiDeviations += 1;
-                if (achievement < 0.8) {
-                  participants[measurement.user_id].status = 'danger';
-                } else if (achievement < 0.95) {
-                  participants[measurement.user_id].status = 'warning';
-                }
-              } else if (kpiDef.goal_direction === 'lower_better' && achievement > 1.0) {
-                participants[measurement.user_id].kpiDeviations += 1;
-                if (achievement > 1.2) {
-                  participants[measurement.user_id].status = 'danger';
-                } else if (achievement > 1.05) {
-                  participants[measurement.user_id].status = 'warning';
+            const kpiDef = measurement.kpi_definitions as any;
+            const challengeId = kpiDef.challenge_id;
+            const challenge = challengesInWeek[challengeId];
+            
+            if (challenge) {
+              const participant = challenge.participants.find(p => p.user_id === measurement.user_id);
+              if (participant) {
+                const achievement = measurement.measured_value / kpiDef.target_value;
+                
+                if (kpiDef.goal_direction === 'higher_better' && achievement < 1.0) {
+                  participant.kpiDeviations += 1;
+                  if (achievement < 0.8) {
+                    participant.status = 'danger';
+                  } else if (achievement < 0.95) {
+                    participant.status = 'warning';
+                  }
+                } else if (kpiDef.goal_direction === 'lower_better' && achievement > 1.0) {
+                  participant.kpiDeviations += 1;
+                  if (achievement > 1.2) {
+                    participant.status = 'danger';
+                  } else if (achievement > 1.05) {
+                    participant.status = 'warning';
+                  }
                 }
               }
             }
@@ -233,7 +239,7 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
         return {
           week: weekStart,
           weekNumber,
-          participants
+          challenges: challengesInWeek
         };
       });
 
@@ -242,22 +248,22 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
     enabled: !!start && !!end
   });
 
-  const { participantTotals, weekTotals } = useMemo(() => {
-    if (!timelineData) return { participantTotals: {}, weekTotals: {} };
+  const { challengeTotals, weekTotals } = useMemo(() => {
+    if (!timelineData) return { challengeTotals: {}, weekTotals: {} };
 
-    const participantTotals: Record<string, number> = {};
+    const challengeTotals: Record<string, number> = {};
     const weekTotals: Record<string, number> = {};
 
     timelineData.forEach(weekData => {
       let weekTotal = 0;
-      Object.entries(weekData.participants).forEach(([userId, data]) => {
-        participantTotals[userId] = (participantTotals[userId] || 0) + data.totalPenalty;
-        weekTotal += data.totalPenalty;
+      Object.entries(weekData.challenges).forEach(([challengeId, challengeData]) => {
+        challengeTotals[challengeId] = (challengeTotals[challengeId] || 0) + challengeData.weeklyTotalPenalty;
+        weekTotal += challengeData.weeklyTotalPenalty;
       });
       weekTotals[weekData.weekNumber.toString()] = weekTotal;
     });
 
-    return { participantTotals, weekTotals };
+    return { challengeTotals, weekTotals };
   }, [timelineData]);
 
   const handleCellClick = (challengeId: string) => {
@@ -266,27 +272,32 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
     }
   };
 
-  const getCellContent = (participantData: WeekData['participants'][string]) => {
-    const { habitViolations, kpiDeviations, status, challenges } = participantData;
-    const totalFailures = habitViolations + kpiDeviations;
+  const getCellContent = (challengeData: WeekData['challenges'][string]) => {
+    const totalFailures = challengeData.participants.reduce((sum, p) => sum + p.habitViolations + p.kpiDeviations, 0);
+    const hasParticipants = challengeData.participants.length > 0;
 
-    if (challenges.length === 0) {
+    if (!hasParticipants) {
       return { content: '', bgColor: 'bg-muted/50', textColor: 'text-muted-foreground' };
     }
 
     if (totalFailures === 0) {
-      return { content: '✓', bgColor: 'bg-accent/20', textColor: 'text-accent-foreground' };
+      return { content: '✓', bgColor: 'bg-primary/10', textColor: 'text-primary' };
     }
 
-    const content = totalFailures > 0 ? totalFailures.toString() : '';
+    const content = totalFailures.toString();
+    const worstStatus = challengeData.participants.reduce<'success' | 'warning' | 'danger'>((worst, p) => {
+      if (p.status === 'danger') return 'danger';
+      if (p.status === 'warning' && worst === 'success') return 'warning';
+      return worst;
+    }, 'success');
     
-    switch (status) {
+    switch (worstStatus) {
       case 'danger':
-        return { content, bgColor: 'bg-destructive/20', textColor: 'text-destructive-foreground' };
+        return { content, bgColor: 'bg-destructive/10', textColor: 'text-destructive' };
       case 'warning':
         return { content, bgColor: 'bg-orange-100 dark:bg-orange-900/20', textColor: 'text-orange-700 dark:text-orange-300' };
       default:
-        return { content, bgColor: 'bg-accent/20', textColor: 'text-accent-foreground' };
+        return { content, bgColor: 'bg-primary/10', textColor: 'text-primary' };
     }
   };
 
@@ -325,11 +336,14 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
     );
   }
 
-  const uniqueParticipants = Array.from(new Set(
-    timelineData.flatMap(week => Object.keys(week.participants))
-  )).filter(userId => 
-    timelineData.some(week => week.participants[userId]?.challenges.length > 0)
-  );
+  const uniqueChallenges = Array.from(new Set(
+    timelineData.flatMap(week => Object.keys(week.challenges))
+  )).map(challengeId => {
+    const challengeInfo = timelineData
+      .flatMap(week => Object.values(week.challenges))
+      .find(c => c.id === challengeId);
+    return challengeInfo;
+  }).filter(Boolean);
 
   return (
     <Card>
@@ -342,7 +356,7 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
             <TooltipProvider>
               {/* Header Row */}
               <div className="grid gap-1 mb-2" style={{ gridTemplateColumns: `200px repeat(${timelineData.length}, 60px) 100px` }}>
-                <div className="p-2 font-medium text-sm">{t[lang].participant}</div>
+                <div className="p-2 font-medium text-sm">{t[lang].challenges}</div>
                 {timelineData.map(week => (
                   <div key={week.weekNumber} className="p-2 text-center font-medium text-sm">
                     {t[lang].week} {week.weekNumber}
@@ -351,58 +365,60 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
                 <div className="p-2 text-center font-medium text-sm">{t[lang].penalty}</div>
               </div>
 
-              {/* Participant Rows */}
-              {uniqueParticipants.map(userId => {
-                const firstWeekData = timelineData[0]?.participants[userId];
-                if (!firstWeekData) return null;
+              {/* Challenge Rows */}
+              {uniqueChallenges.map(challenge => {
+                if (!challenge) return null;
 
                 return (
-                  <div key={userId} className="grid gap-1 mb-1 items-center" style={{ gridTemplateColumns: `200px repeat(${timelineData.length}, 60px) 100px` }}>
+                  <div key={challenge.id} className="grid gap-1 mb-1 items-center" style={{ gridTemplateColumns: `200px repeat(${timelineData.length}, 60px) 100px` }}>
                     <div className="p-2 truncate text-sm font-medium">
-                      {firstWeekData.display_name}
+                      {challenge.title}
                     </div>
                     {timelineData.map(week => {
-                      const participantData = week.participants[userId];
-                      if (!participantData) return <div key={week.weekNumber} />;
+                      const challengeData = week.challenges[challenge.id];
+                      if (!challengeData) return <div key={week.weekNumber} className="p-2 bg-muted/20 rounded" />;
 
-                      const { content, bgColor, textColor } = getCellContent(participantData);
-                      const firstChallenge = participantData.challenges[0];
+                      const { content, bgColor, textColor } = getCellContent(challengeData);
 
                       return (
                         <Tooltip key={week.weekNumber}>
                           <TooltipTrigger asChild>
                             <div
                               className={`p-2 text-center text-sm font-medium rounded cursor-pointer transition-colors hover:opacity-80 ${bgColor} ${textColor}`}
-                              onClick={() => firstChallenge && handleCellClick(firstChallenge.id)}
+                              onClick={() => handleCellClick(challenge.id)}
                             >
                               {content}
                             </div>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom">
-                            <div className="space-y-1">
+                          <TooltipContent side="bottom" className="max-w-xs">
+                            <div className="space-y-2">
                               <div className="font-medium">
-                                {t[lang].week} {week.weekNumber} - {firstWeekData.display_name}
+                                {challenge.title} - {t[lang].week} {week.weekNumber}
                               </div>
-                              {participantData.challenges.length > 0 && (
+                              {challengeData.participants.length > 0 && (
                                 <>
-                                  <div className="text-sm">
-                                    {t[lang].challenges}: {participantData.challenges.map(c => c.title).join(', ')}
-                                  </div>
-                                  {participantData.habitViolations > 0 && (
-                                    <div className="text-sm text-destructive">
-                                      {t[lang].habitViolations}: {participantData.habitViolations}
+                                  <div className="text-sm font-medium">{t[lang].participant}:</div>
+                                  {challengeData.participants.map(participant => (
+                                    <div key={participant.user_id} className="text-sm space-y-1 p-2 bg-muted/20 rounded">
+                                      <div className="font-medium">{participant.display_name}</div>
+                                      {participant.habitViolations > 0 && (
+                                        <div className="text-destructive">
+                                          {t[lang].habitViolations}: {participant.habitViolations}
+                                        </div>
+                                      )}
+                                      {participant.kpiDeviations > 0 && (
+                                        <div className="text-orange-600">
+                                          {t[lang].kpiDeviations}: {participant.kpiDeviations}
+                                        </div>
+                                      )}
+                                      {participant.totalPenalty > 0 && (
+                                        <div>{t[lang].penalty}: {formatEUR(participant.totalPenalty)}</div>
+                                      )}
+                                      {participant.habitViolations === 0 && participant.kpiDeviations === 0 && (
+                                        <div className="text-primary">✓ Erfolgreich</div>
+                                      )}
                                     </div>
-                                  )}
-                                  {participantData.kpiDeviations > 0 && (
-                                    <div className="text-sm text-orange-600">
-                                      {t[lang].kpiDeviations}: {participantData.kpiDeviations}
-                                    </div>
-                                  )}
-                                  {participantData.totalPenalty > 0 && (
-                                    <div className="text-sm">
-                                      {t[lang].penalty}: {formatEUR(participantData.totalPenalty)}
-                                    </div>
-                                  )}
+                                  ))}
                                   <div className="text-xs text-muted-foreground">
                                     {t[lang].clickForDetails}
                                   </div>
@@ -414,7 +430,7 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
                       );
                     })}
                     <div className="p-2 text-center text-sm font-medium">
-                      {formatEUR(participantTotals[userId] || 0)}
+                      {formatEUR(challengeTotals[challenge.id] || 0)}
                     </div>
                   </div>
                 );
@@ -429,7 +445,7 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
                   </div>
                 ))}
                 <div className="p-2 text-center text-sm font-bold">
-                  {formatEUR(Object.values(participantTotals).reduce((sum, total) => sum + total, 0))}
+                  {formatEUR(Object.values(challengeTotals).reduce((sum, total) => sum + total, 0))}
                 </div>
               </div>
             </TooltipProvider>

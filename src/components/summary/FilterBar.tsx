@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsUpDown, X, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { de, enUS } from "date-fns/locale";
+import { useDateRange } from "@/contexts/DateRangeContext";
 import { cn } from "@/lib/utils";
 
 interface FilterBarProps {
@@ -34,6 +38,10 @@ export const FilterBar = ({
 }: FilterBarProps) => {
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
+  const [dateRangeOpen, setDateRangeOpen] = useState(false);
+  const { start, end, setRange, minDate, maxDate } = useDateRange();
+  
+  const locale = lang === 'de' ? de : enUS;
 
   const t = {
     de: {
@@ -41,6 +49,7 @@ export const FilterBar = ({
       participants: "Teilnehmer",
       challengeType: "Challenge-Typ",
       groups: "Gruppen",
+      dateRange: "Zeitraum",
       all: "Alle",
       habit: "Habit",
       kpi: "KPI",
@@ -49,13 +58,17 @@ export const FilterBar = ({
       searchGroups: "Gruppen suchen...",
       noParticipants: "Keine Teilnehmer gefunden",
       noGroups: "Keine Gruppen gefunden",
-      selected: "ausgewählt"
+      selected: "ausgewählt",
+      selectDateRange: "Zeitraum wählen",
+      from: "Von",
+      to: "Bis"
     },
     en: {
       filters: "Filters",
       participants: "Participants",
       challengeType: "Challenge Type",
       groups: "Groups",
+      dateRange: "Date Range",
       all: "All",
       habit: "Habit",
       kpi: "KPI",
@@ -64,7 +77,10 @@ export const FilterBar = ({
       searchGroups: "Search groups...",
       noParticipants: "No participants found",
       noGroups: "No groups found",
-      selected: "selected"
+      selected: "selected",
+      selectDateRange: "Select date range",
+      from: "From",
+      to: "To"
     }
   };
 
@@ -118,7 +134,47 @@ export const FilterBar = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Date Range Filter */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">{t[lang].dateRange}</label>
+          <Popover open={dateRangeOpen} onOpenChange={setDateRangeOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                aria-expanded={dateRangeOpen}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(start, "dd.MM.yy", { locale }) + " - " + format(end, "dd.MM.yy", { locale })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <div className="p-4 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t[lang].from}</label>
+                  <Calendar
+                    mode="single"
+                    selected={start}
+                    onSelect={(date) => date && setRange({ start: date, end })}
+                    disabled={(date) => date < minDate || date > maxDate || date > end}
+                    className="pointer-events-auto"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t[lang].to}</label>
+                  <Calendar
+                    mode="single"
+                    selected={end}
+                    onSelect={(date) => date && setRange({ start, end: date })}
+                    disabled={(date) => date < minDate || date > maxDate || date < start}
+                    className="pointer-events-auto"
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         {/* Participants Filter */}
         <div className="space-y-2">
           <label className="text-sm font-medium">{t[lang].participants}</label>

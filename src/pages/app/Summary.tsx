@@ -503,7 +503,9 @@ const totalChallenges = processedChallenges.length;
         <h2 className="text-xl font-semibold">{t[lang].weeklyOverview}</h2>
         <div className="space-y-6">
           <WeeklyTimeline lang={lang} />
-          <FailsTrendChart lang={lang} />
+          <div className="w-full">
+            <FailsTrendChart lang={lang} />
+          </div>
         </div>
       </div>
 
