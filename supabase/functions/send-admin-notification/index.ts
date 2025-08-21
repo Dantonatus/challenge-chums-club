@@ -24,6 +24,12 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     console.log("Admin notification function called");
     
+    // Debug: Check if secrets are available
+    const adminEmail = Deno.env.get("ADMIN_EMAIL");
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    console.log("Secrets check - ADMIN_EMAIL exists:", !!adminEmail);
+    console.log("Secrets check - RESEND_API_KEY exists:", !!resendApiKey);
+    
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -98,8 +104,6 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     `;
 
-    const adminEmail = Deno.env.get("ADMIN_EMAIL");
-    
     if (!adminEmail) {
       console.error("ADMIN_EMAIL environment variable not set");
       throw new Error("ADMIN_EMAIL environment variable not set");
@@ -108,7 +112,6 @@ const handler = async (req: Request): Promise<Response> => {
 console.log("Sending email to admin:", adminEmail);
 
     // Initialize Resend only when needed to avoid crashing on missing secrets
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
       console.error("RESEND_API_KEY environment variable not set");
       throw new Error("RESEND_API_KEY environment variable not set");
