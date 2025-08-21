@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -530,6 +530,7 @@ export type Database = {
           custom_color: string | null
           display_name: string | null
           id: string
+          is_approved: boolean | null
           updated_at: string
         }
         Insert: {
@@ -538,6 +539,7 @@ export type Database = {
           custom_color?: string | null
           display_name?: string | null
           id: string
+          is_approved?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -546,6 +548,7 @@ export type Database = {
           custom_color?: string | null
           display_name?: string | null
           id?: string
+          is_approved?: boolean | null
           updated_at?: string
         }
         Relationships: []
@@ -612,14 +615,52 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      approve_user: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       get_server_time: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       is_group_member: {
         Args: { _group_id: string; _user_id?: string }
@@ -629,12 +670,17 @@ export type Database = {
         Args: { _group_id: string; _user_id?: string }
         Returns: boolean
       }
+      is_user_approved: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       join_group: {
         Args: { p_invite_code: string }
         Returns: string
       }
     }
     Enums: {
+      app_role: "admin" | "user" | "pending"
       challenge_duration_type: "weeks" | "months" | "continuous"
       challenge_frequency: "daily" | "weekly" | "times_per_week" | "whole_week"
       challenge_status: "active" | "paused" | "ended"
@@ -770,6 +816,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "user", "pending"],
       challenge_duration_type: ["weeks", "months", "continuous"],
       challenge_frequency: ["daily", "weekly", "times_per_week", "whole_week"],
       challenge_status: ["active", "paused", "ended"],

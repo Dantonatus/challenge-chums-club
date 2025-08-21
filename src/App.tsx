@@ -7,7 +7,7 @@ import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import ProtectedRoute from "./components/ProtectedRoute";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import GroupsPage from "./pages/app/Groups";
 import ChallengesPage from "./pages/app/Challenges";
@@ -27,39 +27,51 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <HelmetProvider>
       <TooltipProvider>
-        <DateRangeProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/features" element={<Features />} />
-              <Route
-                path="/app"
-                element={
-                  <ProtectedRoute>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/features" element={<Features />} />
+            <Route
+              path="/app"
+              element={
+                <ProtectedRoute>
+                  <DateRangeProvider userId={null}>
                     <AppLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<Navigate to="/app/challenges" replace />} />
-                <Route path="challenges" element={<ChallengesPage />} />
-                <Route path="groups" element={<GroupsPage />} />
-                <Route path="ideas" element={<IdeasPage />} />
-                <Route path="ledger" element={<LedgerPage />} />
-                <Route path="journal" element={<JournalPage />} />
-                <Route path="profile" element={<ProfilePage />} />
-                <Route path="summary" element={<SummaryPage />} />
-              </Route>
-              {/* Top-level protected routes */}
-              <Route path="/challenges" element={<ProtectedRoute><ChallengesList /></ProtectedRoute>} />
-              <Route path="/challenges/:id" element={<ProtectedRoute><ChallengeDetail /></ProtectedRoute>} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </DateRangeProvider>
+                  </DateRangeProvider>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/app/summary" replace />} />
+              <Route path="challenges" element={<ChallengesPage />} />
+              <Route path="groups" element={<GroupsPage />} />
+              <Route path="ideas" element={<IdeasPage />} />
+              <Route path="ledger" element={<LedgerPage />} />
+              <Route path="journal" element={<JournalPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="summary" element={<SummaryPage />} />
+            </Route>
+            {/* Top-level protected routes */}
+            <Route path="/challenges" element={
+              <ProtectedRoute>
+                <DateRangeProvider userId={null}>
+                  <ChallengesList />
+                </DateRangeProvider>
+              </ProtectedRoute>
+            } />
+            <Route path="/challenges/:id" element={
+              <ProtectedRoute>
+                <DateRangeProvider userId={null}>
+                  <ChallengeDetail />
+                </DateRangeProvider>
+              </ProtectedRoute>
+            } />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
       </TooltipProvider>
     </HelmetProvider>
   </QueryClientProvider>

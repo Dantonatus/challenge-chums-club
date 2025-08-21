@@ -30,7 +30,7 @@ const Index = () => {
               Create groups, set challenges, log results, and keep a friendly ledger. No spreadsheets. Just clarity and momentum.
             </p>
             <div className="flex gap-3">
-              <Link to="/app"><Button variant="hero" className="hover-scale">Try the demo</Button></Link>
+              <Link to="/auth"><Button variant="hero" className="hover-scale">Try the demo</Button></Link>
               <Link to="/features"><Button variant="outline">Explore features</Button></Link>
             </div>
           </div>
