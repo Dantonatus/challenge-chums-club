@@ -32,10 +32,18 @@ const handler = async (req: Request): Promise<Response> => {
     const { userId, userEmail, userName }: AdminNotificationRequest = await req.json();
     console.log("Processing approval request for:", { userId, userEmail, userName });
 
+    // Validate required inputs
+    if (!userId || !userEmail) {
+      console.error("Missing required fields:", { userId, userEmail, userName });
+      throw new Error("Missing required fields: userId and userEmail are required");
+    }
+
     // Generate secure approval token
     const approvalToken = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // Token expires in 7 days
+
+    console.log("Creating approval token with expiry:", expiresAt.toISOString());
 
     // Store the approval token
     const { error: tokenError } = await supabaseClient
@@ -48,8 +56,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (tokenError) {
       console.error("Error creating approval token:", tokenError);
-      throw new Error("Failed to create approval token");
+      throw new Error(`Failed to create approval token: ${tokenError.message}`);
     }
+
+    console.log("Approval token created successfully");
 
     // Create approval URL for admin
     const approvalUrl = `${Deno.env.get("SUPABASE_URL").replace('/rest/v1', '')}/functions/v1/approve-user?token=${approvalToken}`;
@@ -91,13 +101,14 @@ const handler = async (req: Request): Promise<Response> => {
     const adminEmail = Deno.env.get("ADMIN_EMAIL");
     
     if (!adminEmail) {
+      console.error("ADMIN_EMAIL environment variable not set");
       throw new Error("ADMIN_EMAIL environment variable not set");
     }
 
     console.log("Sending email to admin:", adminEmail);
 
     const emailResponse = await resend.emails.send({
-      from: "Challenge System <noreply@resend.dev>",
+      from: "Challenge System <onboarding@resend.dev>",
       to: [adminEmail],
       subject: `🔐 New User Approval Required: ${userEmail}`,
       html: emailContent,
@@ -119,7 +130,10 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-admin-notification function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

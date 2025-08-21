@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
-import { Loader2, Shield, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, Shield, AlertCircle, CheckCircle, Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState<boolean>(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -125,6 +126,40 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   };
 
+  const handleResendApprovalEmail = async () => {
+    if (!user) return;
+    
+    setResendingEmail(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('send-admin-notification', {
+        body: {
+          userId: user.id,
+          userEmail: user.email,
+          userName: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Email sent successfully",
+        description: "The approval request has been sent to the administrator.",
+      });
+    } catch (error) {
+      console.error("Error resending approval email:", error);
+      toast({
+        title: "Failed to send email",
+        description: "There was an error sending the approval request. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -164,21 +199,40 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
               <div className="flex items-center space-x-2">
                 <AlertCircle className="h-8 w-8 text-yellow-500" />
               </div>
-              <div className="text-center space-y-2">
-                <h3 className="text-lg font-semibold">Approval Pending</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your account is waiting for administrator approval. 
-                  You will receive an email notification once approved.
-                </p>
-                <div className="bg-muted p-3 rounded-lg mt-4">
-                  <p className="text-xs text-muted-foreground">
-                    <strong>Account:</strong> {user.email}
-                  </p>
-                </div>
-              </div>
-              <Button onClick={handleSignOut} variant="outline" className="w-full">
-                Sign Out
-              </Button>
+               <div className="text-center space-y-2">
+                 <h3 className="text-lg font-semibold">Approval Pending</h3>
+                 <p className="text-sm text-muted-foreground">
+                   Your account is waiting for administrator approval. 
+                   You will receive an email notification once approved.
+                 </p>
+                 <div className="bg-muted p-3 rounded-lg mt-4">
+                   <p className="text-xs text-muted-foreground">
+                     <strong>Account:</strong> {user.email}
+                   </p>
+                 </div>
+               </div>
+               <div className="w-full space-y-2">
+                 <Button 
+                   onClick={handleResendApprovalEmail} 
+                   disabled={resendingEmail}
+                   className="w-full"
+                 >
+                   {resendingEmail ? (
+                     <>
+                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                       Sending...
+                     </>
+                   ) : (
+                     <>
+                       <Mail className="mr-2 h-4 w-4" />
+                       Resend Approval Email
+                     </>
+                   )}
+                 </Button>
+                 <Button onClick={handleSignOut} variant="outline" className="w-full">
+                   Sign Out
+                 </Button>
+               </div>
             </div>
           </CardContent>
         </Card>
