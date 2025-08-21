@@ -25,11 +25,15 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     console.log("Admin notification function called");
     
+    // Debug: Log all available environment variables to see what's actually there
+    const envKeys = Object.keys(Deno.env.toObject());
+    console.log("Available environment variables:", envKeys);
+    
     // Debug: Check if secrets are available
     const adminEmail = Deno.env.get("ADMIN_EMAIL");
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    console.log("Secrets check - ADMIN_EMAIL exists:", !!adminEmail);
-    console.log("Secrets check - RESEND_API_KEY exists:", !!resendApiKey);
+    console.log("ADMIN_EMAIL value:", adminEmail ? "[SET]" : "[NOT SET]");
+    console.log("RESEND_API_KEY value:", resendApiKey ? "[SET]" : "[NOT SET]");
     
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
