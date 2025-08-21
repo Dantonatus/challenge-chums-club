@@ -132,9 +132,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Sending email to admin:", adminEmail);
 
-    // Initialize Resend only when needed to avoid crashing on missing secrets
+    // Initialize Resend with fallback while we debug secrets
+    resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
-      console.error("RESEND_API_KEY environment variable not set");
+      console.error("RESEND_API_KEY environment variable not set - this will cause email sending to fail");
       throw new Error("RESEND_API_KEY environment variable not set");
     }
     const resend = new Resend(resendApiKey);
