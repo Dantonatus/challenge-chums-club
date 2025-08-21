@@ -32,8 +32,27 @@ const handler = async (req: Request): Promise<Response> => {
     const { userId, userEmail, userName }: AdminNotificationRequest = await req.json();
     console.log("Processing approval request for:", { userId, userEmail, userName });
 
-    // Create approval link
-    const approvalUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/approve-user?token=${btoa(userId)}&admin=daniel`;
+    // Generate secure approval token
+    const approvalToken = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // Token expires in 7 days
+
+    // Store the approval token
+    const { error: tokenError } = await supabaseClient
+      .from('approval_tokens')
+      .insert({
+        token: approvalToken,
+        user_id: userId,
+        expires_at: expiresAt.toISOString()
+      });
+
+    if (tokenError) {
+      console.error("Error creating approval token:", tokenError);
+      throw new Error("Failed to create approval token");
+    }
+
+    // Create approval URL for admin
+    const approvalUrl = `${Deno.env.get("SUPABASE_URL").replace('/rest/v1', '')}/functions/v1/approve-user?token=${approvalToken}`;
 
     const emailContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -69,11 +88,17 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     `;
 
-    console.log("Sending email to admin:", "danielantonatus@live.de");
+    const adminEmail = Deno.env.get("ADMIN_EMAIL");
+    
+    if (!adminEmail) {
+      throw new Error("ADMIN_EMAIL environment variable not set");
+    }
+
+    console.log("Sending email to admin:", adminEmail);
 
     const emailResponse = await resend.emails.send({
       from: "Challenge System <noreply@resend.dev>",
-      to: ["danielantonatus@live.de"],
+      to: [adminEmail],
       subject: `🔐 New User Approval Required: ${userEmail}`,
       html: emailContent,
     });

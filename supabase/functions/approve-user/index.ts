@@ -20,20 +20,39 @@ const handler = async (req: Request): Promise<Response> => {
     
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
-    const admin = url.searchParams.get('admin');
 
-    if (!token || admin !== 'daniel') {
-      return new Response("Unauthorized", { status: 401 });
+    if (!token) {
+      return new Response("Missing approval token", { status: 400 });
     }
-
-    // Decode user ID from token
-    const userId = atob(token);
-    console.log("Approving user:", userId);
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // Verify and consume the approval token
+    const { data: tokenData, error: tokenError } = await supabaseClient
+      .from('approval_tokens')
+      .select('user_id, expires_at, used_at')
+      .eq('token', token)
+      .single();
+
+    if (tokenError || !tokenData) {
+      console.error("Invalid or expired token:", tokenError);
+      return new Response("Invalid or expired approval token", { status: 401 });
+    }
+
+    if (tokenData.used_at) {
+      return new Response("Token has already been used", { status: 401 });
+    }
+
+    if (new Date(tokenData.expires_at) < new Date()) {
+      return new Response("Token has expired", { status: 401 });
+    }
+
+    const userId = tokenData.user_id;
+    console.log("Approving user:", userId);
+
 
     // Get user details first
     const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(userId);
@@ -51,6 +70,12 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error approving user:", error);
       return new Response(`Error approving user: ${error.message}`, { status: 500 });
     }
+
+    // Mark the token as used
+    await supabaseClient
+      .from('approval_tokens')
+      .update({ used_at: new Date().toISOString() })
+      .eq('token', token);
 
     console.log("User approved successfully:", userId);
 
