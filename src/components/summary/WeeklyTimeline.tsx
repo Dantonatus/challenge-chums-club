@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { format, startOfWeek, endOfWeek, eachWeekOfInterval, getWeek, isWithinIn
 import { de, enUS } from "date-fns/locale";
 import { formatEUR } from "@/lib/currency";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
+import { WeekInsightsModal } from "./WeekInsightsModal";
 
 interface WeeklyTimelineProps {
   lang: 'de' | 'en';
@@ -37,8 +37,23 @@ interface WeekData {
 
 export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
   const { start, end } = useDateRange();
-  const navigate = useNavigate();
   const locale = lang === 'de' ? de : enUS;
+  const [selectedWeekData, setSelectedWeekData] = useState<{
+    challengeId: string;
+    challengeTitle: string;
+    challengeType: 'habit' | 'kpi';
+    weekNumber: number;
+    participants: Array<{
+      user_id: string;
+      display_name: string;
+      habitViolations: number;
+      kpiDeviations: number;
+      totalPenalty: number;
+      status: 'success' | 'warning' | 'danger' | 'inactive';
+      custom_color?: string;
+    }>;
+    weeklyTotalPenalty: number;
+  } | null>(null);
 
   const t = {
     de: {
@@ -115,10 +130,10 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
       const userIds = Array.from(new Set((participantsRaw || []).map(p => p.user_id)));
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, display_name')
+        .select('id, display_name, custom_color')
         .in('id', userIds);
 
-      const profilesMap = Object.fromEntries((profiles || []).map(p => [p.id, p.display_name || 'Unknown']));
+      const profilesMap = Object.fromEntries((profiles || []).map(p => [p.id, { display_name: p.display_name || 'Unknown', custom_color: p.custom_color }]));
 
       // Get violations
       const { data: violations } = await supabase
@@ -168,14 +183,18 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
               .filter(p => p.challenge_id === challenge.id)
               .map(p => p.user_id);
 
-            const participantData = challengeParticipants.map(userId => ({
-              user_id: userId,
-              display_name: profilesMap[userId] || 'Unknown',
-              habitViolations: 0,
-              kpiDeviations: 0,
-              totalPenalty: 0,
-              status: 'success' as const
-            }));
+            const participantData = challengeParticipants.map(userId => {
+              const profile = profilesMap[userId] || { display_name: 'Unknown', custom_color: undefined };
+              return {
+                user_id: userId,
+                display_name: profile.display_name,
+                custom_color: profile.custom_color,
+                habitViolations: 0,
+                kpiDeviations: 0,
+                totalPenalty: 0,
+                status: 'success' as const
+              };
+            });
 
             challengesInWeek[challenge.id] = {
               id: challenge.id,
@@ -266,9 +285,21 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
     return { challengeTotals, weekTotals };
   }, [timelineData]);
 
-  const handleCellClick = (challengeId: string) => {
-    if (challengeId) {
-      navigate(`/app/challenges/${challengeId}`);
+  const handleCellClick = (challengeId: string, weekNumber: number) => {
+    if (!challengeId || !timelineData) return;
+    
+    const weekData = timelineData.find(w => w.weekNumber === weekNumber);
+    const challengeData = weekData?.challenges[challengeId];
+    
+    if (challengeData && weekData) {
+      setSelectedWeekData({
+        challengeId,
+        challengeTitle: challengeData.title,
+        challengeType: challengeData.challenge_type,
+        weekNumber: weekData.weekNumber,
+        participants: challengeData.participants,
+        weeklyTotalPenalty: challengeData.weeklyTotalPenalty
+      });
     }
   };
 
@@ -385,7 +416,7 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
                           <TooltipTrigger asChild>
                             <div
                               className={`p-2 text-center text-sm font-medium rounded cursor-pointer transition-colors hover:opacity-80 ${bgColor} ${textColor}`}
-                              onClick={() => handleCellClick(challenge.id)}
+                              onClick={() => handleCellClick(challenge.id, week.weekNumber)}
                             >
                               {content}
                             </div>
@@ -452,6 +483,13 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
           </div>
         </div>
       </CardContent>
+      
+      <WeekInsightsModal
+        isOpen={!!selectedWeekData}
+        onClose={() => setSelectedWeekData(null)}
+        weekData={selectedWeekData}
+        lang={lang}
+      />
     </Card>
   );
 };
