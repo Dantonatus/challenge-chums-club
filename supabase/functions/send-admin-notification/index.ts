@@ -23,17 +23,34 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log("Admin notification function called");
+    console.log("=== ADMIN NOTIFICATION FUNCTION START ===");
+    
+    // First, let's see if the function runs at all
+    console.log("Function is executing...");
     
     // Debug: Log all available environment variables to see what's actually there
-    const envKeys = Object.keys(Deno.env.toObject());
-    console.log("Available environment variables:", envKeys);
+    try {
+      const envKeys = Object.keys(Deno.env.toObject());
+      console.log("Available environment variables:", envKeys);
+    } catch (envError) {
+      console.error("Error accessing environment variables:", envError);
+    }
     
-    // Debug: Check if secrets are available
-    const adminEmail = Deno.env.get("ADMIN_EMAIL");
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    console.log("ADMIN_EMAIL value:", adminEmail ? "[SET]" : "[NOT SET]");
-    console.log("RESEND_API_KEY value:", resendApiKey ? "[SET]" : "[NOT SET]");
+    // Debug: Check if secrets are available with detailed logging
+    let adminEmail, resendApiKey;
+    try {
+      adminEmail = Deno.env.get("ADMIN_EMAIL");
+      console.log("ADMIN_EMAIL check - exists:", !!adminEmail, "length:", adminEmail?.length || 0);
+    } catch (e) {
+      console.error("Error getting ADMIN_EMAIL:", e);
+    }
+    
+    try {
+      resendApiKey = Deno.env.get("RESEND_API_KEY");
+      console.log("RESEND_API_KEY check - exists:", !!resendApiKey, "length:", resendApiKey?.length || 0);
+    } catch (e) {
+      console.error("Error getting RESEND_API_KEY:", e);
+    }
     
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
