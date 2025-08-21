@@ -19,6 +19,11 @@ interface WeeklyData {
   [participantName: string]: number | string;
 }
 
+interface ParticipantInfo {
+  userId: string;
+  name: string;
+}
+
 export const FailsTrendChart = ({ lang }: FailsTrendChartProps) => {
   const { start, end } = useDateRange();
   const locale = lang === 'de' ? de : enUS;
@@ -130,7 +135,9 @@ export const FailsTrendChart = ({ lang }: FailsTrendChartProps) => {
         // Initialize all participants with 0 fails
         userIds.forEach(userId => {
           const name = profilesMap[userId];
-          weekData[name] = 0;
+          if (name && name !== 'Unknown') {
+            weekData[name] = 0;
+          }
         });
 
         // Count violations in this week
@@ -180,8 +187,12 @@ export const FailsTrendChart = ({ lang }: FailsTrendChartProps) => {
 
       return {
         data: weeklyData,
-        participants: userIds.map(id => profilesMap[id]).filter(name => name !== 'Unknown'),
-        colors: colorMap
+        participants: userIds.map(id => ({ 
+          userId: id, 
+          name: profilesMap[id] 
+        })).filter(p => p.name !== 'Unknown'),
+        colors: colorMap,
+        participantData
       };
     },
     enabled: !!start && !!end
@@ -191,13 +202,10 @@ export const FailsTrendChart = ({ lang }: FailsTrendChartProps) => {
     if (!trendData) return {};
     
     const config: Record<string, { label: string; color: string }> = {};
-    trendData.participants.forEach((participant, index) => {
-      const userId = Object.keys(trendData.colors).find(id => 
-        trendData.colors[id] === Object.values(trendData.colors)[index]
-      );
-      config[participant] = {
-        label: participant,
-        color: userId ? trendData.colors[userId] : `hsl(${index * 40}, 70%, 50%)`
+    trendData.participants.forEach((participant) => {
+      config[participant.name] = {
+        label: participant.name,
+        color: trendData.colors[participant.userId] || `hsl(var(--primary))`
       };
     });
     
@@ -266,20 +274,24 @@ export const FailsTrendChart = ({ lang }: FailsTrendChartProps) => {
                   fontSize: '12px'
                 }}
               />
-               {trendData.participants.map((participant, index) => (
+               {trendData.participants.map((participant) => (
                  <Line
-                   key={participant}
+                   key={participant.name}
                    type="monotone"
-                   dataKey={participant}
-                   stroke={`hsl(var(--primary))`}
+                   dataKey={participant.name}
+                   stroke={chartConfig[participant.name]?.color || `hsl(var(--primary))`}
                    strokeWidth={3}
-                   dot={{ fill: `hsl(var(--primary))`, strokeWidth: 2, r: 5 }}
-                   activeDot={{ r: 7, strokeWidth: 2 }}
-                   connectNulls={false}
-                   style={{ 
-                     filter: `hue-rotate(${(index * 60) % 360}deg)`,
-                     opacity: 0.9 
+                   dot={{ 
+                     fill: chartConfig[participant.name]?.color || `hsl(var(--primary))`, 
+                     strokeWidth: 2, 
+                     r: 5 
                    }}
+                   activeDot={{ 
+                     r: 7, 
+                     strokeWidth: 2,
+                     fill: chartConfig[participant.name]?.color || `hsl(var(--primary))`
+                   }}
+                   connectNulls={false}
                  />
                ))}
             </LineChart>
