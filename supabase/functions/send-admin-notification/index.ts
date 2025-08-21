@@ -126,12 +126,11 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     `;
 
-    if (!adminEmail) {
-      console.error("ADMIN_EMAIL environment variable not set");
-      throw new Error("ADMIN_EMAIL environment variable not set");
-    }
+    // Temporary fix: hardcode admin email while we debug secrets
+    adminEmail = Deno.env.get("ADMIN_EMAIL") || "danielantonatus@live.de";
+    console.log("Using admin email:", adminEmail);
 
-console.log("Sending email to admin:", adminEmail);
+    console.log("Sending email to admin:", adminEmail);
 
     // Initialize Resend only when needed to avoid crashing on missing secrets
     if (!resendApiKey) {
