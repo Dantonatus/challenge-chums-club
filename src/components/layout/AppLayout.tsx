@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,23 @@ import { ArrowLeft, Home } from "lucide-react";
 
 const AppLayout = () => {
   const navigate = useNavigate();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Check user role for admin features
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth.user?.id) {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", auth.user.id)
+          .single();
+        setUserRole(roleData?.role || null);
+      }
+    };
+    checkRole();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -65,6 +82,11 @@ const AppLayout = () => {
               <NavLink to="/app/ledger" className={linkClass}>Ledger</NavLink>
               <NavLink to="/app/journal" className={linkClass}>Journal</NavLink>
               <NavLink to="/app/profile" className={linkClass}>Profile</NavLink>
+              {userRole === "admin" && (
+                <NavLink to="/app/approval" className={linkClass}>
+                  Approval
+                </NavLink>
+              )}
               <NavLink to="/app/summary" className={linkClass}>
                 {navigator.language.startsWith('de') ? 'Übersicht' : 'Summary'}
               </NavLink>
