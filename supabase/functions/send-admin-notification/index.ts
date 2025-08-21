@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
 import { Resend } from "npm:resend@4.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+// Resend is initialized lazily inside the handler to avoid crashing on missing secrets
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -105,7 +105,15 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("ADMIN_EMAIL environment variable not set");
     }
 
-    console.log("Sending email to admin:", adminEmail);
+console.log("Sending email to admin:", adminEmail);
+
+    // Initialize Resend only when needed to avoid crashing on missing secrets
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY environment variable not set");
+      throw new Error("RESEND_API_KEY environment variable not set");
+    }
+    const resend = new Resend(resendApiKey);
 
     const emailResponse = await resend.emails.send({
       from: "Challenge System <onboarding@resend.dev>",

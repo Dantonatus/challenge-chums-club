@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
 import { Resend } from "npm:resend@4.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+// Resend is initialized lazily inside the handler to avoid crashing on missing secrets
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send confirmation email to the user
     const userEmail = userData.user.email;
-    if (userEmail) {
+if (userEmail) {
       const confirmationEmailContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 10px;">
@@ -118,16 +118,22 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
       `;
 
-      try {
-        await resend.emails.send({
-          from: "Challenge System <noreply@resend.dev>",
-          to: [userEmail],
-          subject: "🎉 Account Approved - Welcome to Challenge Management System!",
-          html: confirmationEmailContent,
-        });
-        console.log("Confirmation email sent to user:", userEmail);
-      } catch (emailError) {
-        console.error("Error sending confirmation email:", emailError);
+      const resendApiKey = Deno.env.get("RESEND_API_KEY");
+      if (resendApiKey) {
+        try {
+          const resend = new Resend(resendApiKey);
+          await resend.emails.send({
+            from: "Challenge System <noreply@resend.dev>",
+            to: [userEmail],
+            subject: "🎉 Account Approved - Welcome to Challenge Management System!",
+            html: confirmationEmailContent,
+          });
+          console.log("Confirmation email sent to user:", userEmail);
+        } catch (emailError) {
+          console.error("Error sending confirmation email:", emailError);
+        }
+      } else {
+        console.warn("RESEND_API_KEY not set; skipping confirmation email");
       }
     }
 
@@ -150,7 +156,7 @@ const handler = async (req: Request): Promise<Response> => {
           <h2>✅ User Approved Successfully!</h2>
           <p><strong>User Email:</strong> ${userEmail}</p>
           <p>The user has been approved and can now access the platform. A confirmation email has been sent to them.</p>
-          <a href="mailto:danielantonatus@live.de" class="button">Contact Admin</a>
+          <a href="mailto:${Deno.env.get('ADMIN_EMAIL') ?? ''}" class="button">Contact Admin</a>
         </div>
       </body>
       </html>
