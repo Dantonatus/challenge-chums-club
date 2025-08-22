@@ -21,7 +21,7 @@ import { StreakBreakers } from "@/components/summary/StreakBreakers";
 import { BestROIChallenges } from "@/components/summary/BestROIChallenges";
 import { ExportButton } from "@/components/summary/ExportButton";
 import { WeeklyTimeline } from "@/components/summary/WeeklyTimeline";
-import { FailsTrendChart } from "@/components/summary/FailsTrendChart";
+import { FailsTrendPremium } from "@/components/summary/FailsTrendPremium";
 import { GlobalBar } from "@/components/summary/GlobalBar";
 import { KPIStrip } from "@/components/summary/KPIStrip";
 
@@ -41,6 +41,7 @@ const Summary = () => {
 
   // Global bar state
   const [compareMode, setCompareMode] = useState(false);
+  const [compareParticipants, setCompareParticipants] = useState<[string, string] | null>(null);
 
   const t = {
     de: {
@@ -504,7 +505,11 @@ const totalChallenges = processedChallenges.length;
           <div className="space-y-6">
             <WeeklyTimeline lang={lang} />
             <div className="w-full">
-              <FailsTrendChart lang={lang} />
+              <FailsTrendPremium 
+                lang={lang} 
+                compareMode={compareMode}
+                onCompareParticipants={(a, b) => setCompareParticipants([a, b])}
+              />
             </div>
           </div>
         </div>
