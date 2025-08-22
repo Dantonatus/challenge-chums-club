@@ -465,10 +465,10 @@ const totalChallenges = processedChallenges.length;
       {/* Global Bar - Sticky Header */}
       <GlobalBar
         lang={lang}
-        onExport={handleExport}
-        onSaveView={handleSaveView}
-        onCompareToggle={() => setCompareMode(!compareMode)}
         compareMode={compareMode}
+        onCompareToggle={() => setCompareMode(!compareMode)}
+        filters={filters}
+        onFiltersChange={setFilters}
       />
 
       {/* Main Content */}
