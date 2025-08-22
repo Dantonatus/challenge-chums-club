@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type DateRange = { start: Date; end: Date };
@@ -101,17 +101,19 @@ export function DateRangeProvider({ userId, children }: { userId?: string | null
     })();
   }, [userId, sixMonthsAgo, maxCap]);
 
+  const setRangeFunction = useCallback((r: DateRange) => {
+    const newRange = { start: startOfDay(r.start), end: endOfDay(r.end) };
+    setRange(newRange);
+  }, []);
+
   const value = useMemo<DateRangeContextValue>(() => ({
     start: range.start,
     end: range.end,
-    setRange: (r) => {
-      const newRange = { start: startOfDay(r.start), end: endOfDay(r.end) };
-      setRange(newRange);
-    },
+    setRange: setRangeFunction,
     minDate,
     maxDate: maxCap,
     now,
-  }), [range, minDate, maxCap, now]);
+  }), [range, setRangeFunction, minDate, maxCap, now]);
 
   return (
     <DateRangeContext.Provider value={value}>

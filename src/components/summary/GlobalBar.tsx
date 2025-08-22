@@ -115,7 +115,7 @@ export function GlobalBar({
           end: endOfISOWeek(endWeek)
         });
       }
-    }, 250);
+    }, 100);
     
     setDebounceTimer(timer);
   }, [debounceTimer, weeks, setRange]);
