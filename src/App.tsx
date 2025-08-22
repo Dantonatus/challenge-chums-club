@@ -14,7 +14,7 @@ import ChallengesPage from "./pages/app/Challenges";
 import IdeasPage from "./pages/app/Ideas";
 import LedgerPage from "./pages/app/Ledger";
 import JournalPage from "./pages/app/Journal";
-import Features from "./pages/Features";
+import FeaturesRedirect from "./pages/FeaturesRedirect";
 import ChallengesList from "./pages/ChallengesList";
 import ChallengeDetail from "./pages/ChallengeDetail";
 import ProfilePage from "./pages/app/Profile";
@@ -34,7 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/features" element={<Features />} />
+            <Route path="/features" element={<FeaturesRedirect />} />
             <Route
               path="/app"
               element={
