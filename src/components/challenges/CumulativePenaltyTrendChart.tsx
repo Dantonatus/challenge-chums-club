@@ -150,12 +150,15 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
   };
 
   return (
-    <Card>
+    <Card className="animate-fade-in bg-gradient-to-br from-background/80 via-background to-background/60 backdrop-blur-sm shadow-lg border-0 rounded-xl">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Fails-Trend Premium</CardTitle>
+            <TrendingUp className="h-5 w-5 text-emerald-500" />
+            <div>
+              <CardTitle className="text-lg">Cumulative Fails Trend</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">Summed fails over time, including total penalties</p>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <Badge variant="secondary" className="flex items-center gap-1">
@@ -242,7 +245,7 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
         )}
 
         {/* Chart */}
-        <div className="h-[420px]">
+        <div className="h-96">
           {chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="w-full h-full">
               <Recharts.LineChart 

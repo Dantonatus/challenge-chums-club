@@ -54,8 +54,8 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
 
   const t = {
     de: {
-      title: "Fails-Trend Premium",
-      description: "Interaktive Analyse der wöchentlichen Verstöße",
+      title: "Fails per Week",
+      description: "Number of fails per participant per calendar week",
       week: "KW",
       fails: "Fails",
       noData: "Keine Daten für den gewählten Zeitraum",
@@ -73,8 +73,8 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       maxDiff: "Max Δ"
     },
     en: {
-      title: "Premium Fails Trend",
-      description: "Interactive analysis of weekly violations",
+      title: "Fails per Week",
+      description: "Number of fails per participant per calendar week",
       week: "Week",
       fails: "Fails",
       noData: "No data for the selected period",
