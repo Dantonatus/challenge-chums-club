@@ -3,18 +3,18 @@
  * Provides consistent, accessible colors for participants across all charts and visualizations
  */
 
-// Modern aqua-teal color palette with 10 distinct colors for participants
+// Modern aqua-teal color palette with 10 distinct colors for participants (lighter version)
 const PARTICIPANT_COLORS = [
-  "#26C6DA",  // C1 – Helles Türkis
-  "#29B6F6",  // C2 – Sanftes Himmelblau
-  "#66BB6A",  // C3 – Frisches Smaragdgrün
-  "#00BCD4",  // C4 – Lebendiges Cyan
-  "#4FC3F7",  // C5 – Warmes Seeblau
-  "#4CAF50",  // C6 – Natürliches Grün
-  "#0288D1",  // C7 – Tiefes Ozeanblau
-  "#4DB6AC",  // C8 – Minze Grün
-  "#1DE9B6",  // C9 – Aqua Türkis
-  "#009688",  // C10 – Sanftes Teal
+  "#4DD0E1",  // C1 – Helleres Türkis
+  "#42A5F5",  // C2 – Helleres Himmelblau
+  "#81C784",  // C3 – Helleres Smaragdgrün
+  "#26C6DA",  // C4 – Helleres Cyan
+  "#64B5F6",  // C5 – Helleres Seeblau
+  "#66BB6A",  // C6 – Helleres Grün
+  "#42A5F5",  // C7 – Helleres Ozeanblau
+  "#80CBC4",  // C8 – Helleres Minze Grün
+  "#4DD0E1",  // C9 – Helleres Aqua Türkis
+  "#4DB6AC",  // C10 – Helleres Teal
 ];
 
 /**
