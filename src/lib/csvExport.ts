@@ -89,7 +89,7 @@ export async function generateCSVData(options: ExportOptions): Promise<CSVExport
   weeks.forEach(week => {
     const weekStart = startOfWeek(week, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(week, { weekStartsOn: 1 });
-    const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4 });
+    const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de });
     const weekLabel = lang === 'de' ? `KW ${weekNumber}` : `Week ${weekNumber}`;
 
     // For each challenge
@@ -205,8 +205,8 @@ export function downloadCSV(csvContent: string, filename: string): void {
  * Generate filename based on date range and language
  */
 export function generateCSVFilename(start: Date, end: Date, lang: 'de' | 'en'): string {
-  const startWeek = getWeek(start, { weekStartsOn: 1, firstWeekContainsDate: 4 });
-  const endWeek = getWeek(end, { weekStartsOn: 1, firstWeekContainsDate: 4 });
+  const startWeek = getWeek(start, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de });
+  const endWeek = getWeek(end, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de });
   const year = start.getFullYear();
 
   if (lang === 'de') {
@@ -341,8 +341,8 @@ export async function exportToPDF(options: ExportOptions): Promise<void> {
     }
 
     // Generate filename
-    const startWeek = getWeek(options.start, { weekStartsOn: 1, firstWeekContainsDate: 4 });
-    const endWeek = getWeek(options.end, { weekStartsOn: 1, firstWeekContainsDate: 4 });
+    const startWeek = getWeek(options.start, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de });
+    const endWeek = getWeek(options.end, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de });
     const year = options.start.getFullYear();
     
     const filename = options.lang === 'de'

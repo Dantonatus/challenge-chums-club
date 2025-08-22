@@ -174,7 +174,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       const weeklyData: WeeklyData[] = weeks.map(week => {
         const weekStart = startOfWeek(week, { weekStartsOn: 1 });
         const weekEnd = endOfWeek(week, { weekStartsOn: 1 });
-        const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4 });
+        const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de });
 
         const weekData: WeeklyData = {
           week: `${t[lang].week} ${weekNumber}`,

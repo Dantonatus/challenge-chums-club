@@ -85,7 +85,7 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
   const formatWeekLabel = (weekIndex: number) => {
     if (weekIndex >= weeks.length) return '';
     const week = weeks[weekIndex];
-    const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4 });
+    const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de });
     return `${lang === 'de' ? 'KW' : 'Week'} ${weekNumber}`;
   };
 
