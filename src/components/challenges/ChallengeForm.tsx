@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
+import { format, getWeek } from "date-fns";
+import { de } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -193,7 +194,14 @@ export default function ChallengeForm({ groupId, challengeId, initialValues, onC
                         type="button"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                        {field.value ? (
+                          <div className="flex flex-col items-start">
+                            <span>{format(field.value, "PPP", { locale: de })}</span>
+                            <span className="text-xs text-muted-foreground">KW {getWeek(field.value, { locale: de })}</span>
+                          </div>
+                        ) : (
+                          <span>Datum wählen</span>
+                        )}
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
@@ -230,7 +238,14 @@ export default function ChallengeForm({ groupId, challengeId, initialValues, onC
                         type="button"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                        {field.value ? (
+                          <div className="flex flex-col items-start">
+                            <span>{format(field.value, "PPP", { locale: de })}</span>
+                            <span className="text-xs text-muted-foreground">KW {getWeek(field.value, { locale: de })}</span>
+                          </div>
+                        ) : (
+                          <span>Datum wählen</span>
+                        )}
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
