@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
-import { ScatterChart, Scatter, XAxis, YAxis, ResponsiveContainer, Tooltip, ZAxis, Cell, CartesianGrid } from "recharts";
+import { ScatterChart, Scatter, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Cell } from "recharts";
 import { useDateRange } from "@/contexts/DateRangeContext";
 import { format, differenceInDays } from "date-fns";
 import { TrendingUp, Target, Euro, Users } from "lucide-react";
@@ -23,11 +23,11 @@ interface BestROIProps {
 interface ROIChallengePoint {
   id: string;
   name: string;
+  type: 'Habit' | 'KPI';
   failRatePct: number;
   penaltyImpactEUR: number;
   totalPenaltiesEUR: number;
   participants: number;
-  type: 'Habit' | 'KPI';
 }
 
 interface ROIMetrics {
@@ -143,22 +143,19 @@ export function BestROI({ lang, filters }: BestROIProps) {
         const rawFailRate = possibleFails > 0 ? (totalFails / possibleFails) : 0;
         const weeklyFailRate = Math.min(100, rawFailRate * 7 * 100); // Cap at 100%
 
-        // Penalty impact: higher penalty per fail = higher impact, but clamped
+        // Penalty impact: average penalty per fail in EUR
         const avgPenaltyPerFail = totalFails > 0 ? totalPenalties / totalFails : challenge.penalty_cents;
-        const penaltyImpact = Math.min(10, Math.max(0.1, avgPenaltyPerFail / 100)); // Scale to 0.1-10 range
-
-        // ROI calculation: lower fail rate + reasonable penalty = better ROI
-        const roi = penaltyImpact / Math.max(0.1, weeklyFailRate / 10); // Higher is better
+        const penaltyImpactEUR = avgPenaltyPerFail / 100; // Convert cents to EUR
 
         return {
           challengeId: challenge.id,
           title: challenge.title,
           failRate: Math.round(weeklyFailRate * 10) / 10,
-          penaltyImpact: Math.round(penaltyImpact * 10) / 10,
+          penaltyImpact: Math.round(penaltyImpactEUR * 100) / 100,
           participants: participantCount,
           totalFails,
           totalPenalties,
-          roi: Math.round(roi * 100) / 100,
+          roi: Math.round((penaltyImpactEUR / Math.max(0.1, weeklyFailRate / 10)) * 100) / 100,
           challengeType: challenge.challenge_type
         };
       }).filter(c => c.participants > 0);
@@ -173,38 +170,43 @@ export function BestROI({ lang, filters }: BestROIProps) {
   const chartData = useMemo(() => {
     if (!roiData?.length) return [];
 
-    // Calculate bubble size scaling
-    const amounts = roiData.map(d => d.totalPenalties);
-    const minAmount = Math.min(...amounts);
-    const maxAmount = Math.max(...amounts);
-    
-    // Define visual radius bounds
-    const rMin = 8;
-    const rMax = 32;
-    
-    // Calculate scaling factor for area-based sizing
-    const calculateRadius = (amount: number) => {
-      if (maxAmount === minAmount) return (rMin + rMax) / 2;
-      
-      // Area scaling: area ∝ amount, so radius ∝ √amount
-      const normalizedSqrt = Math.sqrt((amount - minAmount) / (maxAmount - minAmount));
-      return rMin + normalizedSqrt * (rMax - rMin);
-    };
-    
-    return roiData.map(challenge => ({
+    const points: ROIChallengePoint[] = roiData.map(challenge => ({
       id: challenge.challengeId,
       name: challenge.title,
+      type: challenge.challengeType === 'habit' ? 'Habit' : 'KPI',
       failRatePct: challenge.failRate,
       penaltyImpactEUR: challenge.penaltyImpact,
       totalPenaltiesEUR: challenge.totalPenalties / 100, // Convert cents to EUR
-      participants: challenge.participants,
-      type: challenge.challengeType === 'habit' ? 'Habit' : 'KPI',
-      bubbleSize: calculateRadius(challenge.totalPenalties),
-      x: challenge.failRate,
-      y: challenge.penaltyImpact,
-      z: calculateRadius(challenge.totalPenalties) // For Recharts ZAxis
+      participants: challenge.participants
     }));
+
+    // Log sample for debugging
+    if (points.length > 0) {
+      console.log('Sample ROI point:', points[0]);
+    }
+
+    return points;
   }, [roiData]);
+
+  // Calculate bubble sizing
+  const bubbleScaling = useMemo(() => {
+    if (!chartData.length) return { rOf: () => 8 };
+    
+    const amounts = chartData.map(d => d.totalPenaltiesEUR);
+    const maxA = Math.max(0, ...amounts);
+    const minA = Math.min(...amounts);
+    const rMin = 8;
+    const rMax = 32;
+    
+    // Area scaling: area ∝ amount, so radius ∝ √amount
+    const k = maxA > 0 ? (rMax / Math.sqrt(maxA)) : 0;
+    const rOf = (amount: number) => {
+      if (amount <= 0) return rMin;
+      return Math.max(rMin, k * Math.sqrt(amount));
+    };
+
+    return { rOf, maxA, minA, k };
+  }, [chartData]);
 
   // Filter data based on legend toggles
   const filteredData = useMemo(() => {
@@ -238,6 +240,57 @@ export function BestROI({ lang, filters }: BestROIProps) {
     });
   }, []);
 
+  // Pastel colors
+  const getPastelColor = (type: 'Habit' | 'KPI') => {
+    return type === 'Habit' ? '#7dd3fc' : '#a7f3d0'; // sky-300 : emerald-200
+  };
+
+  // Custom bubble node
+  const CustomNode = ({ cx, cy, payload }: any) => {
+    const r = bubbleScaling.rOf(payload.totalPenaltiesEUR);
+    const color = getPastelColor(payload.type);
+    
+    return (
+      <g 
+        tabIndex={0} 
+        role="button" 
+        aria-label={`${payload.name}, ${payload.failRatePct}% fails, ${formatCurrency(payload.penaltyImpactEUR)} impact, ${formatCurrency(payload.totalPenaltiesEUR)} total`}
+        className="cursor-pointer focus:outline-none"
+        onClick={() => handleBubbleClick(payload)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleBubbleClick(payload);
+          }
+        }}
+      >
+        <circle 
+          cx={cx} 
+          cy={cy} 
+          r={r} 
+          fill={color} 
+          fillOpacity={0.85} 
+          stroke="rgba(0,0,0,0.08)" 
+          strokeWidth={1}
+          className="transition-all duration-200 hover:drop-shadow-lg motion-reduce:transition-none"
+          style={{
+            filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.1))'
+          }}
+        />
+        <circle 
+          cx={cx} 
+          cy={cy} 
+          r={r * 1.1} 
+          fill="transparent" 
+          className="opacity-0 hover:opacity-20 transition-opacity duration-200"
+          style={{
+            fill: color
+          }}
+        />
+      </g>
+    );
+  };
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length > 0) {
       const data = payload[0].payload;
@@ -247,10 +300,10 @@ export function BestROI({ lang, filters }: BestROIProps) {
             <h4 className="font-semibold text-foreground">{data.name}</h4>
             <Badge 
               variant="outline" 
-              className={`text-xs ${
+              className={`text-xs border-0 ${
                 data.type === 'Habit' 
-                  ? 'bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 border-cyan-200 dark:from-cyan-950/30 dark:to-teal-950/30 dark:text-cyan-300'
-                  : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-200 dark:from-blue-950/30 dark:to-indigo-950/30 dark:text-blue-300'
+                  ? 'bg-gradient-to-r from-cyan-50 to-sky-50 text-cyan-700 dark:from-cyan-950/30 dark:to-sky-950/30 dark:text-cyan-300'
+                  : 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 dark:from-emerald-950/30 dark:to-green-950/30 dark:text-emerald-300'
               }`}
             >
               {t[lang][data.type.toLowerCase() as keyof typeof t[typeof lang]]}
@@ -339,11 +392,11 @@ export function BestROI({ lang, filters }: BestROIProps) {
             onClick={() => toggleType('Habit')}
             className={`h-auto px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
               visibleTypes.has('Habit')
-                ? 'bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 border border-cyan-200 shadow-sm dark:from-cyan-950/30 dark:to-teal-950/30 dark:text-cyan-300'
+                ? 'bg-gradient-to-r from-cyan-50 to-sky-50 text-cyan-700 border border-cyan-200 shadow-sm dark:from-cyan-950/30 dark:to-sky-950/30 dark:text-cyan-300'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <div className="w-2 h-2 rounded-full bg-cyan-400 mr-2" />
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#7dd3fc' }} />
             {t[lang].habit}
           </Button>
           <Button
@@ -352,11 +405,11 @@ export function BestROI({ lang, filters }: BestROIProps) {
             onClick={() => toggleType('KPI')}
             className={`h-auto px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
               visibleTypes.has('KPI')
-                ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-sm dark:from-blue-950/30 dark:to-indigo-950/30 dark:text-blue-300'
+                ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200 shadow-sm dark:from-emerald-950/30 dark:to-green-950/30 dark:text-emerald-300'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <div className="w-2 h-2 rounded-full bg-blue-400 mr-2" />
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#a7f3d0' }} />
             {t[lang].kpi}
           </Button>
         </div>
@@ -376,7 +429,7 @@ export function BestROI({ lang, filters }: BestROIProps) {
               />
               <XAxis 
                 type="number" 
-                dataKey="x"
+                dataKey="failRatePct"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
@@ -389,7 +442,7 @@ export function BestROI({ lang, filters }: BestROIProps) {
               />
               <YAxis 
                 type="number" 
-                dataKey="y"
+                dataKey="penaltyImpactEUR"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
@@ -401,22 +454,12 @@ export function BestROI({ lang, filters }: BestROIProps) {
                   style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))', fontSize: '12px', fontWeight: 500 }
                 }}
               />
-              <ZAxis type="number" dataKey="z" range={[64, 1024]} />
               <Tooltip content={<CustomTooltip />} />
-              <Scatter name="Challenges" data={filteredData}>
-                {filteredData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.type === 'Habit' ? 'hsl(188, 85%, 65%)' : 'hsl(217, 85%, 65%)'} 
-                    className="cursor-pointer hover:brightness-110 transition-all duration-200 motion-reduce:hover:brightness-100" 
-                    style={{ 
-                      filter: 'drop-shadow(0 2px 8px hsla(var(--primary), 0.15))',
-                      transformOrigin: 'center'
-                    }}
-                    onClick={() => handleBubbleClick(entry)}
-                  />
-                ))}
-              </Scatter>
+              <Scatter 
+                name="Challenges" 
+                data={filteredData}
+                shape={<CustomNode />}
+              />
             </ScatterChart>
           </ResponsiveContainer>
         </ChartContainer>
