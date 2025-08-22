@@ -4,14 +4,13 @@ import { format, eachWeekOfInterval, getWeek, startOfWeek, endOfWeek, isWithinIn
 import { de } from "date-fns/locale";
 import * as Recharts from "recharts";
 import { supabase } from "@/integrations/supabase/client";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TimelineSlider } from "@/components/charts/TimelineSlider";
 import { useDateRange } from "@/contexts/DateRangeContext";
 import { generateChartConfig, generateParticipantColorMap } from "@/lib/participant-colors";
 import { Eye, TrendingUp } from "lucide-react";
+import ChartShell, { CHART_MARGIN } from "../summary/ChartShell";
 
 interface Participant {
   user_id: string;
@@ -150,154 +149,144 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
   };
 
   return (
-    <Card className="animate-fade-in bg-gradient-to-br from-background/80 via-background to-background/60 backdrop-blur-sm shadow-lg border-0 rounded-xl">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-emerald-500" />
-            <div>
-              <CardTitle className="text-lg">Cumulative Fails Trend</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">Summed fails over time, including total penalties</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <Eye className="h-3 w-3" />
-              {totalViolations} Gesamt Fails
-            </Badge>
-            <Badge variant="outline" className="text-destructive">
-              €{totalAmount.toFixed(2)}
-            </Badge>
+    <ChartShell
+      title={
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-emerald-500" />
+          <div>
+            <div className="text-lg">Cumulative Fails Trend</div>
+            <div className="text-sm text-muted-foreground mt-1">Summed fails over time, including total penalties</div>
           </div>
         </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-6">
-        {/* Participant Filters */}
+      }
+      headerRight={
+        <div className="flex items-center gap-4">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Eye className="h-3 w-3" />
+            {totalViolations} Gesamt Fails
+          </Badge>
+          <Badge variant="outline" className="text-destructive">
+            €{totalAmount.toFixed(2)}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleAllParticipants}
+            className="flex items-center gap-1 text-xs"
+          >
+            <Eye className="h-3 w-3" />
+            Referenzlinien
+          </Button>
+        </div>
+      }
+      legend={
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          {/* Participant Filters */}
+          <div className="space-y-3">
             <h4 className="text-sm font-medium text-muted-foreground">Teilnehmer</h4>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleAllParticipants}
-              className="flex items-center gap-1 text-xs"
-            >
-              <Eye className="h-3 w-3" />
-              Referenzlinien
-            </Button>
-          </div>
-          
-          <div className="flex flex-wrap gap-2">
-            {participants.map((participant, index) => {
-              const isSelected = selectedParticipants.has(participant.user_id);
-              const participantViolations = violations.filter(v => v.user_id === participant.user_id);
-              const count = participantViolations.length;
-              
-              return (
-                <Button
-                  key={participant.user_id}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleParticipant(participant.user_id)}
-                  className="flex items-center gap-2 text-xs border-2 transition-all duration-200"
-                  style={{
-                    borderColor: isSelected ? colorMap[participant.user_id] : 'hsl(var(--border))',
-                    backgroundColor: isSelected ? `${colorMap[participant.user_id]}15` : 'transparent',
-                    color: isSelected ? colorMap[participant.user_id] : 'hsl(var(--muted-foreground))'
-                  }}
-                >
-                  <div 
-                    className="w-2 h-2 rounded-full transition-all duration-200"
-                    style={{ 
-                      backgroundColor: colorMap[participant.user_id],
-                      opacity: isSelected ? 1 : 0.3
-                    }}
-                  />
-                  {participant.name}
-                  <Badge 
-                    variant="outline" 
-                    className="ml-1 text-xs border-0"
+            <div className="flex flex-wrap gap-2">
+              {participants.map((participant, index) => {
+                const isSelected = selectedParticipants.has(participant.user_id);
+                const participantViolations = violations.filter(v => v.user_id === participant.user_id);
+                const count = participantViolations.length;
+                
+                return (
+                  <Button
+                    key={participant.user_id}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleParticipant(participant.user_id)}
+                    className="flex items-center gap-2 text-xs border-2 transition-all duration-200"
                     style={{
-                      backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : 'transparent',
+                      borderColor: isSelected ? colorMap[participant.user_id] : 'hsl(var(--border))',
+                      backgroundColor: isSelected ? `${colorMap[participant.user_id]}15` : 'transparent',
                       color: isSelected ? colorMap[participant.user_id] : 'hsl(var(--muted-foreground))'
                     }}
                   >
-                    {count}
-                  </Badge>
-                </Button>
-              );
-            })}
+                    <div 
+                      className="w-2 h-2 rounded-full transition-all duration-200"
+                      style={{ 
+                        backgroundColor: colorMap[participant.user_id],
+                        opacity: isSelected ? 1 : 0.3
+                      }}
+                    />
+                    {participant.name}
+                    <Badge 
+                      variant="outline" 
+                      className="ml-1 text-xs border-0"
+                      style={{
+                        backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : 'transparent',
+                        color: isSelected ? colorMap[participant.user_id] : 'hsl(var(--muted-foreground))'
+                      }}
+                    >
+                      {count}
+                    </Badge>
+                  </Button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {/* Week Range Filter */}
-        {weeks.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">Nach Wochen filtern</h4>
-            <TimelineSlider
-              weeks={weeks}
-              selectedRange={weekRange}
-              onRangeChange={setWeekRange}
-              lang="de"
-            />
-          </div>
-        )}
-
-        {/* Chart */}
-        <div className="h-96">
-          {chartData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="w-full h-full">
-              <Recharts.LineChart 
-                data={chartData}
-                margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
-              >
-                <Recharts.CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <Recharts.XAxis 
-                  dataKey="week" 
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Recharts.YAxis 
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  label={{ value: 'Fails', angle: -90, position: 'insideLeft' }}
-                />
-                <ChartTooltip 
-                  content={<ChartTooltipContent />}
-                  formatter={(value: any, name: string) => [
-                    `€${(value as number).toFixed(2)}`,
-                    name
-                  ]}
-                />
-                {filteredParticipants.map((participant) => (
-                  <Recharts.Line
-                    key={participant.user_id}
-                    type="linear"
-                    dataKey={participant.name}
-                    stroke={colorMap[participant.user_id]}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
-                  />
-                ))}
-              </Recharts.LineChart>
-            </ChartContainer>
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              <div className="text-center">
-                <p>Keine Daten für den ausgewählten Zeitraum</p>
-                <p className="text-xs mt-1">
-                  Debug: Wochen: {weeks.length}, Verstöße: {filteredViolations.length}, Teilnehmer: {filteredParticipants.length}
-                </p>
-              </div>
+          {/* Week Range Filter */}
+          {weeks.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Nach Wochen filtern</h4>
+              <TimelineSlider
+                weeks={weeks}
+                selectedRange={weekRange}
+                onRangeChange={setWeekRange}
+                lang="de"
+              />
             </div>
           )}
         </div>
-
-      </CardContent>
-    </Card>
+      }
+    >
+      {chartData.length > 0 ? (
+        <Recharts.LineChart 
+          data={chartData}
+          margin={CHART_MARGIN}
+        >
+          <Recharts.CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+          <Recharts.XAxis 
+            dataKey="week" 
+            tickMargin={8}
+            padding={{ left: 0, right: 0 }}
+            interval="preserveStartEnd"
+          />
+          <Recharts.YAxis 
+            tickMargin={8}
+            width={48}
+            label={{ value: 'Fails', angle: -90, position: 'insideLeft' }}
+          />
+          <Recharts.Tooltip 
+            formatter={(value: any, name: string) => [
+              `€${(value as number).toFixed(2)}`,
+              name
+            ]}
+          />
+          {filteredParticipants.map((participant) => (
+            <Recharts.Line
+              key={participant.user_id}
+              type="linear"
+              dataKey={participant.name}
+              stroke={colorMap[participant.user_id]}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 0 }}
+            />
+          ))}
+        </Recharts.LineChart>
+      ) : (
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          <div className="text-center">
+            <p>Keine Daten für den ausgewählten Zeitraum</p>
+            <p className="text-xs mt-1">
+              Debug: Wochen: {weeks.length}, Verstöße: {filteredViolations.length}, Teilnehmer: {filteredParticipants.length}
+            </p>
+          </div>
+        </div>
+      )}
+    </ChartShell>
   );
 }
