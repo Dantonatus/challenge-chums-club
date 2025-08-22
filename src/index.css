@@ -152,11 +152,19 @@ All colors MUST be HSL. */
 
 /* Week numbers styling for calendar */
 .rdp-weeknumber {
-  @apply text-muted-foreground text-xs font-medium w-9 h-9 flex items-center justify-center;
+  @apply text-muted-foreground text-xs font-medium w-8 h-9 flex items-center justify-center border-r border-border mr-1;
 }
 
-.rdp-head_cell:first-child {
-  @apply text-muted-foreground text-xs font-medium w-9 h-9 flex items-center justify-center;
+.rdp-thead .rdp-head_row .rdp-head_cell:first-child {
+  @apply text-muted-foreground text-xs font-medium w-8 h-9 flex items-center justify-center;
+}
+
+.rdp-tbody .rdp-row {
+  @apply flex items-center;
+}
+
+.rdp-table {
+  @apply w-full border-collapse;
 }
 
 @layer base {
