@@ -49,49 +49,60 @@ export function CompareBar({ onSelectionChange, lang, onClose }: CompareBarProps
   const { data: availableParticipants } = useQuery({
     queryKey: ['compare-participants'],
     queryFn: async () => {
-      // Get user's groups
-      const { data: userGroups } = await supabase
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      try {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
 
-      if (!userGroups?.length) return [];
+        // Get user's groups
+        const { data: userGroups } = await supabase
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', user.id);
 
-      const groupIds = userGroups.map(g => g.group_id);
+        if (!userGroups?.length) return [];
 
-      // Get challenges in user's groups
-      const { data: challenges } = await supabase
-        .from('challenges')
-        .select('id')
-        .in('group_id', groupIds);
+        const groupIds = userGroups.map(g => g.group_id);
 
-      if (!challenges?.length) return [];
+        // Get challenges in user's groups
+        const { data: challenges } = await supabase
+          .from('challenges')
+          .select('id')
+          .in('group_id', groupIds);
 
-      const challengeIds = challenges.map(c => c.id);
+        if (!challenges?.length) return [];
 
-      // Get participants with profiles
-      const { data: participants } = await supabase
-        .from('challenge_participants')
-        .select(`
-          user_id,
-          profiles!inner(display_name)
-        `)
-        .in('challenge_id', challengeIds);
+        const challengeIds = challenges.map(c => c.id);
 
-      // Get unique participants
-      const uniqueParticipants = Array.from(
-        new Map(
-          participants?.map(p => [
-            p.user_id, 
-            (p.profiles as any)?.display_name
-          ]) || []
-        ).entries()
-      ).map(([userId, displayName]) => ({
-        userId,
-        displayName: displayName || 'Unknown'
-      }));
+        // Get participants with profiles
+        const { data: participants } = await supabase
+          .from('challenge_participants')
+          .select(`
+            user_id,
+            profiles!inner(display_name)
+          `)
+          .in('challenge_id', challengeIds);
 
-      return uniqueParticipants.filter(p => p.displayName !== 'Unknown');
+        if (!participants?.length) return [];
+
+        // Get unique participants
+        const uniqueParticipants = Array.from(
+          new Map(
+            participants.map(p => [
+              p.user_id, 
+              (p.profiles as any)?.display_name
+            ])
+          ).entries()
+        ).map(([userId, displayName]) => ({
+          userId,
+          displayName: displayName || 'Unknown'
+        }));
+
+        return uniqueParticipants.filter(p => p.displayName !== 'Unknown');
+      } catch (error) {
+        console.error('Failed to fetch participants:', error);
+        return [];
+      }
     }
   });
 

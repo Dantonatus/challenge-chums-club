@@ -104,7 +104,10 @@ export function DateRangeProvider({ userId, children }: { userId?: string | null
   const value = useMemo<DateRangeContextValue>(() => ({
     start: range.start,
     end: range.end,
-    setRange: (r) => setRange({ start: startOfDay(r.start), end: endOfDay(r.end) }),
+    setRange: (r) => {
+      const newRange = { start: startOfDay(r.start), end: endOfDay(r.end) };
+      setRange(newRange);
+    },
     minDate,
     maxDate: maxCap,
     now,

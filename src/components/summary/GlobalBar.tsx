@@ -47,7 +47,7 @@ export function GlobalBar({
   const t = {
     de: {
       title: "Übersicht",
-      export: "Exportieren",
+      export: "PDF Exportieren",
       saveView: "Ansicht speichern",
       compare: "Vergleichen",
       help: "Hilfe",
@@ -55,14 +55,14 @@ export function GlobalBar({
       savedViews: "Gespeicherte Ansichten",
       noSavedViews: "Keine gespeicherten Ansichten",
       deleteView: "Löschen",
-      exportSuccess: "CSV erfolgreich exportiert",
+      exportSuccess: "PDF erfolgreich exportiert",
       exportError: "Fehler beim Exportieren",
       viewDeleted: "Ansicht gelöscht",
       viewDeleteError: "Fehler beim Löschen"
     },
     en: {
       title: "Summary",
-      export: "Export",
+      export: "Export PDF",
       saveView: "Save View", 
       compare: "Compare",
       help: "Help",
@@ -70,7 +70,7 @@ export function GlobalBar({
       savedViews: "Saved Views",
       noSavedViews: "No saved views",
       deleteView: "Delete",
-      exportSuccess: "CSV exported successfully",
+      exportSuccess: "PDF exported successfully",
       exportError: "Export failed",
       viewDeleted: "View deleted",
       viewDeleteError: "Failed to delete view"
@@ -269,7 +269,7 @@ export function GlobalBar({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{t[lang].export} (Ctrl+Enter)</p>
+                    <p>{t[lang].export}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
