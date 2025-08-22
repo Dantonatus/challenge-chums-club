@@ -20,7 +20,6 @@ import * as Recharts from "recharts";
 import AddParticipantsDialog from "@/components/challenges/AddParticipantsDialog";
 import ChallengeForm from "@/components/challenges/ChallengeForm";
 import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
-import { CumulativePenaltyTrendChart } from "@/components/challenges/CumulativePenaltyTrendChart";
 import { KPIDetailChart } from "@/components/challenges/KPIDetailChart";
 import { KPIDataEntry } from "@/components/challenges/KPIDataEntry";
 import { ViolationEntryDialog } from "@/components/challenges/ViolationEntryDialog";
@@ -561,11 +560,6 @@ export default function ChallengeDetail() {
                     <div className="text-sm text-muted-foreground">Kumulierte Strafen über Zeit</div>
                     <CumulativePenaltyChart challengeId={challenge.id} participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))} />
                   </div>
-                  
-                  <CumulativePenaltyTrendChart 
-                    challengeId={challenge.id} 
-                    participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))} 
-                  />
                 </div>
               </TabsContent>
             </Tabs>
@@ -617,11 +611,6 @@ export default function ChallengeDetail() {
                       participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
                     />
                   </div>
-                  
-                  <CumulativePenaltyTrendChart 
-                    challengeId={id!} 
-                    participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))} 
-                  />
                 </div>
               </TabsContent>
             </Tabs>

@@ -24,6 +24,7 @@ import { WeeklyTimeline } from "@/components/summary/WeeklyTimeline";
 import { FailsTrendPremium } from "@/components/summary/FailsTrendPremium";
 import { GlobalBar } from "@/components/summary/GlobalBar";
 import { KPIStrip } from "@/components/summary/KPIStrip";
+import { CumulativePenaltyTrendChart } from "@/components/challenges/CumulativePenaltyTrendChart";
 
 const Summary = () => {
   const { start, end } = useDateRange();
@@ -511,6 +512,16 @@ const totalChallenges = processedChallenges.length;
                 onCompareParticipants={(a, b) => setCompareParticipants([a, b])}
               />
             </div>
+            
+            {/* Cumulative Penalty Trend Chart for all challenges */}
+            {filteredData && filteredData.challenges.length > 0 && (
+              <div className="w-full">
+                <CumulativePenaltyTrendChart 
+                  challengeId="all"
+                  participants={filterOptions?.participants.map(p => ({ user_id: p.user_id, name: p.display_name })) || []}
+                />
+              </div>
+            )}
           </div>
         </div>
 

@@ -44,13 +44,19 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
     queryKey: ["challenge_violations_trend", challengeId, start?.toISOString(), end?.toISOString()],
     enabled: !!challengeId && !!start && !!end,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("challenge_violations")
         .select("id, user_id, amount_cents, created_at")
-        .eq("challenge_id", challengeId)
         .gte("created_at", start.toISOString())
         .lte("created_at", end.toISOString())
         .order("created_at", { ascending: true });
+      
+      // If challengeId is "all", don't filter by challenge_id
+      if (challengeId !== "all") {
+        query = query.eq("challenge_id", challengeId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     }
