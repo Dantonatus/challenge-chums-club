@@ -120,7 +120,7 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
         <CardDescription>{t[lang].description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-80">
+        <ChartContainer config={chartConfig} className="h-96">
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
@@ -189,7 +189,7 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
                     key={`cell-${index}`} 
                     fill={getColor(entry.type, index)}
                     opacity={0.7}
-                    r={Math.max(4, Math.min(25, Math.sqrt(entry.z) * 2))} // Scale bubble size based on money amount
+                    r={Math.max(6, Math.min(35, Math.sqrt(entry.z) * 4 + 8))} // More prominent size scaling based on money amount
                   />
                 ))}
               </Scatter>
