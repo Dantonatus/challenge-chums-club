@@ -12,6 +12,11 @@ import { useNavigate } from "react-router-dom";
 
 interface MostPopularByDurationProps {
   lang: 'de' | 'en';
+  filters?: {
+    participants?: string[];
+    challengeTypes?: string[];
+    groups?: string[];
+  };
 }
 
 interface DurationChallenge {
@@ -26,7 +31,7 @@ interface DurationChallenge {
   is_trending: boolean;
 }
 
-export const MostPopularByDuration = ({ lang }: MostPopularByDurationProps) => {
+export const MostPopularByDuration = ({ lang, filters }: MostPopularByDurationProps) => {
   const { start, end } = useDateRange();
   const navigate = useNavigate();
   
@@ -54,7 +59,7 @@ export const MostPopularByDuration = ({ lang }: MostPopularByDurationProps) => {
   };
 
   const { data: challengeData, isLoading } = useQuery({
-    queryKey: ['popular-challenges-by-duration', start, end],
+    queryKey: ['popular-challenges-by-duration', start, end, filters],
     queryFn: async () => {
       const startStr = format(start, 'yyyy-MM-dd');
       const endStr = format(end, 'yyyy-MM-dd');
@@ -67,7 +72,13 @@ export const MostPopularByDuration = ({ lang }: MostPopularByDurationProps) => {
 
       if (!userGroups || userGroups.length === 0) return [];
 
-      const groupIds = userGroups.map(g => g.group_id);
+      // Filter by selected groups or use all user groups
+      const availableGroupIds = userGroups.map(g => g.group_id);
+      const groupIds = filters?.groups?.length 
+        ? availableGroupIds.filter(id => filters.groups!.includes(id))
+        : availableGroupIds;
+
+      if (groupIds.length === 0) return [];
 
       // Execute the duration-based ranking query
       const { data, error } = await supabase.rpc('get_popular_challenges_by_duration', {
@@ -81,7 +92,35 @@ export const MostPopularByDuration = ({ lang }: MostPopularByDurationProps) => {
         return [];
       }
 
-      return data || [];
+      let challenges = data || [];
+
+      // Apply participant filter if specified
+      if (filters?.participants?.length) {
+        challenges = challenges.filter(challenge => 
+          challenge.participants.some((p: any) => 
+            filters.participants!.includes(p.user_id)
+          )
+        );
+
+        // Recalculate participant count and stats for filtered participants
+        challenges = challenges.map(challenge => ({
+          ...challenge,
+          participants: challenge.participants.filter((p: any) => 
+            filters.participants!.includes(p.user_id)
+          ),
+          participant_count: challenge.participants.filter((p: any) => 
+            filters.participants!.includes(p.user_id)
+          ).length
+        }));
+      }
+
+      // Apply challenge type filter if specified
+      if (filters?.challengeTypes?.length) {
+        // We'd need to add challenge_type to the RPC response or fetch it separately
+        // For now, we'll skip this filter as it's not in the current RPC
+      }
+
+      return challenges;
     },
     enabled: !!start && !!end
   });

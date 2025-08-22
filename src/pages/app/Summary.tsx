@@ -550,7 +550,7 @@ const totalChallenges = processedChallenges.length;
           {/* Third Row - Most Popular by Duration */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="col-span-12 w-full">
-              <MostPopularByDuration lang={lang} />
+              <MostPopularByDuration lang={lang} filters={filters} />
             </div>
           </div>
 
