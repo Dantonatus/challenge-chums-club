@@ -14,7 +14,11 @@ import { Calendar, Users, TrendingUp, Target, Sparkles } from "lucide-react";
 import { Timeline } from "@/components/summary/Timeline";
 import { FilterBar } from "@/components/summary/FilterBar";
 import { ParticipantRanking } from "@/components/summary/ParticipantRanking";
-import { ChallengeRanking } from "@/components/summary/ChallengeRanking";
+import { ToughestVsEasiestChallenges } from "@/components/summary/ToughestVsEasiestChallenges";
+import { BiggestMoneyBurners } from "@/components/summary/BiggestMoneyBurners";
+import { MostPopularChallenges } from "@/components/summary/MostPopularChallenges";
+import { StreakBreakers } from "@/components/summary/StreakBreakers";
+import { BestROIChallenges } from "@/components/summary/BestROIChallenges";
 import { ExportButton } from "@/components/summary/ExportButton";
 import { WeeklyTimeline } from "@/components/summary/WeeklyTimeline";
 import { FailsTrendChart } from "@/components/summary/FailsTrendChart";
@@ -510,9 +514,24 @@ const totalChallenges = processedChallenges.length;
       </div>
 
       {/* Analytics Widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ParticipantRanking data={[{ challenges }]} lang={lang} />
-        <ChallengeRanking data={[{ challenges }]} lang={lang} />
+      <div className="space-y-6">
+        {/* First Row - Core Rankings */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ParticipantRanking data={[{ challenges }]} lang={lang} />
+          <ToughestVsEasiestChallenges data={[{ challenges }]} lang={lang} />
+        </div>
+
+        {/* Second Row - Money & Popularity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <BiggestMoneyBurners data={[{ challenges }]} lang={lang} />
+          <MostPopularChallenges data={[{ challenges }]} lang={lang} />
+        </div>
+
+        {/* Third Row - Advanced Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <StreakBreakers data={[{ challenges }]} lang={lang} />
+          <BestROIChallenges data={[{ challenges }]} lang={lang} />
+        </div>
       </div>
 
       {/* Timeline */}
