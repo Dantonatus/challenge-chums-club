@@ -16,7 +16,7 @@ import { FilterBar } from "@/components/summary/FilterBar";
 import { ParticipantRanking } from "@/components/summary/ParticipantRanking";
 import { ToughestVsEasiestChallenges } from "@/components/summary/ToughestVsEasiestChallenges";
 
-import { MostPopularChallenges } from "@/components/summary/MostPopularChallenges";
+import { MostPopularByDuration } from "@/components/summary/MostPopularByDuration";
 import { StreakBreakers } from "@/components/summary/StreakBreakers";
 import { BestROIChallenges } from "@/components/summary/BestROIChallenges";
 import { ExportButton } from "@/components/summary/ExportButton";
@@ -545,15 +545,21 @@ const totalChallenges = processedChallenges.length;
             <ToughestVsEasiestChallenges data={[{ challenges }]} lang={lang} />
           </div>
 
-          {/* Second Row - Streak Breakers & Popularity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="penalties-section">
-            <div className="col-span-full">
+          {/* Second Row - Streak Breakers */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="penalties-section">
+            <div className="col-span-12 w-full">
               <StreakBreakers data={[{ challenges }]} lang={lang} />
             </div>
-            <MostPopularChallenges data={[{ challenges }]} lang={lang} />
           </div>
 
-          {/* Third Row - Advanced Analytics */}
+          {/* Third Row - Most Popular by Duration */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="col-span-12 w-full">
+              <MostPopularByDuration lang={lang} />
+            </div>
+          </div>
+
+          {/* Fourth Row - Advanced Analytics */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="col-span-12 w-full">
               <BestROIChallenges data={[{ challenges }]} lang={lang} />
