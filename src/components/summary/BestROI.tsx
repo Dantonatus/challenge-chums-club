@@ -1,13 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
-import { ScatterChart, Scatter, XAxis, YAxis, ResponsiveContainer, Tooltip, ZAxis } from "recharts";
+import { ScatterChart, Scatter, XAxis, YAxis, ResponsiveContainer, Tooltip, ZAxis, Cell, CartesianGrid } from "recharts";
 import { useDateRange } from "@/contexts/DateRangeContext";
 import { format, differenceInDays } from "date-fns";
-import { TrendingUp, Target, DollarSign } from "lucide-react";
+import { TrendingUp, Target, Euro, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface BestROIProps {
   lang: 'de' | 'en';
@@ -16,6 +18,16 @@ interface BestROIProps {
     challengeTypes?: string[];
     groups?: string[];
   };
+}
+
+interface ROIChallengePoint {
+  id: string;
+  name: string;
+  failRatePct: number;
+  penaltyImpactEUR: number;
+  totalPenaltiesEUR: number;
+  participants: number;
+  type: 'Habit' | 'KPI';
 }
 
 interface ROIMetrics {
@@ -27,37 +39,36 @@ interface ROIMetrics {
   totalFails: number;
   totalPenalties: number;
   roi: number;
+  challengeType: 'habit' | 'kpi';
 }
 
 export function BestROI({ lang, filters }: BestROIProps) {
   const { start, end } = useDateRange();
+  const navigate = useNavigate();
+  const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set(['Habit', 'KPI']));
 
   const t = {
     de: {
       title: "Beste ROI Challenges",
-      description: "Fehlerrate vs. Strafenhöhe (Bubble = Teilnehmer)",
+      description: "Fehlerrate vs. Strafen-Impact",
       failRate: "Fehlerrate (%)",
-      penaltyImpact: "Strafen-Impact",
+      penaltyImpact: "Strafen-Impact (€)",
       participants: "Teilnehmer",
-      roi: "ROI",
+      totalPenalties: "Gesamt Strafen",
       noData: "Keine ROI-Daten verfügbar",
-      excellent: "Exzellent",
-      good: "Gut",
-      poor: "Schlecht",
-      totalFails: "Gesamt Fails"
+      habit: "Habit",
+      kpi: "KPI"
     },
     en: {
       title: "Best ROI Challenges",
-      description: "Fail rate vs. penalty impact (bubble = participants)",
+      description: "Fail Rate vs. Penalty Impact", 
       failRate: "Fail Rate (%)",
-      penaltyImpact: "Penalty Impact",
+      penaltyImpact: "Penalty Impact (€)",
       participants: "Participants",
-      roi: "ROI",
+      totalPenalties: "Total Penalties",
       noData: "No ROI data available",
-      excellent: "Excellent",
-      good: "Good",
-      poor: "Poor",
-      totalFails: "Total Fails"
+      habit: "Habit",
+      kpi: "KPI"
     }
   };
 
@@ -147,7 +158,8 @@ export function BestROI({ lang, filters }: BestROIProps) {
           participants: participantCount,
           totalFails,
           totalPenalties,
-          roi: Math.round(roi * 100) / 100
+          roi: Math.round(roi * 100) / 100,
+          challengeType: challenge.challenge_type
         };
       }).filter(c => c.participants > 0);
 
@@ -157,50 +169,114 @@ export function BestROI({ lang, filters }: BestROIProps) {
     enabled: !!start && !!end
   });
 
+  // Convert to chart data with proper bubble sizing
   const chartData = useMemo(() => {
     if (!roiData?.length) return [];
+
+    // Calculate bubble size scaling
+    const amounts = roiData.map(d => d.totalPenalties);
+    const minAmount = Math.min(...amounts);
+    const maxAmount = Math.max(...amounts);
+    
+    // Define visual radius bounds
+    const rMin = 8;
+    const rMax = 32;
+    
+    // Calculate scaling factor for area-based sizing
+    const calculateRadius = (amount: number) => {
+      if (maxAmount === minAmount) return (rMin + rMax) / 2;
+      
+      // Area scaling: area ∝ amount, so radius ∝ √amount
+      const normalizedSqrt = Math.sqrt((amount - minAmount) / (maxAmount - minAmount));
+      return rMin + normalizedSqrt * (rMax - rMin);
+    };
     
     return roiData.map(challenge => ({
+      id: challenge.challengeId,
+      name: challenge.title,
+      failRatePct: challenge.failRate,
+      penaltyImpactEUR: challenge.penaltyImpact,
+      totalPenaltiesEUR: challenge.totalPenalties / 100, // Convert cents to EUR
+      participants: challenge.participants,
+      type: challenge.challengeType === 'habit' ? 'Habit' : 'KPI',
+      bubbleSize: calculateRadius(challenge.totalPenalties),
       x: challenge.failRate,
       y: challenge.penaltyImpact,
-      z: challenge.participants * 10, // Scale for bubble size
-      name: challenge.title.length > 20 ? challenge.title.substring(0, 20) + '...' : challenge.title,
-      fullName: challenge.title,
-      failRate: challenge.failRate,
-      penaltyImpact: challenge.penaltyImpact,
-      participants: challenge.participants,
-      totalFails: challenge.totalFails,
-      totalPenalties: challenge.totalPenalties,
-      roi: challenge.roi,
-      // Color based on ROI performance
-      fill: challenge.roi > 2 ? '#10B981' : challenge.roi > 1 ? '#F59E0B' : '#EF4444'
+      z: calculateRadius(challenge.totalPenalties) // For Recharts ZAxis
     }));
   }, [roiData]);
 
-  const bestROI = roiData?.[0];
+  // Filter data based on legend toggles
+  const filteredData = useMemo(() => {
+    return chartData.filter(item => visibleTypes.has(item.type));
+  }, [chartData, visibleTypes]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+  const formatCurrency = useCallback((value: number) => {
+    return new Intl.NumberFormat(lang === 'de' ? 'de-DE' : 'en-US', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(value);
+  }, [lang]);
+
+  const handleBubbleClick = useCallback((data: any) => {
+    if (data && data.id) {
+      navigate(`/challenges/${data.id}`);
+    }
+  }, [navigate]);
+
+  const toggleType = useCallback((type: string) => {
+    setVisibleTypes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(type)) {
+        newSet.delete(type);
+      } else {
+        newSet.add(type);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length > 0) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-foreground mb-2">{data.fullName}</p>
-          <div className="space-y-1 text-sm">
+        <div className="bg-background/95 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-xl">
+          <div className="flex items-center gap-2 mb-3">
+            <h4 className="font-semibold text-foreground">{data.name}</h4>
+            <Badge 
+              variant="outline" 
+              className={`text-xs ${
+                data.type === 'Habit' 
+                  ? 'bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 border-cyan-200 dark:from-cyan-950/30 dark:to-teal-950/30 dark:text-cyan-300'
+                  : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-200 dark:from-blue-950/30 dark:to-indigo-950/30 dark:text-blue-300'
+              }`}
+            >
+              {t[lang][data.type.toLowerCase() as keyof typeof t[typeof lang]]}
+            </Badge>
+          </div>
+          
+          <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-3 h-3 text-blue-500" />
-              <span>{t[lang].failRate}: {data.failRate}%</span>
+              <TrendingUp className="w-4 h-4 text-amber-500" />
+              <span className="text-muted-foreground">{t[lang].failRate}:</span>
+              <span className="font-medium">{data.failRatePct.toFixed(1)}%</span>
             </div>
             <div className="flex items-center gap-2">
-              <DollarSign className="w-3 h-3 text-red-500" />
-              <span>{t[lang].penaltyImpact}: {data.penaltyImpact}</span>
+              <Euro className="w-4 h-4 text-red-500" />
+              <span className="text-muted-foreground">{t[lang].penaltyImpact}:</span>
+              <span className="font-medium">{formatCurrency(data.penaltyImpactEUR)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Target className="w-3 h-3 text-green-500" />
-              <span>{t[lang].participants}: {data.participants}</span>
+              <Euro className="w-4 h-4 text-purple-500" />
+              <span className="text-muted-foreground">{t[lang].totalPenalties}:</span>
+              <span className="font-medium">{formatCurrency(data.totalPenaltiesEUR)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs">📈</span>
-              <span className="font-semibold">{t[lang].roi}: {data.roi}</span>
+              <Users className="w-4 h-4 text-blue-500" />
+              <span className="text-muted-foreground">{t[lang].participants}:</span>
+              <span className="font-medium">{data.participants}</span>
             </div>
           </div>
         </div>
@@ -211,15 +287,15 @@ export function BestROI({ lang, filters }: BestROIProps) {
 
   if (isLoading) {
     return (
-      <Card className="animate-fade-in shadow-lg border-0 bg-gradient-to-br from-background to-muted/20">
+      <Card className="animate-fade-in bg-gradient-to-br from-background/80 via-background to-background/60 backdrop-blur-sm shadow-lg border-0 rounded-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-green-500" />
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Target className="w-5 h-5 text-emerald-500" />
             {t[lang].title}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 animate-pulse bg-gradient-to-r from-muted via-muted/50 to-muted rounded-xl" />
+          <div className="h-96 animate-pulse bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 rounded-xl" />
         </CardContent>
       </Card>
     );
@@ -227,17 +303,17 @@ export function BestROI({ lang, filters }: BestROIProps) {
 
   if (!chartData.length) {
     return (
-      <Card className="animate-fade-in shadow-lg border-0 bg-gradient-to-br from-background to-muted/20">
+      <Card className="animate-fade-in bg-gradient-to-br from-background/80 via-background to-background/60 backdrop-blur-sm shadow-lg border-0 rounded-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-green-500" />
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Target className="w-5 h-5 text-emerald-500" />
             {t[lang].title}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12 text-muted-foreground">
-            <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            {t[lang].noData}
+          <div className="text-center py-16 text-muted-foreground">
+            <Target className="w-16 h-16 mx-auto mb-4 opacity-30" />
+            <p className="text-lg font-medium">{t[lang].noData}</p>
           </div>
         </CardContent>
       </Card>
@@ -245,83 +321,105 @@ export function BestROI({ lang, filters }: BestROIProps) {
   }
 
   return (
-    <Card className="animate-fade-in shadow-lg border-0 bg-gradient-to-br from-background to-muted/20 hover:shadow-xl transition-all duration-300">
+    <Card className="animate-fade-in bg-gradient-to-br from-background/80 via-background to-background/60 backdrop-blur-sm shadow-lg border-0 rounded-xl hover:shadow-xl transition-all duration-300 motion-reduce:hover:shadow-lg">
       <CardHeader className="space-y-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-green-500" />
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Target className="w-5 h-5 text-emerald-500" />
             {t[lang].title}
           </CardTitle>
-          
-          {/* Best ROI badge */}
-          {bestROI && (
-            <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-200">
-              🎯 {t[lang].roi}: {bestROI.roi}
-            </Badge>
-          )}
         </div>
         <p className="text-sm text-muted-foreground">{t[lang].description}</p>
+        
+        {/* Legend */}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleType('Habit')}
+            className={`h-auto px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+              visibleTypes.has('Habit')
+                ? 'bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 border border-cyan-200 shadow-sm dark:from-cyan-950/30 dark:to-teal-950/30 dark:text-cyan-300'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <div className="w-2 h-2 rounded-full bg-cyan-400 mr-2" />
+            {t[lang].habit}
+          </Button>
+          <Button
+            variant="ghost" 
+            size="sm"
+            onClick={() => toggleType('KPI')}
+            className={`h-auto px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+              visibleTypes.has('KPI')
+                ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-sm dark:from-blue-950/30 dark:to-indigo-950/30 dark:text-blue-300'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <div className="w-2 h-2 rounded-full bg-blue-400 mr-2" />
+            {t[lang].kpi}
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent>
-        <ChartContainer config={{}} className="h-64">
+        <ChartContainer config={{}} className="h-96">
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart
-              data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+              data={filteredData}
+              margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
             >
+              <CartesianGrid 
+                stroke="hsl(var(--border))" 
+                strokeDasharray="2 2" 
+                opacity={0.3}
+              />
               <XAxis 
                 type="number" 
                 dataKey="x"
-                name={t[lang].failRate}
-                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                 label={{ 
                   value: t[lang].failRate, 
                   position: 'insideBottom', 
                   offset: -10,
-                  style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
+                  style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))', fontSize: '12px', fontWeight: 500 }
                 }}
               />
               <YAxis 
                 type="number" 
                 dataKey="y"
-                name={t[lang].penaltyImpact}
-                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                tickFormatter={(value) => formatCurrency(value)}
                 label={{ 
                   value: t[lang].penaltyImpact, 
                   angle: -90, 
                   position: 'insideLeft',
-                  style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
+                  style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))', fontSize: '12px', fontWeight: 500 }
                 }}
               />
-              <ZAxis type="number" dataKey="z" range={[50, 300]} />
+              <ZAxis type="number" dataKey="z" range={[64, 1024]} />
               <Tooltip content={<CustomTooltip />} />
-              <Scatter 
-                name="Challenges"
-                data={chartData}
-                className="cursor-pointer hover:opacity-80 transition-opacity duration-200"
-              />
+              <Scatter name="Challenges" data={filteredData}>
+                {filteredData.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.type === 'Habit' ? 'hsl(188, 85%, 65%)' : 'hsl(217, 85%, 65%)'} 
+                    className="cursor-pointer hover:brightness-110 transition-all duration-200 motion-reduce:hover:brightness-100" 
+                    style={{ 
+                      filter: 'drop-shadow(0 2px 8px hsla(var(--primary), 0.15))',
+                      transformOrigin: 'center'
+                    }}
+                    onClick={() => handleBubbleClick(entry)}
+                  />
+                ))}
+              </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
         </ChartContainer>
-
-        {/* ROI Legend */}
-        <div className="mt-4 pt-4 border-t border-border/50">
-          <div className="flex items-center justify-center gap-6 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-muted-foreground">{t[lang].excellent} ROI (2.0+)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-amber-500" />
-              <span className="text-muted-foreground">{t[lang].good} ROI (1.0-2.0)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <span className="text-muted-foreground">{t[lang].poor} ROI (&lt;1.0)</span>
-            </div>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
