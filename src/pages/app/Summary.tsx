@@ -25,7 +25,7 @@ import { FailsTrendPremium } from "@/components/summary/FailsTrendPremium";
 import { GlobalBar } from "@/components/summary/GlobalBar";
 import { KPIStrip } from "@/components/summary/KPIStrip";
 import { ChallengeCard } from "@/components/summary/ChallengeCard";
-import { CumulativePenaltyTrendChart } from "@/components/challenges/CumulativePenaltyTrendChart";
+import { CumulativeFailsTrend } from "@/components/summary/CumulativeFailsTrend";
 
 const Summary = () => {
   const { start, end } = useDateRange();
@@ -525,15 +525,10 @@ const totalChallenges = processedChallenges.length;
               />
             </div>
             
-            {/* Cumulative Penalty Trend Chart for all challenges */}
-            {filteredData && filteredData.challenges.length > 0 && (
-              <div className="w-full">
-                <CumulativePenaltyTrendChart 
-                  challengeId="all"
-                  participants={filterOptions?.participants.map(p => ({ user_id: p.user_id, name: p.display_name, custom_color: p.custom_color })) || []}
-                />
-              </div>
-            )}
+            {/* Cumulative Fails Trend Chart for all challenges */}
+            <div className="w-full">
+              <CumulativeFailsTrend lang={lang} />
+            </div>
           </div>
         </div>
 
