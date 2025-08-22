@@ -11,8 +11,12 @@ interface TimelineSliderProps {
 
 export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: TimelineSliderProps) {
   const [isDragging, setIsDragging] = useState<'start' | 'end' | null>(null);
+  const [tempRange, setTempRange] = useState<[number, number] | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const locale = lang === 'de' ? de : enUS;
+
+  // Use temp range while dragging, actual range otherwise
+  const displayRange = tempRange || selectedRange;
 
   const getPositionFromEvent = useCallback((event: MouseEvent | TouchEvent) => {
     if (!sliderRef.current) return 0;
@@ -30,7 +34,8 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
   const handleMouseDown = useCallback((type: 'start' | 'end') => (event: React.MouseEvent) => {
     event.preventDefault();
     setIsDragging(type);
-  }, []);
+    setTempRange(selectedRange);
+  }, [selectedRange]);
 
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!isDragging) return;
@@ -38,16 +43,24 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
     const position = getPositionFromEvent(event);
     const weekIndex = getWeekFromPosition(position);
     
-    if (isDragging === 'start') {
-      onRangeChange([weekIndex, Math.max(weekIndex, selectedRange[1])]);
-    } else {
-      onRangeChange([Math.min(selectedRange[0], weekIndex), weekIndex]);
-    }
-  }, [isDragging, getPositionFromEvent, getWeekFromPosition, onRangeChange, selectedRange]);
+    setTempRange(prev => {
+      if (!prev) return selectedRange;
+      
+      if (isDragging === 'start') {
+        return [weekIndex, Math.max(weekIndex, prev[1])];
+      } else {
+        return [Math.min(prev[0], weekIndex), weekIndex];
+      }
+    });
+  }, [isDragging, getPositionFromEvent, getWeekFromPosition, selectedRange]);
 
   const handleMouseUp = useCallback(() => {
+    if (tempRange) {
+      onRangeChange(tempRange);
+    }
     setIsDragging(null);
-  }, []);
+    setTempRange(null);
+  }, [tempRange, onRangeChange]);
 
   useEffect(() => {
     if (isDragging) {
@@ -65,8 +78,8 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  const startPosition = (selectedRange[0] / (weeks.length - 1)) * 100;
-  const endPosition = (selectedRange[1] / (weeks.length - 1)) * 100;
+  const startPosition = (displayRange[0] / (weeks.length - 1)) * 100;
+  const endPosition = (displayRange[1] / (weeks.length - 1)) * 100;
   const trackWidth = endPosition - startPosition;
 
   const formatWeekLabel = (weekIndex: number) => {
@@ -79,8 +92,8 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
   return (
     <div className="space-y-4">
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{formatWeekLabel(selectedRange[0])}</span>
-        <span>{formatWeekLabel(selectedRange[1])}</span>
+        <span>{formatWeekLabel(displayRange[0])}</span>
+        <span>{formatWeekLabel(displayRange[1])}</span>
       </div>
       
       <div
