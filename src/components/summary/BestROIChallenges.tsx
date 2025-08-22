@@ -23,7 +23,7 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
   const t = {
     de: {
       title: "Beste ROI Challenges",
-      description: "Fail-Rate vs. Strafauswirkung (Bubble-Größe = Teilnehmer)",
+      description: "Fail-Rate vs. Strafauswirkung (Bubble-Größe = Geldmenge)",
       failRate: "Fail-Rate (%)",
       penaltyImpact: "Strafauswirkung (€)",
       participants: "Teilnehmer",
@@ -33,7 +33,7 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
     },
     en: {
       title: "Best ROI Challenges", 
-      description: "Fail-Rate vs. Penalty Impact (Bubble size = Participants)",
+      description: "Fail-Rate vs. Penalty Impact (Bubble size = Money amount)",
       failRate: "Fail Rate (%)",
       penaltyImpact: "Penalty Impact (€)",
       participants: "Participants",
@@ -64,7 +64,7 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
             fullName: challenge.title,
             x: failRate, // Fail rate as X axis
             y: penaltyImpact, // Penalty impact as Y axis
-            z: participantCount, // Participant count as bubble size
+            z: totalPenalties, // Total penalties as bubble size
             participants: participantCount,
             violations: violationCount,
             totalPenalties,
@@ -74,7 +74,7 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
       });
     });
 
-    return challengeStats.sort((a, b) => b.z - a.z); // Sort by participant count
+    return challengeStats.sort((a, b) => b.z - a.z); // Sort by total penalties
   }, [data]);
 
   const chartConfig = {
@@ -189,7 +189,7 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
                     key={`cell-${index}`} 
                     fill={getColor(entry.type, index)}
                     opacity={0.7}
-                    r={Math.max(4, Math.min(20, entry.z * 3))} // Scale bubble size based on participants
+                    r={Math.max(4, Math.min(25, Math.sqrt(entry.z) * 2))} // Scale bubble size based on money amount
                   />
                 ))}
               </Scatter>
