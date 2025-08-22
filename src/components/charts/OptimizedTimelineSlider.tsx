@@ -1,18 +1,22 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { format, getWeek } from "date-fns";
 import { de, enUS } from "date-fns/locale";
 
-interface TimelineSliderProps {
+interface OptimizedTimelineSliderProps {
   weeks: Date[];
   selectedRange: [number, number];
   onRangeChange: (range: [number, number]) => void;
   lang: 'de' | 'en';
 }
 
-export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: TimelineSliderProps) {
+export function OptimizedTimelineSlider({ weeks, selectedRange, onRangeChange, lang }: OptimizedTimelineSliderProps) {
   const [isDragging, setIsDragging] = useState<'start' | 'end' | null>(null);
+  const [tempRange, setTempRange] = useState<[number, number] | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const locale = lang === 'de' ? de : enUS;
+
+  // Use temp range while dragging, actual range when not
+  const displayRange = tempRange || selectedRange;
 
   const getPositionFromEvent = useCallback((event: MouseEvent | TouchEvent) => {
     if (!sliderRef.current) return 0;
@@ -30,31 +34,33 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
   const handleMouseDown = useCallback((type: 'start' | 'end') => (event: React.MouseEvent) => {
     event.preventDefault();
     setIsDragging(type);
-  }, []);
+    setTempRange(selectedRange);
+  }, [selectedRange]);
 
   const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!isDragging) return;
+    if (!isDragging || !tempRange) return;
     
     const position = getPositionFromEvent(event);
     const weekIndex = getWeekFromPosition(position);
     
-    // Throttle updates while dragging to prevent flickering
+    let newRange: [number, number];
+    
     if (isDragging === 'start') {
-      const newRange: [number, number] = [weekIndex, Math.max(weekIndex, selectedRange[1])];
-      if (newRange[0] !== selectedRange[0] || newRange[1] !== selectedRange[1]) {
-        onRangeChange(newRange);
-      }
+      newRange = [weekIndex, Math.max(weekIndex, tempRange[1])];
     } else {
-      const newRange: [number, number] = [Math.min(selectedRange[0], weekIndex), weekIndex];
-      if (newRange[0] !== selectedRange[0] || newRange[1] !== selectedRange[1]) {
-        onRangeChange(newRange);
-      }
+      newRange = [Math.min(tempRange[0], weekIndex), weekIndex];
     }
-  }, [isDragging, getPositionFromEvent, getWeekFromPosition, onRangeChange, selectedRange]);
+    
+    setTempRange(newRange);
+  }, [isDragging, getPositionFromEvent, getWeekFromPosition, tempRange]);
 
   const handleMouseUp = useCallback(() => {
+    if (tempRange) {
+      onRangeChange(tempRange);
+      setTempRange(null);
+    }
     setIsDragging(null);
-  }, []);
+  }, [tempRange, onRangeChange]);
 
   useEffect(() => {
     if (isDragging) {
@@ -72,27 +78,33 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  const startPosition = (selectedRange[0] / (weeks.length - 1)) * 100;
-  const endPosition = (selectedRange[1] / (weeks.length - 1)) * 100;
-  const trackWidth = endPosition - startPosition;
+  const { startPosition, endPosition, trackWidth } = useMemo(() => {
+    const start = (displayRange[0] / (weeks.length - 1)) * 100;
+    const end = (displayRange[1] / (weeks.length - 1)) * 100;
+    return {
+      startPosition: start,
+      endPosition: end,
+      trackWidth: end - start
+    };
+  }, [displayRange, weeks.length]);
 
-  const formatWeekLabel = (weekIndex: number) => {
+  const formatWeekLabel = useCallback((weekIndex: number) => {
     if (weekIndex >= weeks.length) return '';
     const week = weeks[weekIndex];
     const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4 });
     return `${lang === 'de' ? 'KW' : 'Week'} ${weekNumber}`;
-  };
+  }, [weeks, lang]);
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{formatWeekLabel(selectedRange[0])}</span>
-        <span>{formatWeekLabel(selectedRange[1])}</span>
+        <span>{formatWeekLabel(displayRange[0])}</span>
+        <span>{formatWeekLabel(displayRange[1])}</span>
       </div>
       
       <div
         ref={sliderRef}
-        className="timeline-slider group"
+        className="timeline-slider group relative cursor-pointer"
         style={{ height: '12px' }}
       >
         {/* Track Background */}
@@ -100,7 +112,7 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
         
         {/* Active Track */}
         <div
-          className="timeline-track"
+          className="timeline-track absolute top-0 h-full bg-primary rounded-full transition-all duration-75"
           style={{
             left: `${startPosition}%`,
             width: `${trackWidth}%`,
@@ -109,7 +121,9 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
         
         {/* Start Thumb */}
         <div
-          className="timeline-thumb"
+          className={`timeline-thumb absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background shadow-md cursor-grab transition-all duration-75 hover:scale-110 ${
+            isDragging === 'start' ? 'scale-125 cursor-grabbing' : ''
+          }`}
           style={{ left: `${startPosition}%` }}
           onMouseDown={handleMouseDown('start')}
           onTouchStart={handleMouseDown('start') as any}
@@ -117,7 +131,9 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
         
         {/* End Thumb */}
         <div
-          className="timeline-thumb"
+          className={`timeline-thumb absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background shadow-md cursor-grab transition-all duration-75 hover:scale-110 ${
+            isDragging === 'end' ? 'scale-125 cursor-grabbing' : ''
+          }`}
           style={{ left: `${endPosition}%` }}
           onMouseDown={handleMouseDown('end')}
           onTouchStart={handleMouseDown('end') as any}
