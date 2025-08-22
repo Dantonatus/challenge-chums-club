@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer } from "@/components/ui/chart";
+import { Badge } from "@/components/ui/badge";
 import { formatEUR } from "@/lib/currency";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp, Award } from "lucide-react";
 
 interface ToughestVsEasiestChallengesProps {
   data: Array<{
@@ -69,15 +69,12 @@ export const ToughestVsEasiestChallenges = ({ data, lang }: ToughestVsEasiestCha
 
     return Array.from(challengeStats.values())
       .sort((a, b) => b.failRate - a.failRate)
-      .slice(0, 8); // Top 8 for better readability
+       .slice(0, 8); // Top 8 for better readability
   }, [data]);
 
-  const chartConfig = {
-    failRate: {
-      label: t[lang].failRate,
-      color: "hsl(var(--chart-1))",
-    },
-  };
+  const maxFailRate = useMemo(() => {
+    return Math.max(...chartData.map(d => d.failRate), 0);
+  }, [chartData]);
 
   if (chartData.length === 0) {
     return (
@@ -100,75 +97,161 @@ export const ToughestVsEasiestChallenges = ({ data, lang }: ToughestVsEasiestCha
 
   return (
     <Card className="shadow-sm border-0 bg-gradient-to-br from-background to-muted/20 hover:shadow-lg transition-all duration-300 hover-scale">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <TrendingDown className="h-5 w-5 text-chart-1" />
-          <CardTitle className="text-lg">{t[lang].title}</CardTitle>
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingDown className="h-5 w-5 text-chart-1" />
+            <CardTitle className="text-lg">{t[lang].title}</CardTitle>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20">
+              <Award className="h-3 w-3 mr-1" />
+              Top {chartData.length}
+            </Badge>
+          </div>
         </div>
         <CardDescription>{t[lang].description}</CardDescription>
+        
+        {/* Legend */}
+        <div className="flex items-center gap-4 mt-3">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-orange-500 to-red-500" />
+            <span className="text-xs text-muted-foreground">{t[lang].failRate}</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <TrendingDown className="h-3 w-3" />
+            <span>Schwierigste → Leichteste</span>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-72">
+      <CardContent className="pt-0">
+        <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart 
               data={chartData} 
-              margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
+              margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
               barCategoryGap="20%"
             >
               <defs>
+                {/* Orange to Red Gradient */}
                 <linearGradient id="failRateGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
+                  <stop offset="0%" stopColor="#F97316" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#EF4444" stopOpacity={0.6} />
                 </linearGradient>
+
+                {/* Glow Filter */}
+                <filter id="failRateGlow">
+                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+
+              <CartesianGrid 
+                strokeDasharray="3 3" 
+                stroke="hsl(var(--muted-foreground))" 
+                strokeOpacity={0.2} 
+              />
+              
               <XAxis 
                 dataKey="name" 
-                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ 
+                  fontSize: 11, 
+                  fill: 'hsl(var(--muted-foreground))',
+                  fontWeight: 500
+                }}
                 angle={-30}
                 textAnchor="end"
-                height={60}
+                height={80}
                 interval={0}
+                axisLine={false}
+                tickLine={false}
               />
+              
               <YAxis 
-                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                domain={[0, 'dataMax + 10']}
+                tick={{ 
+                  fontSize: 11, 
+                  fill: 'hsl(var(--muted-foreground))',
+                  fontWeight: 500
+                }}
+                domain={[0, maxFailRate + Math.ceil(maxFailRate * 0.1)]}
+                axisLine={false}
+                tickLine={false}
+                label={{ 
+                  value: t[lang].failRate, 
+                  angle: -90, 
+                  position: 'insideLeft',
+                  style: { textAnchor: 'middle', fontSize: '11px', fill: 'hsl(var(--muted-foreground))' }
+                }}
               />
+              
               <Tooltip 
                 content={({ active, payload, label }) => {
                   if (!active || !payload || !payload.length) return null;
                   
                   const data = payload[0].payload;
                   return (
-                    <div className="bg-background/95 backdrop-blur border rounded-lg p-3 shadow-lg animate-scale-in">
-                      <p className="font-medium text-foreground mb-2">{data.fullName}</p>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-2">
-                          <TrendingDown className="h-3 w-3 text-chart-1" />
-                          <span>{t[lang].failRate}: <strong>{data.failRate}%</strong></span>
+                    <div className="bg-background/95 backdrop-blur border rounded-xl p-4 shadow-xl animate-scale-in border-primary/20">
+                      <p className="font-medium text-foreground mb-3 text-sm">{data.fullName}</p>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            <TrendingDown className="h-3 w-3 text-orange-500" />
+                            <span className="text-muted-foreground">{t[lang].failRate}</span>
+                          </div>
+                          <span className="font-semibold text-orange-600">{data.failRate}%</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">👥</span>
-                          <span>{t[lang].participants}: <strong>{data.participants}</strong></span>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">👥</span>
+                            <span className="text-muted-foreground">{t[lang].participants}</span>
+                          </div>
+                          <span className="font-semibold">{data.participants}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">💶</span>
-                          <span>{t[lang].penalties}: <strong>{formatEUR(data.totalPenalties * 100)}</strong></span>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">⚡</span>
+                            <span className="text-muted-foreground">Verstöße</span>
+                          </div>
+                          <span className="font-semibold">{data.violations}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">💶</span>
+                            <span className="text-muted-foreground">{t[lang].penalties}</span>
+                          </div>
+                          <span className="font-semibold">{formatEUR(data.totalPenalties * 100)}</span>
                         </div>
                       </div>
                     </div>
                   );
                 }}
+                cursor={{ fill: 'transparent' }}
               />
+              
               <Bar 
                 dataKey="failRate" 
                 fill="url(#failRateGradient)"
-                radius={[4, 4, 0, 0]}
-                className="hover:opacity-80 transition-opacity duration-200"
+                radius={[6, 6, 0, 0]}
+                className="transition-all duration-300 hover:brightness-110"
+                onMouseEnter={(e) => {
+                  if (e.target) {
+                    e.target.style.filter = 'url(#failRateGlow)';
+                    e.target.style.transform = 'scaleX(1.05)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (e.target) {
+                    e.target.style.filter = 'none';
+                    e.target.style.transform = 'scaleX(1)';
+                  }
+                }}
               />
             </BarChart>
           </ResponsiveContainer>
-        </ChartContainer>
+        </div>
       </CardContent>
     </Card>
   );
