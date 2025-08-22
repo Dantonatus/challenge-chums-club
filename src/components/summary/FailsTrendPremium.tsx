@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { useDateRange } from "@/contexts/DateRangeContext";
 import { format, startOfWeek, endOfWeek, eachWeekOfInterval, getWeek, isWithinInterval } from "date-fns";
 import { de, enUS } from "date-fns/locale";
@@ -262,7 +262,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
   // Initialize timeline range and visible participants
   useMemo(() => {
     if (trendData) {
-      if (timelineRange[1] === 0) {
+      if (timelineRange[1] === 0 && trendData.weeks.length > 0) {
         setTimelineRange([0, trendData.weeks.length - 1]);
       }
       if (visibleParticipants.size === 0) {
@@ -478,11 +478,11 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       </CardHeader>
 
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[500px]">
-          <ResponsiveContainer width="100%" height={500}>
+        <ChartContainer config={chartConfig} className="h-[420px]">
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart 
               data={filteredData} 
-              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+              margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
               onMouseLeave={() => setHoveredLine(null)}
             >
               <defs>
@@ -529,18 +529,6 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
                   style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
                 }}
               />
-
-              {/* Milestone Reference Lines */}
-              {showReferences && milestoneThresholds.map((milestone, index) => (
-                <ReferenceLine
-                  key={index}
-                  y={milestone.value}
-                  stroke={milestone.color}
-                  strokeDasharray="5 5"
-                  strokeWidth={2}
-                  opacity={0.6}
-                />
-              ))}
 
               <EnhancedTooltip lang={lang} />
 

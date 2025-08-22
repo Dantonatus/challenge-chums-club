@@ -38,7 +38,14 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
     );
   }, [start, end]);
   
-  const [weekRange, setWeekRange] = useState<[number, number]>([0, Math.max(0, weeks.length - 1)]);
+  const [weekRange, setWeekRange] = useState<[number, number]>([0, 0]);
+  
+  // Update week range when weeks change
+  useMemo(() => {
+    if (weeks.length > 0 && weekRange[1] === 0) {
+      setWeekRange([0, weeks.length - 1]);
+    }
+  }, [weeks.length, weekRange]);
 
   const { data: violations = [] } = useQuery({
     queryKey: ["challenge_violations_trend", challengeId, start?.toISOString(), end?.toISOString()],
@@ -228,10 +235,13 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
         )}
 
         {/* Chart */}
-        <div className="h-64">
+        <div className="h-[420px]">
           {chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="w-full h-full">
-              <Recharts.LineChart data={chartData}>
+              <Recharts.LineChart 
+                data={chartData}
+                margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
+              >
                 <Recharts.CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <Recharts.XAxis 
                   dataKey="week" 
