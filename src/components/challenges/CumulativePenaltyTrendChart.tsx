@@ -194,25 +194,31 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
               return (
                 <Button
                   key={participant.user_id}
-                  variant={isSelected ? "default" : "outline"}
+                  variant="outline"
                   size="sm"
                   onClick={() => toggleParticipant(participant.user_id)}
-                  className="flex items-center gap-2 text-xs"
-                  style={isSelected ? {
-                    backgroundColor: colorMap[participant.user_id],
-                    borderColor: colorMap[participant.user_id],
-                    color: 'white'
-                  } : {}}
+                  className="flex items-center gap-2 text-xs border-2 transition-all duration-200"
+                  style={{
+                    borderColor: isSelected ? colorMap[participant.user_id] : 'hsl(var(--border))',
+                    backgroundColor: isSelected ? `${colorMap[participant.user_id]}15` : 'transparent',
+                    color: isSelected ? colorMap[participant.user_id] : 'hsl(var(--muted-foreground))'
+                  }}
                 >
                   <div 
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: colorMap[participant.user_id] }}
+                    className="w-2 h-2 rounded-full transition-all duration-200"
+                    style={{ 
+                      backgroundColor: colorMap[participant.user_id],
+                      opacity: isSelected ? 1 : 0.3
+                    }}
                   />
                   {participant.name}
                   <Badge 
-                    variant="secondary" 
-                    className="ml-1 text-xs"
-                    style={isSelected ? { backgroundColor: 'rgba(255,255,255,0.2)', color: 'white' } : {}}
+                    variant="outline" 
+                    className="ml-1 text-xs border-0"
+                    style={{
+                      backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : 'transparent',
+                      color: isSelected ? colorMap[participant.user_id] : 'hsl(var(--muted-foreground))'
+                    }}
                   >
                     {count}
                   </Badge>
