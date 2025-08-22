@@ -711,6 +711,24 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      get_popular_challenges_by_duration: {
+        Args: {
+          p_end_date: string
+          p_group_ids: string[]
+          p_start_date: string
+        }
+        Returns: {
+          duration_days: number
+          fail_rate_pct: number
+          id: string
+          is_trending: boolean
+          participant_count: number
+          participants: Json
+          start_date: string
+          title: string
+          total_fails: number
+        }[]
+      }
       get_server_time: {
         Args: Record<PropertyKey, never>
         Returns: string
