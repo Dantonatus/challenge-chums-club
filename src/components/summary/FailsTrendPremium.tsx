@@ -264,7 +264,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       setTimelineRange([0, trendData.weeks.length - 1]);
       
       if (visibleParticipants.size === 0) {
-        setVisibleParticipants(new Set(trendData.participants.map(p => p.name)));
+        setVisibleParticipants(new Set(trendData.participants.map(p => p.userId)));
       }
     }
   }, [trendData?.weeks.length]);
@@ -348,7 +348,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
   const milestoneThresholds = useMemo(() => {
     if (!trendData) return [];
     const maxFails = Math.max(...trendData.data.flatMap(week => 
-      trendData.participants.map(p => week[p.name] as number || 0)
+      trendData.participants.map(p => week[`user_${p.userId}`] as number || 0)
     ));
     
     return [
@@ -357,6 +357,15 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       { value: Math.ceil(maxFails * 0.8), label: t[lang].highRisk, color: '#EF4444' }
     ];
   }, [trendData, lang, t]);
+
+  // Create label map for tooltips
+  const labelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    trendData?.participants.forEach(p => {
+      map[`user_${p.userId}`] = p.name;
+    });
+    return map;
+  }, [trendData?.participants]);
 
   if (isLoading) {
     return (
@@ -514,13 +523,9 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
           className="text-xs text-muted-foreground"
         />
         <Tooltip
-          formatter={(value, key) => {
-            // Convert user_<id> key back to participant name
-            const participant = trendData?.participants.find(p => `user_${p.userId}` === key);
-            const participantName = participant?.name || 'Unknown';
-            return [`${value} Fails`, participantName];
-          }}
-          labelFormatter={(label) => label}
+          formatter={(value: any, key: string) => [`${value} Fails`, labelMap[key] ?? key]}
+          labelFormatter={(label: string) => label}
+          filterNull
           contentStyle={{ 
             borderRadius: 12, 
             boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
@@ -529,7 +534,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
           }}
         />
         
-        {/* Reference Lines */}
+        {/* Reference Lines - use ReferenceLine component to avoid tooltip issues */}
         {showReferences && milestoneThresholds.map((milestone, index) => (
           <Line
             key={`reference-${index}`}
@@ -546,7 +551,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
         {/* Participant Lines */}
         {trendData?.participants.map((participant) => {
           const userKey = `user_${participant.userId}`;
-          if (!visibleParticipants.has(participant.name)) return null;
+          if (!visibleParticipants.has(participant.userId)) return null;
           
           const isHovered = hoveredLine === participant.name;
           

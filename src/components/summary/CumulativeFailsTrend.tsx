@@ -174,7 +174,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
     return filteredWeeks.map(week => {
       const row: TrendRow = {
         weekIdx: week.weekIdx,
-        weekLabel: week.weekLabel
+        weekLabel: `KW ${week.weekIdx}`
       };
 
       // Calculate cumulative fails for each participant up to this week
@@ -202,6 +202,15 @@ export function CumulativeFailsTrend({ lang }: Props) {
         color: colorMap[participant.user_id]
       }));
   }, [participants, selectedParticipants, colorMap]);
+
+  // Create label map for tooltips
+  const labelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    participants.forEach(p => {
+      map[`user_${p.user_id}`] = p.display_name;
+    });
+    return map;
+  }, [participants]);
 
   // Calculate totals
   const totalFails = violations.length;
@@ -349,17 +358,14 @@ export function CumulativeFailsTrend({ lang }: Props) {
             <Recharts.YAxis 
               tickMargin={6}
               allowDecimals={false}
-              domain={[0, (dataMax: number) => Math.max(1, dataMax + 2)]}
+              domain={[0, (dataMax: number) => Math.max(1, dataMax)]}
               width={40}
               className="text-xs text-muted-foreground"
             />
             <Recharts.Tooltip 
-              formatter={(value, key) => {
-                const participant = participants.find(p => `user_${p.user_id}` === key);
-                const participantName = participant?.display_name || 'Unknown';
-                return [`${value} Fails`, participantName];
-              }}
-              labelFormatter={(label) => label}
+              formatter={(value: any, key: string) => [`${value} Fails`, labelMap[key] ?? key]}
+              labelFormatter={(label: string) => label}
+              filterNull
               contentStyle={{ 
                 borderRadius: 12, 
                 boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
