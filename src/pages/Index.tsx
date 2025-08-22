@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
+import { GradientButton } from "@/components/ui/GradientButton";
 import { Button } from "@/components/ui/button";
 import { StickFightAnimation } from "@/components/landing/StickFightAnimation";
 import { StorytellingSection } from "@/components/landing/StorytellingSection";
@@ -232,12 +233,12 @@ const NewIndex = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        <Button 
+                        <GradientButton 
                           size="lg" 
-                          className="text-lg px-8 py-6 bg-gradient-to-r from-primary to-accent hover:shadow-xl transition-all duration-300"
+                          className="text-lg px-8 py-6"
                         >
                           Start your first Challenge
-                        </Button>
+                        </GradientButton>
                       </motion.div>
                     </Link>
 

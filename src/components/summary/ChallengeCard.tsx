@@ -4,7 +4,7 @@ import { de, enUS } from "date-fns/locale";
 import { Calendar, Users, Euro, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { GradientButton } from "@/components/ui/GradientButton";
 import { formatEUR } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 
@@ -142,26 +142,19 @@ export function ChallengeCard({ challenge, index, lang }: ChallengeCardProps) {
         </div>
 
         {/* CTA Button */}
-        <Button 
+        <GradientButton 
           asChild 
-          className={cn(
-            "w-full mt-4 group/btn relative overflow-hidden",
-            "bg-gradient-to-r from-primary to-primary/90",
-            "hover:from-primary/90 hover:to-primary",
-            "transition-all duration-300 ease-out",
-            "hover:shadow-lg hover:shadow-primary/25",
-            "hover:scale-[1.02] motion-reduce:hover:scale-100",
-            "focus:ring-2 focus:ring-primary/20"
-          )}
+          size="lg"
+          className="w-full mt-4 group/btn relative overflow-hidden"
         >
           <Link to={`/challenges/${challenge.id}`} className="flex items-center justify-center gap-2">
-            <span className="font-medium">{t[lang].viewDetails}</span>
+            <span className="font-semibold">{t[lang].viewDetails}</span>
             <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
             
             {/* Button glow effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300" />
           </Link>
-        </Button>
+        </GradientButton>
       </CardContent>
     </Card>
   );
