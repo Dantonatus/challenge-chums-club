@@ -452,7 +452,7 @@ export const PremiumFailsTrendChart = ({ lang }: PremiumFailsTrendChartProps) =>
                 return (
                   <Line
                     key={participant.name}
-                    type="monotone"
+                    type="linear"
                     dataKey={participant.name}
                     stroke={participant.color}
                     strokeWidth={isHovered ? 4 : 3}

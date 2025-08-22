@@ -552,7 +552,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
                 return (
                   <Line
                     key={participant.name}
-                    type="monotone"
+                    type="linear"
                     dataKey={participant.name}
                     stroke={participant.color}
                     strokeWidth={isHovered ? 4 : 2.5}
@@ -583,7 +583,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
               {/* Difference line for comparison */}
               {compareMode && compareParticipants[0] && compareParticipants[1] && (
                 <Line
-                  type="monotone"
+                  type="linear"
                   dataKey={`${t[lang].difference} (${compareParticipants[0]} - ${compareParticipants[1]})`}
                   stroke="#6B7280"
                   strokeWidth={3}

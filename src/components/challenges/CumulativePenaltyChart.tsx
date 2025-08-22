@@ -72,7 +72,7 @@ export default function CumulativePenaltyChart({ challengeId, participants }: Pr
         <Recharts.YAxis />
         <ChartTooltip content={<ChartTooltipContent />} />
         {participants.map((p) => (
-          <Recharts.Line key={p.user_id} type="monotone" dataKey={p.name} stroke={colorMap[p.user_id]} dot={false} strokeWidth={2} />
+          <Recharts.Line key={p.user_id} type="linear" dataKey={p.name} stroke={colorMap[p.user_id]} dot={false} strokeWidth={2} />
         ))}
       </Recharts.LineChart>
     </ChartContainer>
