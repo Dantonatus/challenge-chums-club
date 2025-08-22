@@ -61,6 +61,28 @@ All colors MUST be HSL. */
     --shadow-elegant: 0 12px 30px -12px hsl(var(--primary) / 0.35);
     --shadow-glow: 0 0 40px hsl(var(--accent) / 0.35);
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Premium Chart Colors - Elegant Pastels */
+    --chart-pastel-1: 220 70% 75%; /* Soft periwinkle */
+    --chart-pastel-2: 340 65% 75%; /* Warm pink */
+    --chart-pastel-3: 160 55% 70%; /* Sage green */
+    --chart-pastel-4: 45 80% 75%;  /* Gentle amber */
+    --chart-pastel-5: 270 60% 75%; /* Lavender */
+    --chart-pastel-6: 190 60% 70%; /* Soft teal */
+    --chart-pastel-7: 20 70% 75%;  /* Peach coral */
+    --chart-pastel-8: 120 45% 70%; /* Mint green */
+    --chart-pastel-9: 280 50% 75%; /* Soft violet */
+    --chart-pastel-10: 200 65% 75%; /* Sky blue */
+
+    /* Chart Milestone Colors */
+    --milestone-warning: 35 85% 70%;   /* Soft orange */
+    --milestone-danger: 0 75% 75%;     /* Soft red */
+    --milestone-success: 140 50% 70%;  /* Soft green */
+
+    /* Interactive Chart Effects */
+    --chart-hover-glow: 0 0 20px;
+    --chart-grid: 220 15% 85%;
+    --chart-axis: 220 15% 60%;
   }
 
   .dark {
@@ -104,6 +126,21 @@ All colors MUST be HSL. */
     /* CTA hues tuned for dark mode */
     --cta-start: 168 60% 45%;
     --cta-end: 45 90% 55%;
+
+    /* Dark mode chart colors - deeper but still elegant */
+    --chart-pastel-1: 220 60% 65%;
+    --chart-pastel-2: 340 55% 65%;
+    --chart-pastel-3: 160 45% 60%;
+    --chart-pastel-4: 45 70% 65%;
+    --chart-pastel-5: 270 50% 65%;
+    --chart-pastel-6: 190 50% 60%;
+    --chart-pastel-7: 20 60% 65%;
+    --chart-pastel-8: 120 35% 60%;
+    --chart-pastel-9: 280 40% 65%;
+    --chart-pastel-10: 200 55% 65%;
+
+    --chart-grid: 220 15% 25%;
+    --chart-axis: 220 15% 50%;
   }
 }
 
@@ -150,4 +187,58 @@ All colors MUST be HSL. */
     to   { transform: translateY(-50%) translateX(var(--slide-x, 0px)); }
   }
   .circle-moving { animation: circle-move 0.38s ease-out forwards; }
+
+  /* Premium Chart Styles */
+  .chart-line-glow {
+    filter: drop-shadow(var(--chart-hover-glow) currentColor);
+    transition: filter 0.3s ease;
+  }
+
+  .chart-milestone {
+    @apply relative;
+  }
+
+  .chart-milestone::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  .interactive-legend-item {
+    @apply cursor-pointer transition-all duration-200 hover:scale-105;
+    filter: brightness(1);
+  }
+
+  .interactive-legend-item.disabled {
+    @apply opacity-30;
+    filter: grayscale(1) brightness(0.5);
+  }
+
+  .timeline-slider {
+    @apply relative w-full h-2 bg-muted rounded-full overflow-hidden;
+  }
+
+  .timeline-track {
+    @apply absolute top-0 left-0 h-full bg-gradient-to-r from-primary/20 to-accent/20 rounded-full;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .timeline-thumb {
+    @apply absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-primary rounded-full shadow-lg cursor-grab active:cursor-grabbing;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+  }
+
+  .timeline-thumb:hover {
+    @apply scale-110;
+    box-shadow: 0 6px 16px hsl(var(--primary) / 0.4);
+  }
+}
 }

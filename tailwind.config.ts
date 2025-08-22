@@ -61,6 +61,25 @@ export default {
           'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))'
+        },
+        chart: {
+          'pastel-1': 'hsl(var(--chart-pastel-1))',
+          'pastel-2': 'hsl(var(--chart-pastel-2))',
+          'pastel-3': 'hsl(var(--chart-pastel-3))',
+          'pastel-4': 'hsl(var(--chart-pastel-4))',
+          'pastel-5': 'hsl(var(--chart-pastel-5))',
+          'pastel-6': 'hsl(var(--chart-pastel-6))',
+          'pastel-7': 'hsl(var(--chart-pastel-7))',
+          'pastel-8': 'hsl(var(--chart-pastel-8))',
+          'pastel-9': 'hsl(var(--chart-pastel-9))',
+          'pastel-10': 'hsl(var(--chart-pastel-10))',
+          'grid': 'hsl(var(--chart-grid))',
+          'axis': 'hsl(var(--chart-axis))'
+        },
+        milestone: {
+          warning: 'hsl(var(--milestone-warning))',
+          danger: 'hsl(var(--milestone-danger))',
+          success: 'hsl(var(--milestone-success))'
         }
       },
       borderRadius: {
