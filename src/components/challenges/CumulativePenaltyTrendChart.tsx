@@ -42,10 +42,11 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
   
   // Update week range when weeks change
   useMemo(() => {
-    if (weeks.length > 0 && weekRange[1] === 0) {
+    if (weeks.length > 0) {
+      // Always reset to show all weeks
       setWeekRange([0, weeks.length - 1]);
     }
-  }, [weeks.length, weekRange]);
+  }, [weeks.length]);
 
   const { data: violations = [] } = useQuery({
     queryKey: ["challenge_violations_trend", challengeId, start?.toISOString(), end?.toISOString()],

@@ -255,15 +255,15 @@ export const PremiumFailsTrendChart = ({ lang }: PremiumFailsTrendChartProps) =>
 
   // Initialize timeline range and visible participants
   useMemo(() => {
-    if (trendData) {
-      if (timelineRange[1] === 0) {
-        setTimelineRange([0, trendData.weeks.length - 1]);
-      }
+    if (trendData && trendData.weeks.length > 0) {
+      // Always reset to show all weeks
+      setTimelineRange([0, trendData.weeks.length - 1]);
+      
       if (visibleParticipants.size === 0) {
         setVisibleParticipants(new Set(trendData.participants.map(p => p.name)));
       }
     }
-  }, [trendData, timelineRange, visibleParticipants]);
+  }, [trendData?.weeks.length]);
 
   // Filter data based on timeline selection
   const filteredData = useMemo(() => {
