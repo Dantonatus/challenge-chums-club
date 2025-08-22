@@ -22,6 +22,8 @@ import { BestROIChallenges } from "@/components/summary/BestROIChallenges";
 import { ExportButton } from "@/components/summary/ExportButton";
 import { WeeklyTimeline } from "@/components/summary/WeeklyTimeline";
 import { FailsTrendChart } from "@/components/summary/FailsTrendChart";
+import { GlobalBar } from "@/components/summary/GlobalBar";
+import { KPIStrip } from "@/components/summary/KPIStrip";
 
 const Summary = () => {
   const { start, end } = useDateRange();
@@ -29,12 +31,16 @@ const Summary = () => {
   const endStr = format(end, 'yyyy-MM-dd');
   const lang = navigator.language.startsWith('de') ? 'de' : 'en';
   const locale = lang === 'de' ? de : enUS;
+  
   // Filter state
   const [filters, setFilters] = useState({
     participants: [] as string[],
     challengeTypes: [] as string[],
     groups: [] as string[]
   });
+
+  // Global bar state
+  const [compareMode, setCompareMode] = useState(false);
 
   const t = {
     de: {
@@ -388,6 +394,33 @@ const totalChallenges = processedChallenges.length;
     clearAll: () => setFilters({ participants: [], challengeTypes: [], groups: [] })
   };
 
+  // Global bar handlers
+  const handleExport = () => {
+    // Export functionality will be triggered via GlobalBar
+  };
+
+  const handleSaveView = () => {
+    // Save view functionality
+  };
+
+  const handleKPIClick = (kpi: string) => {
+    // Scroll to relevant section or apply filter
+    switch (kpi) {
+      case 'challenges':
+        document.getElementById('challenges-section')?.scrollIntoView({ behavior: 'smooth' });
+        break;
+      case 'participants':
+        document.getElementById('participants-section')?.scrollIntoView({ behavior: 'smooth' });
+        break;
+      case 'fails':
+        document.getElementById('fails-section')?.scrollIntoView({ behavior: 'smooth' });
+        break;
+      case 'penalties':
+        document.getElementById('penalties-section')?.scrollIntoView({ behavior: 'smooth' });
+        break;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -422,190 +455,154 @@ const totalChallenges = processedChallenges.length;
   const { challenges = [], stats = { totalChallenges: 0, uniqueParticipants: 0, totalPenalties: 0 } } = filteredData || {};
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="animate-fade-in">
       <Helmet>
         <title>{t[lang].title}</title>
         <meta name="description" content={t[lang].description} />
       </Helmet>
 
-      {/* Header */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Sparkles className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold tracking-tight">{t[lang].title}</h1>
+      {/* Global Bar - Sticky Header */}
+      <GlobalBar
+        lang={lang}
+        onExport={handleExport}
+        onSaveView={handleSaveView}
+        onCompareToggle={() => setCompareMode(!compareMode)}
+        compareMode={compareMode}
+      />
+
+      {/* Main Content */}
+      <div className="px-6 space-y-6">
+        {/* Filter Bar */}
+        {filterOptions && (
+          <FilterBar
+            participants={filterOptions.participants}
+            groups={filterOptions.groups}
+            selectedParticipants={filters.participants}
+            selectedChallengeTypes={filters.challengeTypes}
+            selectedGroups={filters.groups}
+            onParticipantsChange={handleFilterChange.participants}
+            onChallengeTypesChange={handleFilterChange.challengeTypes}
+            onGroupsChange={handleFilterChange.groups}
+            onClearAll={handleFilterChange.clearAll}
+            lang={lang}
+          />
+        )}
+
+        {/* KPI Strip */}
+        {filteredData && (
+          <KPIStrip
+            data={filteredData}
+            dateRange={{ start, end }}
+            lang={lang}
+            onKPIClick={handleKPIClick}
+          />
+        )}
+
+        {/* Weekly Overview */}
+        <div className="space-y-4" id="fails-section">
+          <h2 className="text-xl font-semibold">{t[lang].weeklyOverview}</h2>
+          <div className="space-y-6">
+            <WeeklyTimeline lang={lang} />
+            <div className="w-full">
+              <FailsTrendChart lang={lang} />
+            </div>
           </div>
-          {filteredData && (
-            <ExportButton 
-              data={filteredData} 
-              filters={filters}
-              dateRange={{ start: start.toString(), end: end.toString() }}
-              lang={lang}
-            />
+        </div>
+
+        {/* Analytics Widgets */}
+        <div className="space-y-6">
+          {/* First Row - Core Rankings */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="participants-section">
+            <ParticipantRanking data={[{ challenges }]} lang={lang} />
+            <ToughestVsEasiestChallenges data={[{ challenges }]} lang={lang} />
+          </div>
+
+          {/* Second Row - Money & Popularity */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="penalties-section">
+            <BiggestMoneyBurners data={[{ challenges }]} lang={lang} />
+            <MostPopularChallenges data={[{ challenges }]} lang={lang} />
+          </div>
+
+          {/* Third Row - Advanced Analytics */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <StreakBreakers data={[{ challenges }]} lang={lang} />
+            <BestROIChallenges data={[{ challenges }]} lang={lang} />
+          </div>
+        </div>
+
+        {/* Timeline */}
+        <Timeline />
+
+        {/* Challenges List */}
+        <div className="space-y-4" id="challenges-section">
+          <h2 className="text-xl font-semibold">{t[lang].challengesList}</h2>
+          
+          {challenges.length === 0 ? (
+            <Card className="animate-scale-in">
+              <CardContent className="pt-6 text-center py-12">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="text-6xl">🎯</div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">{t[lang].emptyState}</h3>
+                    <Button asChild>
+                      <Link to="/challenges">
+                        {t[lang].createChallenge}
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {challenges.map((challenge, index) => (
+                <Card key={challenge.id} className="hover:shadow-md transition-all duration-200 hover-scale animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1 flex-1">
+                        <CardTitle className="text-lg">{challenge.title}</CardTitle>
+                        {challenge.description && (
+                          <CardDescription className="line-clamp-2">
+                            {challenge.description}
+                          </CardDescription>
+                        )}
+                      </div>
+                      <Badge variant={challenge.challenge_type === 'habit' ? 'default' : 'secondary'}>
+                        {challenge.challenge_type === 'habit' ? t[lang].habit : t[lang].kpi}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        {format(new Date(challenge.start_date), 'dd.MM.yyyy', { locale })} - {format(new Date(challenge.end_date), 'dd.MM.yyyy', { locale })}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">{t[lang].participants}</p>
+                        <p className="font-medium">{challenge.participantCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">{t[lang].penalties}</p>
+                        <p className="font-medium">{formatEUR(challenge.totalViolationAmount)}</p>
+                      </div>
+                    </div>
+
+                    <Button asChild className="w-full">
+                      <Link to={`/challenges/${challenge.id}`}>
+                        {t[lang].viewDetails}
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </div>
-        <p className="text-muted-foreground">{t[lang].description}</p>
-      </div>
-
-      {/* Filter Bar */}
-      {filterOptions && (
-        <FilterBar
-          participants={filterOptions.participants}
-          groups={filterOptions.groups}
-          selectedParticipants={filters.participants}
-          selectedChallengeTypes={filters.challengeTypes}
-          selectedGroups={filters.groups}
-          onParticipantsChange={handleFilterChange.participants}
-          onChallengeTypesChange={handleFilterChange.challengeTypes}
-          onGroupsChange={handleFilterChange.groups}
-          onClearAll={handleFilterChange.clearAll}
-          lang={lang}
-        />
-      )}
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-l-4 border-l-primary">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">{t[lang].totalChallenges}</p>
-                <p className="text-2xl font-bold">{stats.totalChallenges}</p>
-              </div>
-              <Target className="h-8 w-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-accent">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">{t[lang].totalParticipants}</p>
-                <p className="text-2xl font-bold">{stats.uniqueParticipants}</p>
-              </div>
-              <Users className="h-8 w-8 text-accent" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-destructive">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">{t[lang].totalPenalties}</p>
-                <p className="text-2xl font-bold">{formatEUR(stats.totalPenalties)}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-destructive" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Weekly Overview */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">{t[lang].weeklyOverview}</h2>
-        <div className="space-y-6">
-          <WeeklyTimeline lang={lang} />
-          <div className="w-full">
-            <FailsTrendChart lang={lang} />
-          </div>
-        </div>
-      </div>
-
-      {/* Analytics Widgets */}
-      <div className="space-y-6">
-        {/* First Row - Core Rankings */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ParticipantRanking data={[{ challenges }]} lang={lang} />
-          <ToughestVsEasiestChallenges data={[{ challenges }]} lang={lang} />
-        </div>
-
-        {/* Second Row - Money & Popularity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <BiggestMoneyBurners data={[{ challenges }]} lang={lang} />
-          <MostPopularChallenges data={[{ challenges }]} lang={lang} />
-        </div>
-
-        {/* Third Row - Advanced Analytics */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <StreakBreakers data={[{ challenges }]} lang={lang} />
-          <BestROIChallenges data={[{ challenges }]} lang={lang} />
-        </div>
-      </div>
-
-      {/* Timeline */}
-      <Timeline />
-
-      {/* Challenges List */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">{t[lang].challengesList}</h2>
-        
-        {challenges.length === 0 ? (
-          <Card className="animate-scale-in">
-            <CardContent className="pt-6 text-center py-12">
-              <div className="flex flex-col items-center gap-4">
-                <div className="text-6xl">🎯</div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">{t[lang].emptyState}</h3>
-                  <Button asChild>
-                    <Link to="/challenges">
-                      {t[lang].createChallenge}
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {challenges.map((challenge, index) => (
-              <Card key={challenge.id} className="hover:shadow-md transition-all duration-200 hover-scale animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1 flex-1">
-                      <CardTitle className="text-lg">{challenge.title}</CardTitle>
-                      {challenge.description && (
-                        <CardDescription className="line-clamp-2">
-                          {challenge.description}
-                        </CardDescription>
-                      )}
-                    </div>
-                    <Badge variant={challenge.challenge_type === 'habit' ? 'default' : 'secondary'}>
-                      {challenge.challenge_type === 'habit' ? t[lang].habit : t[lang].kpi}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      {format(new Date(challenge.start_date), 'dd.MM.yyyy', { locale })} - {format(new Date(challenge.end_date), 'dd.MM.yyyy', { locale })}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">{t[lang].participants}</p>
-                      <p className="font-medium">{challenge.participantCount}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">{t[lang].penalties}</p>
-                      <p className="font-medium">{formatEUR(challenge.totalViolationAmount)}</p>
-                    </div>
-                  </div>
-
-                  <Button asChild className="w-full">
-                    <Link to={`/challenges/${challenge.id}`}>
-                      {t[lang].viewDetails}
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
