@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useDateRange } from "@/contexts/DateRangeContext";
 import { weekRangeLabel } from "@/lib/date";
 import { Download, Save, GitCompare, HelpCircle, ChevronDown, Trash2, Star } from "lucide-react";
-import { OptimizedTimelineSlider } from "@/components/charts/OptimizedTimelineSlider";
+import { TimelineSlider } from "@/components/charts/TimelineSlider";
 import { startOfISOWeek, endOfISOWeek } from "@/lib/date";
 import { format, eachWeekOfInterval } from "date-fns";
 import { SaveViewModal } from "./SaveViewModal";
@@ -115,7 +115,7 @@ export function GlobalBar({
           end: endOfISOWeek(endWeek)
         });
       }
-    }, 150); // Reduced debounce time
+    }, 250);
     
     setDebounceTimer(timer);
   }, [debounceTimer, weeks, setRange]);
@@ -241,7 +241,7 @@ export function GlobalBar({
 
             {/* Center: Date Range Slider */}
             <div className="flex-1 max-w-md">
-              <OptimizedTimelineSlider
+              <TimelineSlider
                 weeks={weeks}
                 selectedRange={selectedRange}
                 onRangeChange={debouncedRangeChange}

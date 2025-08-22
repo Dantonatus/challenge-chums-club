@@ -38,17 +38,10 @@ export function TimelineSlider({ weeks, selectedRange, onRangeChange, lang }: Ti
     const position = getPositionFromEvent(event);
     const weekIndex = getWeekFromPosition(position);
     
-    // Throttle updates while dragging to prevent flickering
     if (isDragging === 'start') {
-      const newRange: [number, number] = [weekIndex, Math.max(weekIndex, selectedRange[1])];
-      if (newRange[0] !== selectedRange[0] || newRange[1] !== selectedRange[1]) {
-        onRangeChange(newRange);
-      }
+      onRangeChange([weekIndex, Math.max(weekIndex, selectedRange[1])]);
     } else {
-      const newRange: [number, number] = [Math.min(selectedRange[0], weekIndex), weekIndex];
-      if (newRange[0] !== selectedRange[0] || newRange[1] !== selectedRange[1]) {
-        onRangeChange(newRange);
-      }
+      onRangeChange([Math.min(selectedRange[0], weekIndex), weekIndex]);
     }
   }, [isDragging, getPositionFromEvent, getWeekFromPosition, onRangeChange, selectedRange]);
 
