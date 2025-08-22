@@ -477,12 +477,12 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
         </div>
       </CardHeader>
 
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-[420px]">
+      <CardContent className="p-0">
+        <div className="h-[420px] w-full flex">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart 
               data={filteredData} 
-              margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
+              margin={{ top: 8, right: 0, bottom: 0, left: 0 }}
               onMouseLeave={() => setHoveredLine(null)}
             >
               <defs>
@@ -516,12 +516,15 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
                 axisLine={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
                 tickLine={false}
                 dy={10}
+                padding={{ left: 0, right: 0 }}
+                tickMargin={8}
               />
               
               <YAxis 
                 tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                 axisLine={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
                 tickLine={false}
+                tickMargin={8}
                 label={{ 
                   value: t[lang].fails, 
                   angle: -90, 
@@ -588,11 +591,11 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
               )}
             </LineChart>
           </ResponsiveContainer>
-        </ChartContainer>
+        </div>
 
         {/* Milestone Legend */}
         {showReferences && (
-          <div className="mt-4 pt-4 border-t border-border/50">
+          <div className="px-6 pb-6 pt-3 border-t border-border/50">
             <h4 className="text-sm font-medium text-muted-foreground mb-2">{t[lang].milestones}</h4>
             <div className="flex flex-wrap gap-3">
               {milestoneThresholds.map((milestone, index) => (
