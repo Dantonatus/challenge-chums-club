@@ -28,6 +28,8 @@ interface ROIChallengePoint {
   penaltyImpactEUR: number;
   totalPenaltiesEUR: number;
   participants: number;
+  activeDays: number;
+  daysWithFails: number;
 }
 
 interface ROIMetrics {
@@ -40,6 +42,8 @@ interface ROIMetrics {
   totalPenalties: number;
   roi: number;
   challengeType: 'habit' | 'kpi';
+  activeDays: number;
+  daysWithFails: number;
 }
 
 export function BestROI({ lang, filters }: BestROIProps) {
@@ -51,10 +55,12 @@ export function BestROI({ lang, filters }: BestROIProps) {
     de: {
       title: "Beste ROI Challenges",
       description: "Fehlerrate vs. Strafen-Impact",
-      failRate: "Fehlerrate (%)",
+      failRate: "Fail-Rate (%) — days with ≥1 fail / active days",
       penaltyImpact: "Strafen-Impact (€)",
       participants: "Teilnehmer",
       totalPenalties: "Gesamt Strafen",
+      activeDays: "Aktive Tage",
+      failDays: "Tage mit Fails",
       noData: "Keine ROI-Daten verfügbar",
       habit: "Habit",
       kpi: "KPI"
@@ -62,10 +68,12 @@ export function BestROI({ lang, filters }: BestROIProps) {
     en: {
       title: "Best ROI Challenges",
       description: "Fail Rate vs. Penalty Impact", 
-      failRate: "Fail Rate (%)",
+      failRate: "Fail Rate (%) — days with ≥1 fail / active days",
       penaltyImpact: "Penalty Impact (€)",
       participants: "Participants",
       totalPenalties: "Total Penalties",
+      activeDays: "Active Days",
+      failDays: "Fail Days",
       noData: "No ROI data available",
       habit: "Habit",
       kpi: "KPI"
@@ -126,22 +134,31 @@ export function BestROI({ lang, filters }: BestROIProps) {
         const challengeParticipants = participants?.filter(p => p.challenge_id === challenge.id) || [];
         const challengeViolations = violations?.filter(v => v.challenge_id === challenge.id) || [];
 
-        // Calculate active days in range
+        // Calculate active days (intersection of challenge period and selected date range)
         const challengeStart = new Date(challenge.start_date);
         const challengeEnd = new Date(challenge.end_date);
         const rangeStart = new Date(Math.max(start.getTime(), challengeStart.getTime()));
         const rangeEnd = new Date(Math.min(end.getTime(), challengeEnd.getTime()));
         const activeDays = Math.max(1, differenceInDays(rangeEnd, rangeStart) + 1);
 
+        // Count distinct days with violations within the active window
+        const violationDates = new Set(
+          challengeViolations
+            .filter(v => {
+              const violationDate = new Date(v.created_at);
+              return violationDate >= rangeStart && violationDate <= rangeEnd;
+            })
+            .map(v => new Date(v.created_at).toDateString())
+        );
+        const daysWithFails = violationDates.size;
+
+        // Calculate new fail rate: days with ≥1 fail / active days * 100
+        const failRatePct = activeDays > 0 ? Math.round((daysWithFails / activeDays) * 100 * 10) / 10 : 0;
+
         // Calculate metrics
         const totalFails = challengeViolations.length;
         const participantCount = challengeParticipants.length;
         const totalPenalties = challengeViolations.reduce((sum, v) => sum + (v.amount_cents || 0), 0);
-
-        // Fail rate as percentage (normalized to weekly)
-        const possibleFails = participantCount * activeDays;
-        const rawFailRate = possibleFails > 0 ? (totalFails / possibleFails) : 0;
-        const weeklyFailRate = Math.min(100, rawFailRate * 7 * 100); // Cap at 100%
 
         // Penalty impact: average penalty per fail in EUR
         const avgPenaltyPerFail = totalFails > 0 ? totalPenalties / totalFails : challenge.penalty_cents;
@@ -150,13 +167,15 @@ export function BestROI({ lang, filters }: BestROIProps) {
         return {
           challengeId: challenge.id,
           title: challenge.title,
-          failRate: Math.round(weeklyFailRate * 10) / 10,
+          failRate: failRatePct,
           penaltyImpact: Math.round(penaltyImpactEUR * 100) / 100,
           participants: participantCount,
           totalFails,
           totalPenalties,
-          roi: Math.round((penaltyImpactEUR / Math.max(0.1, weeklyFailRate / 10)) * 100) / 100,
-          challengeType: challenge.challenge_type
+          roi: Math.round((penaltyImpactEUR / Math.max(0.1, failRatePct / 10)) * 100) / 100,
+          challengeType: challenge.challenge_type,
+          activeDays,
+          daysWithFails
         };
       }).filter(c => c.participants > 0);
 
@@ -177,7 +196,9 @@ export function BestROI({ lang, filters }: BestROIProps) {
       failRatePct: challenge.failRate,
       penaltyImpactEUR: challenge.penaltyImpact,
       totalPenaltiesEUR: challenge.totalPenalties / 100, // Convert cents to EUR
-      participants: challenge.participants
+      participants: challenge.participants,
+      activeDays: challenge.activeDays,
+      daysWithFails: challenge.daysWithFails
     }));
 
     // Log sample for debugging
@@ -254,7 +275,7 @@ export function BestROI({ lang, filters }: BestROIProps) {
       <g 
         tabIndex={0} 
         role="button" 
-        aria-label={`${payload.name}, ${payload.failRatePct}% fails, ${formatCurrency(payload.penaltyImpactEUR)} impact, ${formatCurrency(payload.totalPenaltiesEUR)} total`}
+        aria-label={`${payload.name}, ${payload.failRatePct}% fails (${payload.daysWithFails}/${payload.activeDays} days), ${formatCurrency(payload.penaltyImpactEUR)} impact, ${formatCurrency(payload.totalPenaltiesEUR)} total`}
         className="cursor-pointer focus:outline-none"
         onClick={() => handleBubbleClick(payload)}
         onKeyDown={(e) => {
@@ -315,6 +336,9 @@ export function BestROI({ lang, filters }: BestROIProps) {
               <TrendingUp className="w-4 h-4 text-amber-500" />
               <span className="text-muted-foreground">{t[lang].failRate}:</span>
               <span className="font-medium">{data.failRatePct.toFixed(1)}%</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>({data.daysWithFails} / {data.activeDays} {t[lang].activeDays})</span>
             </div>
             <div className="flex items-center gap-2">
               <Euro className="w-4 h-4 text-red-500" />
