@@ -197,7 +197,7 @@ export default function ChallengeForm({ groupId, challengeId, initialValues, onC
                         {field.value ? (
                           <div className="flex flex-col items-start">
                             <span>{format(field.value, "PPP", { locale: de })}</span>
-                            <span className="text-xs text-muted-foreground">KW {getWeek(field.value, { locale: de })}</span>
+                            <span className="text-xs text-muted-foreground">KW {getWeek(field.value, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de })}</span>
                           </div>
                         ) : (
                           <span>Datum wählen</span>
@@ -241,7 +241,7 @@ export default function ChallengeForm({ groupId, challengeId, initialValues, onC
                         {field.value ? (
                           <div className="flex flex-col items-start">
                             <span>{format(field.value, "PPP", { locale: de })}</span>
-                            <span className="text-xs text-muted-foreground">KW {getWeek(field.value, { locale: de })}</span>
+                            <span className="text-xs text-muted-foreground">KW {getWeek(field.value, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de })}</span>
                           </div>
                         ) : (
                           <span>Datum wählen</span>

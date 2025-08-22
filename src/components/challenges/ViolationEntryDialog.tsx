@@ -75,7 +75,7 @@ export function ViolationEntryDialog({
                   {violationDate ? (
                     <div className="flex flex-col items-start">
                       <span>{format(violationDate, 'PPP', { locale: de })}</span>
-                      <span className="text-xs text-muted-foreground">KW {getWeek(violationDate, { locale: de })}</span>
+                      <span className="text-xs text-muted-foreground">KW {getWeek(violationDate, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de })}</span>
                     </div>
                   ) : (
                     'Datum wählen'
@@ -89,7 +89,7 @@ export function ViolationEntryDialog({
                   onSelect={setViolationDate}
                   disabled={(date) => date > new Date()}
                   initialFocus
-                  className="p-3"
+                  className="p-3 pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
