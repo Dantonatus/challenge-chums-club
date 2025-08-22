@@ -122,11 +122,11 @@ const { data: allParticipantsRaw } = await supabase
 
 // Resolve profiles for those user IDs
 const userIds = Array.from(new Set((allParticipantsRaw || []).map(p => p.user_id)));
-let participantProfiles: Array<{ id: string; display_name: string | null }> = [];
+let participantProfiles: Array<{ id: string; display_name: string | null; custom_color: string | null }> = [];
 if (userIds.length > 0) {
   const { data: profs } = await supabase
     .from('profiles')
-    .select('id, display_name')
+    .select('id, display_name, custom_color')
     .in('id', userIds);
   participantProfiles = profs || [];
 }
@@ -137,10 +137,11 @@ const { data: groups } = await supabase
   .select('id, name')
   .in('id', groupIds);
 
-// Build participant list with display names
+// Build participant list with display names and custom colors
 const uniqueParticipants = participantProfiles.map((p) => ({
   user_id: p.id,
-  display_name: p.display_name || 'Unknown'
+  display_name: p.display_name || 'Unknown',
+  custom_color: p.custom_color
 }));
 
 return {
@@ -266,9 +267,19 @@ let participantsQuery = supabase
       if (participantUserIds.length > 0) {
         const { data: profs } = await supabase
           .from('profiles')
-          .select('id, display_name')
+          .select('id, display_name, custom_color')
           .in('id', participantUserIds);
         profilesMap = Object.fromEntries((profs || []).map(p => [p.id, p.display_name || 'Unknown']));
+        
+        // Build participant list with custom colors
+        const uniqueParticipants = participantUserIds.map((userId) => {
+          const prof = (profs || []).find(p => p.id === userId);
+          return {
+            user_id: userId,
+            display_name: prof?.display_name || 'Unknown',
+            custom_color: prof?.custom_color
+          };
+        });
       }
 
       // Fetch violations for each challenge
@@ -518,7 +529,7 @@ const totalChallenges = processedChallenges.length;
               <div className="w-full">
                 <CumulativePenaltyTrendChart 
                   challengeId="all"
-                  participants={filterOptions?.participants.map(p => ({ user_id: p.user_id, name: p.display_name })) || []}
+                  participants={filterOptions?.participants.map(p => ({ user_id: p.user_id, name: p.display_name, custom_color: p.custom_color })) || []}
                 />
               </div>
             )}

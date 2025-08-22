@@ -291,7 +291,7 @@ export function KPIAnalytics({ userId }: KPIAnalyticsProps) {
                       dataKey="value"
                       stroke="hsl(var(--primary))"
                       strokeWidth={3}
-                      dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
+                      dot={false}
                     />
                     <Line
                       type="monotone"

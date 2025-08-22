@@ -430,17 +430,6 @@ export const PremiumFailsTrendChart = ({ lang }: PremiumFailsTrendChartProps) =>
                 }}
               />
 
-              {/* Milestone Reference Lines */}
-              {milestoneThresholds.map((milestone, index) => (
-                <ReferenceLine
-                  key={index}
-                  y={milestone.value}
-                  stroke={milestone.color}
-                  strokeDasharray="5 5"
-                  strokeWidth={2}
-                  opacity={0.6}
-                />
-              ))}
 
               <EnhancedTooltip lang={lang} />
 
@@ -481,23 +470,6 @@ export const PremiumFailsTrendChart = ({ lang }: PremiumFailsTrendChartProps) =>
           </ResponsiveContainer>
         </ChartContainer>
 
-        {/* Milestone Legend */}
-        <div className="mt-4 pt-4 border-t border-border/50">
-          <h4 className="text-sm font-medium text-muted-foreground mb-2">{t[lang].milestones}</h4>
-          <div className="flex flex-wrap gap-3">
-            {milestoneThresholds.map((milestone, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <div 
-                  className="w-3 h-0.5 rounded-full"
-                  style={{ backgroundColor: milestone.color }}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {milestone.label} ({milestone.value}+)
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       </CardContent>
     </Card>
   );

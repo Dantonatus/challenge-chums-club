@@ -259,15 +259,10 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
                     dataKey={participant.name}
                     stroke={colorMap[participant.user_id]}
                     strokeWidth={2}
-                    dot={{ fill: colorMap[participant.user_id], strokeWidth: 0, r: 3 }}
+                    dot={false}
                     activeDot={{ r: 4, strokeWidth: 0 }}
                   />
                 ))}
-                
-                {/* Reference lines for milestones */}
-                <Recharts.ReferenceLine y={2} stroke="hsl(var(--success))" strokeDasharray="5 5" opacity={0.6} />
-                <Recharts.ReferenceLine y={3} stroke="hsl(var(--warning))" strokeDasharray="5 5" opacity={0.6} />
-                <Recharts.ReferenceLine y={4} stroke="hsl(var(--destructive))" strokeDasharray="5 5" opacity={0.6} />
               </Recharts.LineChart>
             </ChartContainer>
           ) : (
@@ -282,24 +277,6 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
           )}
         </div>
 
-        {/* Milestone Legend */}
-        <div className="border-t pt-4">
-          <h4 className="text-sm font-medium text-muted-foreground mb-2">Meilensteine</h4>
-          <div className="flex flex-wrap gap-4 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-0.5 bg-success"></div>
-              <span>Niedriges Risiko (2+)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-0.5 bg-warning"></div>
-              <span>Moderat (3+)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-0.5 bg-destructive"></div>
-              <span>Hohes Risiko (4+)</span>
-            </div>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
