@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import { de, enUS } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Calendar, Users, TrendingUp, Target, Sparkles } from "lucide-react";
+import { Calendar, Users, TrendingUp, Target, Sparkles, ArrowRight } from "lucide-react";
 import { Timeline } from "@/components/summary/Timeline";
 import { FilterBar } from "@/components/summary/FilterBar";
 import { ParticipantRanking } from "@/components/summary/ParticipantRanking";
@@ -24,6 +24,7 @@ import { WeeklyTimeline } from "@/components/summary/WeeklyTimeline";
 import { FailsTrendPremium } from "@/components/summary/FailsTrendPremium";
 import { GlobalBar } from "@/components/summary/GlobalBar";
 import { KPIStrip } from "@/components/summary/KPIStrip";
+import { ChallengeCard } from "@/components/summary/ChallengeCard";
 import { CumulativePenaltyTrendChart } from "@/components/challenges/CumulativePenaltyTrendChart";
 
 const Summary = () => {
@@ -565,67 +566,44 @@ const totalChallenges = processedChallenges.length;
           <h2 className="text-xl font-semibold">{t[lang].challengesList}</h2>
           
           {challenges.length === 0 ? (
-            <Card className="animate-scale-in">
-              <CardContent className="pt-6 text-center py-12">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="text-6xl">🎯</div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">{t[lang].emptyState}</h3>
-                    <Button asChild>
-                      <Link to="/challenges">
-                        {t[lang].createChallenge}
-                      </Link>
-                    </Button>
+            <Card className="animate-scale-in border-0 bg-gradient-to-br from-background/80 to-muted/20 shadow-sm">
+              <CardContent className="pt-6 text-center py-16">
+                <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
+                  <div className="relative">
+                    <div className="text-7xl mb-2">🎯</div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent rounded-full blur-xl" />
                   </div>
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold text-foreground">{t[lang].emptyState}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {lang === 'de' 
+                        ? "Erstelle deine erste Challenge und beginne deine Reise zu besseren Gewohnheiten."
+                        : "Create your first challenge and start your journey to better habits."
+                      }
+                    </p>
+                  </div>
+                  <Button 
+                    asChild 
+                    size="lg"
+                    className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 motion-reduce:hover:scale-100"
+                  >
+                    <Link to="/challenges" className="gap-2">
+                      {t[lang].createChallenge}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {challenges.map((challenge, index) => (
-                <Card key={challenge.id} className="hover:shadow-md transition-all duration-200 hover-scale animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1 flex-1">
-                        <CardTitle className="text-lg">{challenge.title}</CardTitle>
-                        {challenge.description && (
-                          <CardDescription className="line-clamp-2">
-                            {challenge.description}
-                          </CardDescription>
-                        )}
-                      </div>
-                      <Badge variant={challenge.challenge_type === 'habit' ? 'default' : 'secondary'}>
-                        {challenge.challenge_type === 'habit' ? t[lang].habit : t[lang].kpi}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        {format(new Date(challenge.start_date), 'dd.MM.yyyy', { locale })} - {format(new Date(challenge.end_date), 'dd.MM.yyyy', { locale })}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">{t[lang].participants}</p>
-                        <p className="font-medium">{challenge.participantCount}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">{t[lang].penalties}</p>
-                        <p className="font-medium">{formatEUR(challenge.totalViolationAmount)}</p>
-                      </div>
-                    </div>
-
-                    <Button asChild className="w-full">
-                      <Link to={`/challenges/${challenge.id}`}>
-                        {t[lang].viewDetails}
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
+                <ChallengeCard
+                  key={challenge.id}
+                  challenge={challenge}
+                  index={index}
+                  lang={lang}
+                />
               ))}
             </div>
           )}
