@@ -159,8 +159,8 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
   }
 
   return (
-    <Card className="animate-fade-in bg-gradient-to-br from-background/80 via-background to-background/60 backdrop-blur-sm shadow-lg border-0 rounded-xl hover:shadow-xl transition-all duration-300">
-      <CardHeader>
+    <Card className="h-[480px] md:h-[560px] w-full flex flex-col animate-fade-in bg-gradient-to-br from-background/80 via-background to-background/60 backdrop-blur-sm shadow-lg border-0 rounded-xl hover:shadow-xl transition-all duration-300">
+      <CardHeader className="shrink-0 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-chart-5" />
           <CardTitle className="text-lg">{t[lang].title}</CardTitle>
@@ -195,9 +195,8 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={{}} className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
+      <CardContent className="flex-1 p-2 md:p-4">
+        <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
               <XAxis 
@@ -260,8 +259,7 @@ export const BestROIChallenges = ({ data, lang }: BestROIChallengesProps) => {
                 shape={<CustomNode />}
               />
             </ScatterChart>
-          </ResponsiveContainer>
-        </ChartContainer>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   );
