@@ -150,6 +150,15 @@ All colors MUST be HSL. */
   }
 }
 
+/* Week numbers styling for calendar */
+.rdp-weeknumber {
+  @apply text-muted-foreground text-xs font-medium w-9 h-9 flex items-center justify-center;
+}
+
+.rdp-head_cell:first-child {
+  @apply text-muted-foreground text-xs font-medium w-9 h-9 flex items-center justify-center;
+}
+
 @layer base {
   * {
     @apply border-border;
