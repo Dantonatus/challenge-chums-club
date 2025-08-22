@@ -277,20 +277,11 @@ export const FailsTrendChart = ({ lang }: FailsTrendChartProps) => {
                {trendData.participants.map((participant) => (
                  <Line
                    key={participant.name}
-                   type="monotone"
+                   type="linear"
                    dataKey={participant.name}
                    stroke={chartConfig[participant.name]?.color || `hsl(var(--primary))`}
                    strokeWidth={3}
-                   dot={{ 
-                     fill: chartConfig[participant.name]?.color || `hsl(var(--primary))`, 
-                     strokeWidth: 2, 
-                     r: 5 
-                   }}
-                   activeDot={{ 
-                     r: 7, 
-                     strokeWidth: 2,
-                     fill: chartConfig[participant.name]?.color || `hsl(var(--primary))`
-                   }}
+                   dot={false}
                    connectNulls={false}
                  />
                ))}
