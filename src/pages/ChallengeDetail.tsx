@@ -200,16 +200,25 @@ export default function ChallengeDetail() {
     try {
       const amountCents = (selectedRow.penalty_override_cents ?? challenge?.penalty_cents ?? Math.round((challenge?.penalty_amount || 0) * 100)) as number;
 
-      // Insert violation row for time-based charting
-      const { error: insertErr } = await (supabase as any)
-        .from('challenge_violations')
-        .insert({
-          challenge_id: id,
-          user_id: selectedRow.user_id,
-          amount_cents: amountCents,
-          created_at: createdAt ? createdAt.toISOString() : undefined,
-        });
-      if (insertErr) throw insertErr;
+      // Insert violations based on count
+      const violationPromises = [];
+      for (let i = 0; i < count; i++) {
+        violationPromises.push(
+          (supabase as any)
+            .from('challenge_violations')
+            .insert({
+              challenge_id: id,
+              user_id: selectedRow.user_id,
+              amount_cents: amountCents,
+              created_at: createdAt ? createdAt.toISOString() : undefined,
+            })
+        );
+      }
+
+      // Execute all violation inserts
+      const results = await Promise.all(violationPromises);
+      const hasError = results.find(result => result.error);
+      if (hasError) throw hasError.error;
 
       // Update counter in participants table
       const { error } = await (supabase as any)

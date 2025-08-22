@@ -31,10 +31,8 @@ export function ViolationEntryDialog({
     
     setIsSubmitting(true);
     try {
-      // Add violations one by one to maintain proper violation tracking
-      for (let i = 0; i < violationCount; i++) {
-        await onAddViolation(1, violationDate);
-      }
+      // Add all violations at once with the correct count
+      await onAddViolation(violationCount, violationDate);
       
       // Reset form
       setViolationCount(1);
