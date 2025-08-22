@@ -15,7 +15,7 @@ import { Timeline } from "@/components/summary/Timeline";
 import { FilterBar } from "@/components/summary/FilterBar";
 import { ParticipantRanking } from "@/components/summary/ParticipantRanking";
 import { ToughestVsEasiestChallenges } from "@/components/summary/ToughestVsEasiestChallenges";
-import { BiggestMoneyBurners } from "@/components/summary/BiggestMoneyBurners";
+
 import { MostPopularChallenges } from "@/components/summary/MostPopularChallenges";
 import { StreakBreakers } from "@/components/summary/StreakBreakers";
 import { BestROIChallenges } from "@/components/summary/BestROIChallenges";
@@ -545,17 +545,16 @@ const totalChallenges = processedChallenges.length;
             <ToughestVsEasiestChallenges data={[{ challenges }]} lang={lang} />
           </div>
 
-          {/* Second Row - Money & Popularity */}
+          {/* Second Row - Streak Breakers & Popularity */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="penalties-section">
-            <BiggestMoneyBurners data={[{ challenges }]} lang={lang} />
+            <div className="col-span-full">
+              <StreakBreakers data={[{ challenges }]} lang={lang} />
+            </div>
             <MostPopularChallenges data={[{ challenges }]} lang={lang} />
           </div>
 
           {/* Third Row - Advanced Analytics */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-4">
-              <StreakBreakers data={[{ challenges }]} lang={lang} />
-            </div>
             <div className="col-span-12 w-full">
               <BestROIChallenges data={[{ challenges }]} lang={lang} />
             </div>
