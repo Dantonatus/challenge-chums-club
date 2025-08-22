@@ -266,7 +266,12 @@ export function CumulativePenaltyTrendChart({ challengeId, participants }: Props
             </ChartContainer>
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
-              <p>Keine Daten für den ausgewählten Zeitraum</p>
+              <div className="text-center">
+                <p>Keine Daten für den ausgewählten Zeitraum</p>
+                <p className="text-xs mt-1">
+                  Debug: Wochen: {weeks.length}, Verstöße: {filteredViolations.length}, Teilnehmer: {filteredParticipants.length}
+                </p>
+              </div>
             </div>
           )}
         </div>
