@@ -16,7 +16,7 @@ interface CompareBarProps {
   onClose?: () => void;
 }
 
-export function CompareBar({ onSelectionChange, lang, onClose }: CompareBarProps) {
+export function CompareBar({ participants: participantsProp, onSelectionChange, lang, onClose }: CompareBarProps) {
   const [selectedA, setSelectedA] = useState<string>("");
   const [selectedB, setSelectedB] = useState<string>("");
   const [openA, setOpenA] = useState(false);
@@ -52,56 +52,50 @@ export function CompareBar({ onSelectionChange, lang, onClose }: CompareBarProps
       try {
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
+        if (!user) return [] as Array<{ userId: string; displayName: string }>;
 
-        // Get user's groups
-        const { data: userGroups } = await supabase
+        // 1) Groups of current user
+        const { data: userGroups, error: groupsError } = await supabase
           .from('group_members')
           .select('group_id')
           .eq('user_id', user.id);
-
+        if (groupsError) throw groupsError;
         if (!userGroups?.length) return [];
-
         const groupIds = userGroups.map(g => g.group_id);
 
-        // Get challenges in user's groups
-        const { data: challenges } = await supabase
+        // 2) Challenges in those groups
+        const { data: challenges, error: challengesError } = await supabase
           .from('challenges')
           .select('id')
           .in('group_id', groupIds);
-
+        if (challengesError) throw challengesError;
         if (!challenges?.length) return [];
-
         const challengeIds = challenges.map(c => c.id);
 
-        // Get participants with profiles
-        const { data: participants } = await supabase
+        // 3) Participants in those challenges (unique user_ids)
+        const { data: participants, error: participantsError } = await supabase
           .from('challenge_participants')
-          .select(`
-            user_id,
-            profiles!inner(display_name)
-          `)
+          .select('user_id')
           .in('challenge_id', challengeIds);
-
+        if (participantsError) throw participantsError;
         if (!participants?.length) return [];
+        const uniqueUserIds = Array.from(new Set(participants.map(p => p.user_id)));
 
-        // Get unique participants
-        const uniqueParticipants = Array.from(
-          new Map(
-            participants.map(p => [
-              p.user_id, 
-              (p.profiles as any)?.display_name
-            ])
-          ).entries()
-        ).map(([userId, displayName]) => ({
-          userId,
-          displayName: displayName || 'Unknown'
+        // 4) Resolve display names from profiles (no FK join dependency)
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', uniqueUserIds);
+        if (profilesError) throw profilesError;
+
+        const profileMap = new Map(profiles?.map(p => [p.id, p.display_name]) || []);
+        return uniqueUserIds.map(uid => ({
+          userId: uid,
+          displayName: (profileMap.get(uid) || '').trim() || 'Ohne Name'
         }));
-
-        return uniqueParticipants.filter(p => p.displayName !== 'Unknown');
       } catch (error) {
         console.error('Failed to fetch participants:', error);
-        return [];
+        return [] as Array<{ userId: string; displayName: string }>;
       }
     }
   });
@@ -134,8 +128,11 @@ export function CompareBar({ onSelectionChange, lang, onClose }: CompareBarProps
     }
   }, [selectedA, selectedB, onSelectionChange]);
 
-  const availableForA = availableParticipants?.filter(p => p.displayName !== selectedB) || [];
-  const availableForB = availableParticipants?.filter(p => p.displayName !== selectedA) || [];
+  const baseList = (participantsProp && participantsProp.length > 0)
+    ? participantsProp.map(n => ({ userId: n, displayName: n }))
+    : (availableParticipants || []);
+  const availableForA = baseList.filter(p => p.displayName !== selectedB);
+  const availableForB = baseList.filter(p => p.displayName !== selectedA);
 
   return (
     <motion.div
