@@ -22,6 +22,7 @@ import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyCha
 import { KPIDetailChart } from "@/components/challenges/KPIDetailChart";
 import { KPIDataEntry } from "@/components/challenges/KPIDataEntry";
 import { ViolationEntryDialog } from "@/components/challenges/ViolationEntryDialog";
+import { ViolationsList } from "@/components/challenges/ViolationsList";
 import ViolationsPerParticipant from "@/components/profile/ViolationsPerParticipant";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { generateParticipantColorMap } from "@/lib/participant-colors";
@@ -464,6 +465,14 @@ export default function ChallengeDetail() {
                     challengeId={challenge.id} 
                     participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
                   />
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Alle Verstöße</h4>
+                    <ViolationsList 
+                      challengeId={challenge.id}
+                      participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
+                    />
+                  </div>
                 </div>
               </TabsContent>
 
@@ -483,7 +492,7 @@ export default function ChallengeDetail() {
               </TabsList>
 
               <TabsContent value="violations">
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <div className="text-sm text-muted-foreground">Verstöße je Teilnehmer:in</div>
                   <ChartContainer
                     config={Object.fromEntries(rows.map(r => [r.name, { label: r.name, color: colorMap[r.user_id] }]))}
@@ -502,6 +511,14 @@ export default function ChallengeDetail() {
                       </Recharts.Bar>
                     </Recharts.BarChart>
                   </ChartContainer>
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Alle Verstöße</h4>
+                    <ViolationsList 
+                      challengeId={challenge.id}
+                      participants={rows.map(r => ({ user_id: r.user_id, name: r.name }))}
+                    />
+                  </div>
                 </div>
               </TabsContent>
 
