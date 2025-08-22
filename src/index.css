@@ -62,17 +62,17 @@ All colors MUST be HSL. */
     --shadow-glow: 0 0 40px hsl(var(--accent) / 0.35);
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* Premium Chart Colors - Elegant Pastels */
-    --chart-pastel-1: 220 70% 75%; /* Soft periwinkle */
-    --chart-pastel-2: 340 65% 75%; /* Warm pink */
-    --chart-pastel-3: 160 55% 70%; /* Sage green */
-    --chart-pastel-4: 45 80% 75%;  /* Gentle amber */
-    --chart-pastel-5: 270 60% 75%; /* Lavender */
-    --chart-pastel-6: 190 60% 70%; /* Soft teal */
-    --chart-pastel-7: 20 70% 75%;  /* Peach coral */
-    --chart-pastel-8: 120 45% 70%; /* Mint green */
-    --chart-pastel-9: 280 50% 75%; /* Soft violet */
-    --chart-pastel-10: 200 65% 75%; /* Sky blue */
+    /* Premium Chart Colors - Modern Aqua-Teal Palette */
+    --chart-pastel-1: 186 71% 51%; /* Helles Türkis */
+    --chart-pastel-2: 207 90% 57%; /* Sanftes Himmelblau */
+    --chart-pastel-3: 123 38% 57%; /* Frisches Smaragdgrün */
+    --chart-pastel-4: 187 100% 42%; /* Lebendiges Cyan */
+    --chart-pastel-5: 199 92% 64%; /* Warmes Seeblau */
+    --chart-pastel-6: 122 39% 49%; /* Natürliches Grün */
+    --chart-pastel-7: 207 98% 41%; /* Tiefes Ozeanblau */
+    --chart-pastel-8: 174 43% 51%; /* Minze Grün */
+    --chart-pastel-9: 165 84% 51%; /* Aqua Türkis */
+    --chart-pastel-10: 174 100% 29%; /* Sanftes Teal */
 
     /* Chart Milestone Colors */
     --milestone-warning: 35 85% 70%;   /* Soft orange */
@@ -133,17 +133,17 @@ All colors MUST be HSL. */
     --cta-start: 168 60% 45%;
     --cta-end: 45 90% 55%;
 
-    /* Dark mode chart colors - deeper but still elegant */
-    --chart-pastel-1: 220 60% 65%;
-    --chart-pastel-2: 340 55% 65%;
-    --chart-pastel-3: 160 45% 60%;
-    --chart-pastel-4: 45 70% 65%;
-    --chart-pastel-5: 270 50% 65%;
-    --chart-pastel-6: 190 50% 60%;
-    --chart-pastel-7: 20 60% 65%;
-    --chart-pastel-8: 120 35% 60%;
-    --chart-pastel-9: 280 40% 65%;
-    --chart-pastel-10: 200 55% 65%;
+    /* Dark mode chart colors - matching aqua-teal theme with better contrast */
+    --chart-pastel-1: 186 65% 60%; /* Helles Türkis - darker */
+    --chart-pastel-2: 207 80% 65%; /* Sanftes Himmelblau - darker */
+    --chart-pastel-3: 123 45% 65%; /* Frisches Smaragdgrün - darker */
+    --chart-pastel-4: 187 90% 50%; /* Lebendiges Cyan - darker */
+    --chart-pastel-5: 199 85% 70%; /* Warmes Seeblau - adjusted */
+    --chart-pastel-6: 122 45% 55%; /* Natürliches Grün - darker */
+    --chart-pastel-7: 207 90% 50%; /* Tiefes Ozeanblau - darker */
+    --chart-pastel-8: 174 50% 60%; /* Minze Grün - darker */
+    --chart-pastel-9: 165 75% 60%; /* Aqua Türkis - darker */
+    --chart-pastel-10: 174 90% 35%; /* Sanftes Teal - darker */
 
     --chart-grid: 220 15% 25%;
     --chart-axis: 220 15% 50%;

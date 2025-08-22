@@ -5,16 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils";
 
 const PREDEFINED_COLORS = [
-  { name: "Tiefes Rubinrot", value: "#D32F2F" },
-  { name: "Strahlendes Goldgelb", value: "#FBC02D" },
-  { name: "Sattes Smaragdgrün", value: "#388E3C" },
-  { name: "Königliches Violett", value: "#7B1FA2" },
-  { name: "Intensives Herbstorange", value: "#F57C00" },
-  { name: "Kühles Tief-Türkis", value: "#0097A7" },
-  { name: "Kraftvolles Magenta", value: "#C2185B" },
-  { name: "Sanftes Olivgold", value: "#AFB42B" },
-  { name: "Dunkles Schokoladenbraun", value: "#5D4037" },
-  { name: "Kühles Stahlgrau-Blau", value: "#455A64" },
+  { name: "Helles Türkis", value: "#26C6DA" },
+  { name: "Sanftes Himmelblau", value: "#29B6F6" },
+  { name: "Frisches Smaragdgrün", value: "#66BB6A" },
+  { name: "Lebendiges Cyan", value: "#00BCD4" },
+  { name: "Warmes Seeblau", value: "#4FC3F7" },
+  { name: "Natürliches Grün", value: "#4CAF50" },
+  { name: "Tiefes Ozeanblau", value: "#0288D1" },
+  { name: "Minze Grün", value: "#4DB6AC" },
+  { name: "Aqua Türkis", value: "#1DE9B6" },
+  { name: "Sanftes Teal", value: "#009688" },
 ];
 
 interface ColorPickerProps {

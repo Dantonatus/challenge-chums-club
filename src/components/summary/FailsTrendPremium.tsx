@@ -35,10 +35,10 @@ interface ParticipantInfo {
   totalPenalties: number;
 }
 
-// Premium pastel color palette - soft, Apple-style colors
+// Modern aqua-teal color palette - matching profile color scheme
 const PASTEL_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-  '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+  '#26C6DA', '#29B6F6', '#66BB6A', '#00BCD4', '#4FC3F7',
+  '#4CAF50', '#0288D1', '#4DB6AC', '#1DE9B6', '#009688'
 ];
 
 export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticipants }: FailsTrendPremiumProps) => {
