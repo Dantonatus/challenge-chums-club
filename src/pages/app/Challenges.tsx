@@ -58,7 +58,6 @@ export default function ChallengesPage() {
     queryKey: ["overview_challenges", groupIds],
     enabled: groupIds.length > 0,
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
       const { data, error } = await (supabase as any)
         .from("challenges")
         .select(`
@@ -78,9 +77,7 @@ export default function ChallengesPage() {
           )
         `)
         .in("group_id", groupIds)
-        .lte("start_date", today)
-        .gte("end_date", today)
-        .order("end_date", { ascending: true });
+        .order("start_date", { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -174,6 +171,21 @@ export default function ChallengesPage() {
                       {c.challenge_type === 'kpi' && c.kpi_definitions?.[0] && (
                         <span> · Ziel: {c.kpi_definitions[0].target_value} {c.kpi_definitions[0].unit}</span>
                       )}
+                      
+                      {/* Status indicator */}
+                      {(() => {
+                        const today = new Date().toISOString().slice(0, 10);
+                        const startDate = c.start_date;
+                        const endDate = c.end_date;
+                        
+                        if (startDate > today) {
+                          return <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">Startet bald</span>;
+                        } else if (endDate < today) {
+                          return <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded-full">Beendet</span>;
+                        } else {
+                          return <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">Aktiv</span>;
+                        }
+                      })()}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {t[lang].participants(countByChallenge[c.id] || 0)}
