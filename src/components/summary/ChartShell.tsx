@@ -2,7 +2,7 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { ResponsiveContainer } from "recharts";
 
 export const CHART_HEIGHT = 420; // Exact height for both charts
-export const CHART_MARGIN = { top: 12, right: 16, bottom: 8, left: 48 }; // Identical margins
+export const CHART_MARGIN = { top: 12, right: 16, bottom: 8, left: 40 }; // Identical margins
 
 export interface ChartShellProps {
   title: React.ReactNode;

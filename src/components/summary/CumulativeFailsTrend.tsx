@@ -129,7 +129,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
 
   const { violations = [], participants = [] } = queryData || {};
 
-  // Generate weeks in range
+  // Generate weeks in range with stable indices
   const weeks = useMemo(() => {
     if (!start || !end) return [];
     const weeks = [];
@@ -140,14 +140,14 @@ export function CumulativeFailsTrend({ lang }: Props) {
       const weekNum = isoWeekOf(current);
       weeks.push({
         weekIdx: weekNum,
-        weekLabel: weekRangeLabel(current, endOfISOWeek(current), lang),
+        weekLabel: `KW ${weekNum}`,
         startDate: current,
         endDate: endOfISOWeek(current)
       });
       current = new Date(current.getTime() + 7 * 24 * 60 * 60 * 1000);
     }
     return weeks;
-  }, [start, end, lang]);
+  }, [start, end]);
 
   // Initialize week range and selected participants
   useMemo(() => {
@@ -343,33 +343,28 @@ export function CumulativeFailsTrend({ lang }: Props) {
               dataKey="weekLabel" 
               tickMargin={8}
               padding={{ left: 0, right: 0 }}
+              interval="preserveStartEnd"
               className="text-xs text-muted-foreground"
             />
             <Recharts.YAxis 
-              tickMargin={8}
-              domain={[0, (dataMax: number) => Math.max(1, dataMax + 2)]}
+              tickMargin={6}
               allowDecimals={false}
+              domain={[0, (dataMax: number) => Math.max(1, dataMax + 2)]}
+              width={40}
               className="text-xs text-muted-foreground"
-              label={{ value: 'Fails', angle: -90, position: 'insideLeft' }}
             />
             <Recharts.Tooltip 
-              content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null;
-                return (
-                  <div className="bg-background/95 border rounded-lg shadow-lg p-3 backdrop-blur-sm">
-                    <p className="font-medium text-sm mb-2">{label}</p>
-                    {payload.map((entry, index) => (
-                      <div key={index} className="flex items-center gap-2 text-xs">
-                        <div 
-                          className="w-2 h-2 rounded-full" 
-                          style={{ backgroundColor: entry.color }}
-                        />
-                        <span className="text-muted-foreground">{entry.dataKey}:</span>
-                        <span className="font-medium">{entry.value} Fails</span>
-                      </div>
-                    ))}
-                  </div>
-                );
+              formatter={(value, key) => {
+                const participant = participants.find(p => `user_${p.user_id}` === key);
+                const participantName = participant?.display_name || 'Unknown';
+                return [`${value} Fails`, participantName];
+              }}
+              labelFormatter={(label) => label}
+              contentStyle={{ 
+                borderRadius: 12, 
+                boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                background: 'hsl(var(--background))',
+                border: '1px solid hsl(var(--border))'
               }}
             />
             {series.map(s => (
@@ -379,8 +374,8 @@ export function CumulativeFailsTrend({ lang }: Props) {
                 dataKey={s.key}
                 stroke={s.color}
                 strokeWidth={2.5}
-                dot={{ r: 3 }}
-                activeDot={{ r: 5 }}
+                dot={false}
+                activeDot={false}
                 isAnimationActive
                 connectNulls
               />

@@ -12,7 +12,7 @@ import { TrendingUp, Calendar, Target, AlertTriangle, Eye, EyeOff } from "lucide
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CompareBar } from "./CompareBar";
-import ChartShell, { CHART_MARGIN } from "./ChartShell";
+import ChartShell, { CHART_HEIGHT, CHART_MARGIN } from "./ChartShell";
 
 interface FailsTrendPremiumProps {
   lang: 'de' | 'en';
@@ -21,9 +21,9 @@ interface FailsTrendPremiumProps {
 }
 
 interface WeeklyData {
-  week: string;
-  weekNumber: number;
-  [participantName: string]: number | string;
+  weekIdx: number;
+  weekLabel: string;
+  [userKey: string]: number | string; // user_<id> keys
 }
 
 interface ParticipantInfo {
@@ -167,7 +167,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
         .gte('measurement_date', startStr)
         .lte('measurement_date', endStr);
 
-      // Generate weeks in range
+      // Generate weeks in range with stable indices
       const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
       
       const weeklyData: WeeklyData[] = weeks.map(week => {
@@ -176,26 +176,22 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
         const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de });
 
         const weekData: WeeklyData = {
-          week: `${t[lang].week} ${weekNumber}`,
-          weekNumber
+          weekIdx: weekNumber,
+          weekLabel: `KW ${weekNumber}`
         };
 
-        // Initialize all participants with 0 fails
+        // Initialize all participants with 0 fails using stable user keys
         userIds.forEach(userId => {
-          const profile = profilesMap[userId];
-          if (profile?.display_name && profile.display_name !== 'Unknown') {
-            weekData[profile.display_name] = 0;
-          }
+          const userKey = `user_${userId}`;
+          weekData[userKey] = 0;
         });
 
         // Count violations in this week
         (violations || []).forEach(violation => {
           const violationDate = new Date(violation.created_at);
           if (isWithinInterval(violationDate, { start: weekStart, end: weekEnd })) {
-            const profile = profilesMap[violation.user_id];
-            if (profile?.display_name) {
-              weekData[profile.display_name] = (weekData[profile.display_name] as number) + 1;
-            }
+            const userKey = `user_${violation.user_id}`;
+            weekData[userKey] = (weekData[userKey] as number) + 1;
           }
         });
 
@@ -203,21 +199,19 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
         (kpiMeasurements || []).forEach(measurement => {
           const measurementDate = new Date(measurement.measurement_date);
           if (isWithinInterval(measurementDate, { start: weekStart, end: weekEnd })) {
-            const profile = profilesMap[measurement.user_id];
-            if (profile?.display_name) {
-              const kpiDef = measurement.kpi_definitions as any;
-              const achievement = measurement.measured_value / kpiDef.target_value;
-              
-              let isDeviation = false;
-              if (kpiDef.goal_direction === 'higher_better' && achievement < 1.0) {
-                isDeviation = true;
-              } else if (kpiDef.goal_direction === 'lower_better' && achievement > 1.0) {
-                isDeviation = true;
-              }
+            const userKey = `user_${measurement.user_id}`;
+            const kpiDef = measurement.kpi_definitions as any;
+            const achievement = measurement.measured_value / kpiDef.target_value;
+            
+            let isDeviation = false;
+            if (kpiDef.goal_direction === 'higher_better' && achievement < 1.0) {
+              isDeviation = true;
+            } else if (kpiDef.goal_direction === 'lower_better' && achievement > 1.0) {
+              isDeviation = true;
+            }
 
-              if (isDeviation) {
-                weekData[profile.display_name] = (weekData[profile.display_name] as number) + 1;
-              }
+            if (isDeviation) {
+              weekData[userKey] = (weekData[userKey] as number) + 1;
             }
           }
         });
@@ -231,8 +225,9 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
           const profile = profilesMap[id];
           if (!profile?.display_name || profile.display_name === 'Unknown') return null;
 
+          const userKey = `user_${id}`;
           const totalFails = weeklyData.reduce((sum, week) => 
-            sum + (week[profile.display_name] as number || 0), 0);
+            sum + (week[userKey] as number || 0), 0);
           
           const totalPenalties = (violations || [])
             .filter(v => v.user_id === id)
@@ -251,7 +246,12 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       return {
         data: weeklyData,
         participants,
-        weeks,
+        weeks: weeks.map((week, idx) => ({
+          weekIdx: getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de }),
+          weekLabel: `KW ${getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de })}`,
+          startDate: startOfWeek(week, { weekStartsOn: 1 }),
+          endDate: endOfWeek(week, { weekStartsOn: 1 })
+        })),
         challenges: challenges || []
       };
     },
@@ -261,7 +261,6 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
   // Initialize timeline range and visible participants
   useMemo(() => {
     if (trendData && trendData.weeks.length > 0) {
-      // Always reset to show all weeks
       setTimelineRange([0, trendData.weeks.length - 1]);
       
       if (visibleParticipants.size === 0) {
@@ -270,7 +269,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
     }
   }, [trendData?.weeks.length]);
 
-  // Filter data based on timeline selection and add comparison data
+  // Filter data based on timeline selection
   const filteredData = useMemo(() => {
     if (!trendData) return [];
     const [startIdx, endIdx] = timelineRange;
@@ -463,7 +462,7 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-2">{t[lang].filterByWeek}</h4>
             <TimelineSlider
-              weeks={trendData.weeks}
+              weeks={trendData.weeks.map(week => week.startDate)}
               selectedRange={timelineRange}
               onRangeChange={setTimelineRange}
               lang={lang}
@@ -501,37 +500,32 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
-          dataKey="week"
+          dataKey="weekLabel"
           tickMargin={8}
           padding={{ left: 0, right: 0 }}
           interval="preserveStartEnd"
+          className="text-xs text-muted-foreground"
         />
         <YAxis
           allowDecimals={false}
-          tickMargin={8}
-          width={48}
+          tickMargin={6}
+          width={40}
+          domain={[0, (dataMax: number) => Math.max(1, dataMax + 2)]}
+          className="text-xs text-muted-foreground"
         />
         <Tooltip
-          content={({ active, payload, label }) => {
-            if (!active || !payload?.length) return null;
-
-            return (
-              <div className="bg-background/95 backdrop-blur border rounded-lg shadow-lg p-4 space-y-2 max-w-xs">
-                <p className="font-medium text-sm">{label}</p>
-                {payload.map((entry, index) => (
-                  <div key={index} className="flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: entry.color }}
-                      />
-                      <span className="text-muted-foreground">{entry.dataKey}</span>
-                    </div>
-                    <span className="font-medium">{entry.value} {t[lang].fails}</span>
-                  </div>
-                ))}
-              </div>
-            );
+          formatter={(value, key) => {
+            // Convert user_<id> key back to participant name
+            const participant = trendData?.participants.find(p => `user_${p.userId}` === key);
+            const participantName = participant?.name || 'Unknown';
+            return [`${value} Fails`, participantName];
+          }}
+          labelFormatter={(label) => label}
+          contentStyle={{ 
+            borderRadius: 12, 
+            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+            background: 'hsl(var(--background))',
+            border: '1px solid hsl(var(--border))'
           }}
         />
         
@@ -550,28 +544,28 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
         ))}
 
         {/* Participant Lines */}
-        {Object.entries(chartConfig).map(([key, config]) => {
-          if (!visibleParticipants.has(key)) return null;
+        {trendData?.participants.map((participant) => {
+          const userKey = `user_${participant.userId}`;
+          if (!visibleParticipants.has(participant.name)) return null;
           
-          const isComparison = key.includes(t[lang].difference);
-          const isHovered = hoveredLine === key;
+          const isHovered = hoveredLine === participant.name;
           
           return (
             <Line
-              key={key}
+              key={userKey}
               type="monotone"
-              dataKey={key}
-              stroke={config.color}
-              strokeWidth={isHovered || isComparison ? 3 : 2}
-              strokeDasharray={isComparison ? "8,4" : "none"}
-              dot={false}
+              dataKey={userKey}
+              stroke={participant.color}
+              strokeWidth={isHovered ? 3 : 2.5}
+              dot={{ r: 3 }}
               activeDot={{ 
                 r: 5, 
                 strokeWidth: 2,
-                stroke: config.color,
-                fill: config.color
+                stroke: participant.color,
+                fill: participant.color
               }}
-              onMouseEnter={() => setHoveredLine(key)}
+              connectNulls
+              onMouseEnter={() => setHoveredLine(participant.name)}
             />
           );
         })}
