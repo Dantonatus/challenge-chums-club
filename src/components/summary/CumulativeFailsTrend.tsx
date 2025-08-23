@@ -291,19 +291,20 @@ export function CumulativeFailsTrend({ lang }: Props) {
   return (
     <ChartShell
       title={
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-emerald-500" />
-            <div>
-              <div className="text-lg">
-                {mode === 'fails' ? t[lang].titleFails : t[lang].titlePenalties}
-              </div>
-              <div className="text-sm text-muted-foreground mt-1">
-                {mode === 'fails' ? t[lang].subtitleFails : t[lang].subtitlePenalties}
-              </div>
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-emerald-500" />
+          <div>
+            <div className="text-lg">
+              {mode === 'fails' ? t[lang].titleFails : t[lang].titlePenalties}
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">
+              {mode === 'fails' ? t[lang].subtitleFails : t[lang].subtitlePenalties}
             </div>
           </div>
-          
+        </div>
+      }
+      headerRight={
+        <div className="flex items-center gap-4">
           {/* Mode Toggle */}
           <ToggleGroup 
             type="single" 
@@ -313,23 +314,20 @@ export function CumulativeFailsTrend({ lang }: Props) {
           >
             <ToggleGroupItem 
               value="fails" 
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg data-[state=on]:bg-gradient-to-r data-[state=on]:from-emerald-500/10 data-[state=on]:to-emerald-600/10 data-[state=on]:text-emerald-700 data-[state=on]:shadow-sm transition-all duration-200"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg data-[state=on]:bg-gradient-to-r data-[state=on]:from-emerald-500/10 data-[state=on]:to-emerald-600/10 data-[state=on]:text-emerald-700 data-[state=on]:shadow-sm transition-all duration-200 hover:bg-emerald-500/5"
             >
               <Target className="h-3 w-3" />
               {t[lang].fails}
             </ToggleGroupItem>
             <ToggleGroupItem 
               value="penalties" 
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg data-[state=on]:bg-gradient-to-r data-[state=on]:from-orange-500/10 data-[state=on]:to-orange-600/10 data-[state=on]:text-orange-700 data-[state=on]:shadow-sm transition-all duration-200"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg data-[state=on]:bg-gradient-to-r data-[state=on]:from-orange-500/10 data-[state=on]:to-orange-600/10 data-[state=on]:text-orange-700 data-[state=on]:shadow-sm transition-all duration-200 hover:bg-orange-500/5"
             >
               <Euro className="h-3 w-3" />
               {t[lang].penalties}
             </ToggleGroupItem>
           </ToggleGroup>
-        </div>
-      }
-      headerRight={
-        <div className="flex items-center gap-4">
+          
           <Badge variant="secondary" className="flex items-center gap-1">
             <Eye className="h-3 w-3" />
             {mode === 'fails' 
@@ -337,6 +335,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
               : `${formatEUR(totalPenalties * 100)} ${t[lang].totalPenalties}`
             }
           </Badge>
+          
           <Button
             variant="ghost"
             size="sm"
