@@ -342,33 +342,22 @@ export type Database = {
         Row: {
           content: string
           created_at: string
-          group_id: string | null
           id: string
           user_id: string
         }
         Insert: {
           content: string
           created_at?: string
-          group_id?: string | null
           id?: string
           user_id: string
         }
         Update: {
           content?: string
           created_at?: string
-          group_id?: string | null
           id?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "journal_entries_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       kpi_definitions: {
         Row: {

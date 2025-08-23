@@ -5,13 +5,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { GroupSelect } from '@/components/GroupSelect';
-
-interface Entry { id: string; content: string; created_at: string; group_id: string | null; }
+interface Entry { id: string; content: string; created_at: string; }
 
 const JournalPage = () => {
   const { toast } = useToast();
-  const [groupId, setGroupId] = useState<string | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [content, setContent] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
@@ -26,7 +23,7 @@ const JournalPage = () => {
 
   const addEntry = async () => {
     if (!userId || !content.trim()) return;
-    const { error } = await supabase.from('journal_entries').insert({ user_id: userId, content: content.trim(), group_id: groupId || null });
+    const { error } = await supabase.from('journal_entries').insert({ user_id: userId, content: content.trim() });
     if (error) return toast({ title: 'Failed to save', description: error.message, variant: 'destructive' as any });
     setContent('');
     fetchEntries();
@@ -40,9 +37,9 @@ const JournalPage = () => {
         <link rel="canonical" href="/app/journal" />
       </Helmet>
 
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-semibold">Journal</h1>
-        <GroupSelect value={groupId} onChange={setGroupId} />
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold">Private Journal</h1>
+        <p className="text-sm text-muted-foreground">Your personal reflections - only visible to you</p>
       </div>
 
       <Card className="mb-6">
