@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { useDateRange } from "@/contexts/DateRangeContext";
 import { format, startOfWeek, endOfWeek, eachWeekOfInterval, getWeek, isWithinInterval } from "date-fns";
 import { de, enUS } from "date-fns/locale";
@@ -351,10 +351,12 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       trendData.participants.map(p => week[`user_${p.userId}`] as number || 0)
     ));
     
+    if (maxFails === 0) return [];
+    
     return [
-      { value: Math.ceil(maxFails * 0.3), label: t[lang].lowRisk, color: '#10B981' },
-      { value: Math.ceil(maxFails * 0.6), label: t[lang].moderate, color: '#F59E0B' },
-      { value: Math.ceil(maxFails * 0.8), label: t[lang].highRisk, color: '#EF4444' }
+      { value: Math.max(1, Math.floor(maxFails * 0.3)), label: t[lang].lowRisk, color: '#10B981' },
+      { value: Math.max(2, Math.floor(maxFails * 0.6)), label: t[lang].moderate, color: '#F59E0B' },
+      { value: Math.max(3, Math.floor(maxFails * 0.8)), label: t[lang].highRisk, color: '#EF4444' }
     ];
   }, [trendData, lang, t]);
 
@@ -536,15 +538,12 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
         
         {/* Reference Lines - use ReferenceLine component to avoid tooltip issues */}
         {showReferences && milestoneThresholds.map((milestone, index) => (
-          <Line
+          <ReferenceLine
             key={`reference-${index}`}
-            dataKey={() => milestone.value}
+            y={milestone.value}
             stroke={milestone.color}
-            strokeWidth={1}
-            strokeDasharray="5,5"
-            dot={false}
-            connectNulls={false}
-            legendType="none"
+            strokeDasharray="3 3"
+            ifOverflow="extendDomain"
           />
         ))}
 
@@ -562,13 +561,8 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
               dataKey={userKey}
               stroke={participant.color}
               strokeWidth={isHovered ? 3 : 2.5}
-              dot={{ r: 3 }}
-              activeDot={{ 
-                r: 5, 
-                strokeWidth: 2,
-                stroke: participant.color,
-                fill: participant.color
-              }}
+              dot={false}
+              activeDot={false}
               connectNulls
               onMouseEnter={() => setHoveredLine(participant.name)}
             />

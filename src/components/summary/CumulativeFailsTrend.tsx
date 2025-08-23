@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { TrendingUp, Eye } from "lucide-react";
 import { TimelineSlider } from "@/components/charts/TimelineSlider";
 import ChartShell, { CHART_HEIGHT, CHART_MARGIN } from "@/components/summary/ChartShell";
-import * as Recharts from "recharts";
-import { ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 
 interface Participant {
   user_id: string;
@@ -152,7 +151,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
   // Initialize week range and selected participants
   useMemo(() => {
     if (weeks.length > 0 && weekRange[0] === 0 && weekRange[1] === 0) {
-      setWeekRange([weeks[0].weekIdx, weeks[weeks.length - 1].weekIdx]);
+      setWeekRange([0, weeks.length - 1]);
     }
     if (participants.length > 0 && selectedParticipants.size === 0) {
       setSelectedParticipants(new Set(participants.map(p => p.user_id)));
@@ -162,10 +161,9 @@ export function CumulativeFailsTrend({ lang }: Props) {
   // Generate color map
   const colorMap = generateParticipantColorMap(participants);
 
-  // Filter data by week range (inclusive)
-  const startWeek = weekRange[0];
-  const endWeek = weekRange[1];
-  const filteredWeeks = weeks.filter(w => w.weekIdx >= startWeek && w.weekIdx <= endWeek);
+  // Filter data by week range using array indices
+  const [startIdx, endIdx] = weekRange;
+  const filteredWeeks = weeks.slice(startIdx, endIdx + 1);
 
   // Generate chart data with normalized keys
   const chartData: TrendRow[] = useMemo(() => {
@@ -211,6 +209,23 @@ export function CumulativeFailsTrend({ lang }: Props) {
     });
     return map;
   }, [participants]);
+
+  // Calculate milestone thresholds
+  const milestoneThresholds = useMemo(() => {
+    if (!chartData.length || !series.length) return [];
+    
+    const maxValue = Math.max(...chartData.flatMap(row => 
+      series.map(s => row[s.key] as number || 0)
+    ));
+    
+    if (maxValue === 0) return [];
+    
+    return [
+      { value: Math.max(1, Math.floor(maxValue * 0.3)), label: "Low Risk", color: '#10B981' },
+      { value: Math.max(2, Math.floor(maxValue * 0.6)), label: "Moderate", color: '#F59E0B' },
+      { value: Math.max(3, Math.floor(maxValue * 0.8)), label: "High Risk", color: '#EF4444' }
+    ];
+  }, [chartData, series]);
 
   // Calculate totals
   const totalFails = violations.length;
@@ -328,7 +343,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
             <div className="space-y-2">
               <h4 className="text-sm font-medium text-muted-foreground">{t[lang].filterByWeeks}</h4>
               <TimelineSlider
-                weeks={weeks}
+                weeks={weeks.map(w => w.startDate)}
                 selectedRange={weekRange}
                 onRangeChange={setWeekRange}
                 lang={lang}
@@ -340,29 +355,21 @@ export function CumulativeFailsTrend({ lang }: Props) {
     >
       {totalPoints > 0 ? (
         <ResponsiveContainer width="100%" height="100%">
-          <Recharts.LineChart data={chartData} margin={CHART_MARGIN}>
-            <defs>
-              <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
-              </linearGradient>
-            </defs>
-            <Recharts.CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-            <Recharts.XAxis 
+          <LineChart data={chartData} margin={CHART_MARGIN}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
               dataKey="weekLabel" 
               tickMargin={8}
               padding={{ left: 0, right: 0 }}
               interval="preserveStartEnd"
-              className="text-xs text-muted-foreground"
             />
-            <Recharts.YAxis 
+            <YAxis 
               tickMargin={6}
               allowDecimals={false}
               domain={[0, (dataMax: number) => Math.max(1, dataMax)]}
               width={40}
-              className="text-xs text-muted-foreground"
             />
-            <Recharts.Tooltip 
+            <Tooltip 
               formatter={(value: any, key: string) => [`${value} Fails`, labelMap[key] ?? key]}
               labelFormatter={(label: string) => label}
               filterNull
@@ -373,8 +380,21 @@ export function CumulativeFailsTrend({ lang }: Props) {
                 border: '1px solid hsl(var(--border))'
               }}
             />
+            
+            {/* Milestone reference lines */}
+            {milestoneThresholds.map((threshold, index) => (
+              <ReferenceLine
+                key={`milestone-${index}`}
+                y={threshold.value}
+                stroke={threshold.color}
+                strokeDasharray="3 3"
+                ifOverflow="extendDomain"
+              />
+            ))}
+            
+            {/* Participant lines */}
             {series.map(s => (
-              <Recharts.Line
+              <Line
                 key={s.key}
                 type="monotone"
                 dataKey={s.key}
@@ -386,7 +406,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
                 connectNulls
               />
             ))}
-          </Recharts.LineChart>
+          </LineChart>
         </ResponsiveContainer>
       ) : (
         <div className="flex items-center justify-center h-full text-muted-foreground">

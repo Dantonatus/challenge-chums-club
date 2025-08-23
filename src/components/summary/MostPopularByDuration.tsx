@@ -125,21 +125,10 @@ export const MostPopularByDuration = ({ lang, filters }: MostPopularByDurationPr
     enabled: !!start && !!end
   });
 
-  // Create exactly 10 rows (real data + placeholders)
+  // Show only real data (no placeholders)
   const displayData = useMemo(() => {
     const challenges = challengeData || [];
-    const rows: Array<DurationChallenge | null> = [];
-    
-    // Add real challenges (up to 10)
-    for (let i = 0; i < 10; i++) {
-      if (i < challenges.length) {
-        rows.push(challenges[i]);
-      } else {
-        rows.push(null); // placeholder
-      }
-    }
-    
-    return rows;
+    return challenges.slice(0, 10); // Max 10 real challenges only
   }, [challengeData]);
 
   const handleChallengeClick = (challengeId: string) => {
@@ -184,18 +173,14 @@ export const MostPopularByDuration = ({ lang, filters }: MostPopularByDurationPr
         <div className="space-y-1">
           {displayData.map((challenge, index) => (
             <div 
-              key={challenge?.id || `placeholder-${index}`}
-              className={`
-                flex items-center gap-4 px-6 py-4 transition-all duration-200
-                ${challenge ? 'hover:bg-muted/30 cursor-pointer' : 'opacity-60'}
-                ${index < displayData.length - 1 ? 'border-b border-border/30' : ''}
-              `}
-              onClick={challenge ? () => handleChallengeClick(challenge.id) : undefined}
+              key={challenge.id}
+              className="flex items-center gap-4 px-6 py-4 transition-all duration-200 hover:bg-muted/30 cursor-pointer border-b border-border/30 last:border-b-0"
+              onClick={() => handleChallengeClick(challenge.id)}
               style={{ animationDelay: `${index * 50}ms` }}
             >
               {/* Rank */}
               <div className="flex items-center gap-2 w-12">
-                {index === 0 && challenge && <Trophy className="h-4 w-4 text-yellow-500" />}
+                {index === 0 && <Trophy className="h-4 w-4 text-yellow-500" />}
                 <span className="text-sm font-medium text-muted-foreground">
                   #{index + 1}
                 </span>
@@ -203,68 +188,52 @@ export const MostPopularByDuration = ({ lang, filters }: MostPopularByDurationPr
 
               {/* Title and Meta */}
               <div className="flex-1 min-w-0">
-                {challenge ? (
-                  <>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-sm truncate">{challenge.title}</h4>
-                      {challenge.is_trending && (
-                        <Badge variant="secondary" className="text-xs flex items-center gap-1 bg-orange-500/10 text-orange-600 border-orange-500/20">
-                          🔥 {t[lang].trending}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>{t[lang].duration}: {challenge.duration_days} {t[lang].days}</span>
-                      <span>{t[lang].participants}: {challenge.participant_count}</span>
-                      <span>{t[lang].violations}: {challenge.total_fails}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="h-4 mb-1">
-                      <span className="text-sm text-muted-foreground">—</span>
-                    </div>
-                    <div className="h-3">
-                      <span className="text-xs text-muted-foreground">—</span>
-                    </div>
-                  </>
-                )}
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="font-medium text-sm truncate">{challenge.title}</h4>
+                  {challenge.is_trending && (
+                    <Badge variant="secondary" className="text-xs flex items-center gap-1 bg-orange-500/10 text-orange-600 border-orange-500/20">
+                      🔥 {t[lang].trending}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span>{t[lang].duration}: {challenge.duration_days} {t[lang].days}</span>
+                  <span>{t[lang].participants}: {challenge.participant_count}</span>
+                  <span>{t[lang].violations}: {challenge.total_fails}</span>
+                </div>
               </div>
 
               {/* Avatar Stack */}
               <div className="flex items-center">
                 <div className="flex -space-x-2">
-                  {challenge ? (
-                    <>
-                      {challenge.participants.slice(0, 3).map((participant, idx) => (
-                        <Avatar key={participant.user_id} className="h-8 w-8 border-2 border-background">
-                          <AvatarImage 
-                            src={participant.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${participant.user_id}`} 
-                          />
-                          <AvatarFallback className="text-xs">
-                            {participant.display_name.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      ))}
-                      {challenge.participant_count > 3 && (
-                        <div className="h-8 w-8 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                          <span className="text-xs font-medium">+{challenge.participant_count - 3}</span>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    // Placeholder avatars
-                    Array.from({ length: 3 }).map((_, idx) => (
-                      <div 
-                        key={idx} 
-                        className="h-8 w-8 rounded-full bg-muted/40 border-2 border-background"
+                  {challenge.participants.slice(0, 3).map((participant, idx) => (
+                    <Avatar key={participant.user_id} className="h-8 w-8 border-2 border-background">
+                      <AvatarImage 
+                        src={participant.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${participant.user_id}`} 
                       />
-                    ))
+                      <AvatarFallback className="text-xs">
+                        {participant.display_name.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {challenge.participant_count > 3 && (
+                    <div className="h-8 w-8 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                      <span className="text-xs font-medium">+{challenge.participant_count - 3}</span>
+                    </div>
                   )}
                 </div>
               </div>
             </div>
           ))}
+          
+          {/* Show empty state if no challenges */}
+          {displayData.length === 0 && (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <div className="text-center">
+                <p>{t[lang].noData}</p>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
