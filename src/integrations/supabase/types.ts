@@ -17,26 +17,38 @@ export type Database = {
       approval_tokens: {
         Row: {
           created_at: string
+          creation_context: Json | null
           expires_at: string
           id: string
+          security_hash: string | null
           token: string
           used_at: string | null
+          used_by: string | null
+          used_from_ip: unknown | null
           user_id: string
         }
         Insert: {
           created_at?: string
+          creation_context?: Json | null
           expires_at: string
           id?: string
+          security_hash?: string | null
           token: string
           used_at?: string | null
+          used_by?: string | null
+          used_from_ip?: unknown | null
           user_id: string
         }
         Update: {
           created_at?: string
+          creation_context?: Json | null
           expires_at?: string
           id?: string
+          security_hash?: string | null
           token?: string
           used_at?: string | null
+          used_by?: string | null
+          used_from_ip?: unknown | null
           user_id?: string
         }
         Relationships: []
@@ -704,6 +716,18 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      consume_approval_token: {
+        Args: { consuming_user_id?: string; token_value: string }
+        Returns: boolean
+      }
+      encrypt_approval_token: {
+        Args: { token_value: string }
+        Returns: string
+      }
+      generate_secure_approval_token: {
+        Args: { expiry_hours?: number; target_user_id: string }
+        Returns: string
+      }
       get_group_info_for_member: {
         Args: { group_id_param: string }
         Returns: {
@@ -759,6 +783,19 @@ export type Database = {
       join_group: {
         Args: { p_invite_code: string }
         Returns: string
+      }
+      monitor_token_security: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          expired_unused_tokens: number
+          recent_failures: number
+          recommendations: string[]
+          suspicious_activity_count: number
+        }[]
+      }
+      validate_approval_token: {
+        Args: { token_value: string; user_email?: string }
+        Returns: boolean
       }
     }
     Enums: {
