@@ -700,6 +700,17 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      get_group_info_for_member: {
+        Args: { group_id_param: string }
+        Returns: {
+          created_at: string
+          description: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }[]
+      }
       get_popular_challenges_by_duration: {
         Args: {
           p_end_date: string
