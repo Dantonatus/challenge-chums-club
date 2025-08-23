@@ -5,10 +5,11 @@ import { useDateRange } from "@/contexts/DateRangeContext";
 import { isoWeekOf, startOfISOWeek, endOfISOWeek, weekRangeLabel, buildIsoWeeksInRange } from "@/lib/date";
 import { generateParticipantColorMap } from "@/lib/participant-colors";
 import { formatEUR } from "@/lib/currency";
+import { useVisibleParticipants } from "@/hooks/useVisibleParticipants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { TrendingUp, Eye, Target, Euro } from "lucide-react";
+import { TrendingUp, Eye, Target, Euro, EyeOff } from "lucide-react";
 import { TimelineSlider } from "@/components/charts/TimelineSlider";
 import ChartShell, { CHART_HEIGHT, CHART_MARGIN } from "@/components/summary/ChartShell";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
@@ -37,7 +38,6 @@ interface SeriesInfo {
 
 export function CumulativeFailsTrend({ lang }: Props) {
   const { start, end } = useDateRange();
-  const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
   const [weekRange, setWeekRange] = useState<[number, number]>([0, 0]);
   const [mode, setMode] = useState<'fails' | 'penalties'>('fails');
 
@@ -145,6 +145,9 @@ export function CumulativeFailsTrend({ lang }: Props) {
 
   const { violations = [], participants = [] } = queryData || {};
 
+  // Use visibility hook for participant management
+  const { visible: visibleParticipants, toggle: toggleParticipant, toggleAll, isVisible } = useVisibleParticipants(participants);
+
   // Generate weeks in range with stable indices using buildIsoWeeksInRange
   const weeks = useMemo(() => {
     if (!start || !end) return [];
@@ -157,15 +160,12 @@ export function CumulativeFailsTrend({ lang }: Props) {
     }));
   }, [start, end]);
 
-  // Initialize week range and selected participants
+  // Initialize week range
   useMemo(() => {
     if (weeks.length > 0 && weekRange[0] === 0 && weekRange[1] === 0) {
       setWeekRange([0, weeks.length - 1]);
     }
-    if (participants.length > 0 && selectedParticipants.size === 0) {
-      setSelectedParticipants(new Set(participants.map(p => p.user_id)));
-    }
-  }, [weeks, participants, weekRange, selectedParticipants.size]);
+  }, [weeks, weekRange]);
 
   // Generate color map
   const colorMap = generateParticipantColorMap(participants);
@@ -207,16 +207,16 @@ export function CumulativeFailsTrend({ lang }: Props) {
     });
   }, [filteredWeeks, participants, violations, mode]);
 
-  // Generate series info with stable keys
+  // Generate series info with stable keys - only for visible participants
   const series: SeriesInfo[] = useMemo(() => {
     return participants
-      .filter(p => selectedParticipants.has(p.user_id))
+      .filter(p => isVisible(p.user_id))
       .map(participant => ({
         key: `user_${participant.user_id}`,
         label: participant.display_name,
         color: colorMap[participant.user_id]
       }));
-  }, [participants, selectedParticipants, colorMap]);
+  }, [participants, isVisible, colorMap]);
 
   // Create label map for tooltips
   const labelMap = useMemo(() => {
@@ -251,24 +251,6 @@ export function CumulativeFailsTrend({ lang }: Props) {
     acc + chartData.filter(r => Number.isFinite(r[s.key])).length, 0
   );
 
-  // Toggle participant selection
-  const toggleParticipant = (userId: string) => {
-    const newSelection = new Set(selectedParticipants);
-    if (newSelection.has(userId)) {
-      newSelection.delete(userId);
-    } else {
-      newSelection.add(userId);
-    }
-    setSelectedParticipants(newSelection);
-  };
-
-  const toggleAllParticipants = () => {
-    if (selectedParticipants.size === participants.length) {
-      setSelectedParticipants(new Set());
-    } else {
-      setSelectedParticipants(new Set(participants.map(p => p.user_id)));
-    }
-  };
 
   if (isLoading) {
     return (
@@ -331,10 +313,10 @@ export function CumulativeFailsTrend({ lang }: Props) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={toggleAllParticipants}
+            onClick={toggleAll}
             className="flex items-center gap-1 text-xs"
           >
-            <Eye className="h-3 w-3" />
+            {visibleParticipants.size === participants.length ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
             {t[lang].toggleAll}
           </Button>
         </div>
@@ -346,7 +328,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
             <h4 className="text-sm font-medium text-muted-foreground">{t[lang].participants}</h4>
             <div className="flex flex-wrap gap-2">
               {participants.map((participant) => {
-                const isSelected = selectedParticipants.has(participant.user_id);
+                const isSelected = isVisible(participant.user_id);
                 const participantViolations = violations.filter(v => v.user_id === participant.user_id);
                 const count = participantViolations.length;
                 
@@ -356,15 +338,16 @@ export function CumulativeFailsTrend({ lang }: Props) {
                     variant="outline"
                     size="sm"
                     onClick={() => toggleParticipant(participant.user_id)}
-                    className="flex items-center gap-2 text-xs border-2 transition-all duration-200"
+                    className="flex items-center gap-2 text-xs border-2 transition-all duration-300 hover-scale"
                     style={{
                       borderColor: isSelected ? colorMap[participant.user_id] : 'hsl(var(--border))',
                       backgroundColor: isSelected ? `${colorMap[participant.user_id]}15` : 'transparent',
-                      color: isSelected ? colorMap[participant.user_id] : 'hsl(var(--muted-foreground))'
+                      color: isSelected ? colorMap[participant.user_id] : 'hsl(var(--muted-foreground))',
+                      opacity: isSelected ? 1 : 0.6
                     }}
                   >
                     <div 
-                      className="w-2 h-2 rounded-full transition-all duration-200"
+                      className="w-2 h-2 rounded-full transition-all duration-300"
                       style={{ 
                         backgroundColor: colorMap[participant.user_id],
                         opacity: isSelected ? 1 : 0.3
@@ -452,7 +435,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
               />
             ))}
             
-            {/* Participant lines */}
+            {/* Participant lines - only render visible ones */}
             {series.map(s => (
               <Line
                 key={s.key}
@@ -464,6 +447,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
                 activeDot={false}
                 isAnimationActive
                 connectNulls
+                className="animate-fade-in"
               />
             ))}
           </LineChart>

@@ -6,6 +6,7 @@ import { useDateRange } from "@/contexts/DateRangeContext";
 import { format, isWithinInterval } from "date-fns";
 import { de, enUS } from "date-fns/locale";
 import { buildIsoWeeksInRange, startOfISOWeek, endOfISOWeek, isoWeekOf } from "@/lib/date";
+import { useVisibleParticipants } from "@/hooks/useVisibleParticipants";
 import { TimelineSlider } from "@/components/charts/TimelineSlider";
 import { InteractiveLegend } from "@/components/charts/InteractiveLegend";
 
@@ -46,7 +47,6 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
   const locale = lang === 'de' ? de : enUS;
   
   // State for interactive features
-  const [visibleParticipants, setVisibleParticipants] = useState<Set<string>>(new Set());
   const [timelineRange, setTimelineRange] = useState<[number, number]>([0, 0]);
   const [hoveredLine, setHoveredLine] = useState<string | null>(null);
   const [showReferences, setShowReferences] = useState(true);
@@ -70,7 +70,8 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       references: "Referenzlinien",
       compare: "Vergleichen",
       difference: "Differenz",
-      maxDiff: "Max Δ"
+      maxDiff: "Max Δ",
+      toggleAll: "Alle"
     },
     en: {
       title: "Fails per Week",
@@ -89,7 +90,8 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       references: "Reference Lines",
       compare: "Compare",
       difference: "Difference",
-      maxDiff: "Max Δ"
+      maxDiff: "Max Δ",
+      toggleAll: "All"
     }
   };
 
@@ -259,14 +261,15 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
     enabled: !!start && !!end
   });
 
-  // Initialize timeline range and visible participants
+  // Use visibility hook for participant management
+  const { visible: visibleParticipants, toggle: toggleParticipant, toggleAll, isVisible } = useVisibleParticipants(
+    trendData?.participants.map(p => ({ userId: p.userId })) || []
+  );
+
+  // Initialize timeline range
   useMemo(() => {
     if (trendData && trendData.weeks.length > 0) {
       setTimelineRange([0, trendData.weeks.length - 1]);
-      
-      if (visibleParticipants.size === 0) {
-        setVisibleParticipants(new Set(trendData.participants.map(p => p.userId)));
-      }
     }
   }, [trendData?.weeks.length]);
 
@@ -311,16 +314,13 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
     return config;
   }, [trendData, compareMode, compareParticipants, lang, t]);
 
-  // Handle legend toggle
+  // Handle legend toggle - map name to userId
   const handleLegendToggle = useCallback((name: string, visible: boolean) => {
-    const newVisible = new Set(visibleParticipants);
-    if (visible) {
-      newVisible.add(name);
-    } else {
-      newVisible.delete(name);
+    const participant = trendData?.participants.find(p => p.name === name);
+    if (participant) {
+      toggleParticipant(participant.userId);
     }
-    setVisibleParticipants(newVisible);
-  }, [visibleParticipants]);
+  }, [trendData?.participants, toggleParticipant]);
 
   // Handle compare participants selection
   const handleCompareSelection = useCallback((participantA: string, participantB: string) => {
@@ -460,14 +460,57 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
           {/* Interactive Legend */}
           <div className="flex-1">
             <h4 className="text-sm font-medium text-muted-foreground mb-2">{t[lang].participants}</h4>
-            <InteractiveLegend
-              items={trendData.participants.map(p => ({
-                name: p.name,
-                color: p.color,
-                value: p.totalFails
-              }))}
-              onToggle={handleLegendToggle}
-            />
+            <div className="flex flex-wrap gap-2">
+              {trendData.participants.map((participant) => {
+                const isSelected = isVisible(participant.userId);
+                
+                return (
+                  <Button
+                    key={participant.userId}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleParticipant(participant.userId)}
+                    className="flex items-center gap-2 text-xs border-2 transition-all duration-300 hover-scale"
+                    style={{
+                      borderColor: isSelected ? participant.color : 'hsl(var(--border))',
+                      backgroundColor: isSelected ? `${participant.color}15` : 'transparent',
+                      color: isSelected ? participant.color : 'hsl(var(--muted-foreground))',
+                      opacity: isSelected ? 1 : 0.6
+                    }}
+                  >
+                    <div 
+                      className="w-2 h-2 rounded-full transition-all duration-300"
+                      style={{ 
+                        backgroundColor: participant.color,
+                        opacity: isSelected ? 1 : 0.3
+                      }}
+                    />
+                    {participant.name}
+                    <Badge 
+                      variant="outline" 
+                      className="ml-1 text-xs border-0"
+                      style={{
+                        backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : 'transparent',
+                        color: isSelected ? participant.color : 'hsl(var(--muted-foreground))'
+                      }}
+                    >
+                      {participant.totalFails}
+                    </Badge>
+                  </Button>
+                );
+              })}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAll}
+                className="flex items-center gap-1 text-xs ml-2"
+              >
+                {visibleParticipants.size === trendData.participants.length ? 
+                  <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />
+                }
+                {t[lang].toggleAll}
+              </Button>
+            </div>
           </div>
 
           {/* Timeline Slider */}
