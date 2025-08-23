@@ -160,12 +160,25 @@ export function CumulativeFailsTrend({ lang }: Props) {
     }));
   }, [start, end]);
 
-  // Initialize week range
+  // Initialize week range to match global date range context  
   useMemo(() => {
-    if (weeks.length > 0 && weekRange[0] === 0 && weekRange[1] === 0) {
-      setWeekRange([0, weeks.length - 1]);
+    if (weeks.length > 0) {
+      const globalStartWeek = weeks.findIndex(week => 
+        week.startDate.getTime() >= start.getTime()
+      );
+      const globalEndWeek = weeks.findIndex(week => 
+        week.endDate.getTime() <= end.getTime()
+      );
+      
+      // Use global range if valid, otherwise use full range
+      if (globalStartWeek >= 0 && globalEndWeek >= 0 && globalStartWeek <= globalEndWeek) {
+        setWeekRange([globalStartWeek, globalEndWeek]);
+      } else {
+        // Fallback to full range if no exact match
+        setWeekRange([0, weeks.length - 1]);
+      }
     }
-  }, [weeks, weekRange]);
+  }, [weeks, start, end]);
 
   // Generate color map
   const colorMap = generateParticipantColorMap(participants);

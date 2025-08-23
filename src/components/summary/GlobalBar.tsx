@@ -91,14 +91,20 @@ export function GlobalBar({
   );
 
   const selectedRange: [number, number] = [
-    weeks.findIndex(week => 
+    Math.max(0, weeks.findIndex(week => 
       startOfISOWeek(week).getTime() <= start.getTime() && 
       start.getTime() <= endOfISOWeek(week).getTime()
-    ),
-    weeks.findIndex(week => 
+    )),
+    Math.max(0, weeks.findIndex(week => 
       startOfISOWeek(week).getTime() <= end.getTime() && 
       end.getTime() <= endOfISOWeek(week).getTime()
-    )
+    ))
+  ];
+
+  // Ensure valid range
+  const normalizedRange: [number, number] = [
+    Math.max(0, selectedRange[0] === -1 ? 0 : selectedRange[0]),
+    Math.min(weeks.length - 1, selectedRange[1] === -1 ? weeks.length - 1 : selectedRange[1])
   ];
 
   const debouncedRangeChange = useCallback((range: [number, number]) => {
@@ -115,7 +121,7 @@ export function GlobalBar({
           end: endOfISOWeek(endWeek)
         });
       }
-    }, 300);
+    }, 150); // Reduced debounce for more responsive feel
     
     setDebounceTimer(timer);
   }, [debounceTimer, weeks, setRange]);
@@ -133,21 +139,21 @@ export function GlobalBar({
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
         newRange = [
-          Math.max(0, selectedRange[0] - step),
-          Math.max(step - 1, selectedRange[1] - step)
+          Math.max(0, normalizedRange[0] - step),
+          Math.max(step - 1, normalizedRange[1] - step)
         ];
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         newRange = [
-          Math.min(weeks.length - step, selectedRange[0] + step),
-          Math.min(weeks.length - 1, selectedRange[1] + step)
+          Math.min(weeks.length - step, normalizedRange[0] + step),
+          Math.min(weeks.length - 1, normalizedRange[1] + step)
         ];
       } else if (e.key === 'Enter' && e.ctrlKey) {
         // Ctrl+Enter to export
         handleExport();
       }
       
-      if (newRange[0] !== selectedRange[0] || newRange[1] !== selectedRange[1]) {
+      if (newRange[0] !== normalizedRange[0] || newRange[1] !== normalizedRange[1]) {
         debouncedRangeChange(newRange);
       }
     };
@@ -157,7 +163,7 @@ export function GlobalBar({
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [selectedRange, weeks.length, debouncedRangeChange]);
+  }, [normalizedRange, weeks.length, debouncedRangeChange]);
 
   useEffect(() => {
     return () => {
@@ -243,9 +249,10 @@ export function GlobalBar({
             <div className="flex-1 max-w-md">
               <TimelineSlider
                 weeks={weeks}
-                selectedRange={selectedRange}
+                selectedRange={normalizedRange}
                 onRangeChange={debouncedRangeChange}
                 lang={lang}
+                minGap={0}
               />
             </div>
 

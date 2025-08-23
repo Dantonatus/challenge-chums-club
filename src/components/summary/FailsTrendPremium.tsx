@@ -266,12 +266,25 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
     trendData?.participants.map(p => ({ userId: p.userId })) || []
   );
 
-  // Initialize timeline range
+  // Initialize timeline range to match global date range context
   useMemo(() => {
     if (trendData && trendData.weeks.length > 0) {
-      setTimelineRange([0, trendData.weeks.length - 1]);
+      const globalStartWeek = trendData.weeks.findIndex(week => 
+        week.startDate.getTime() >= start.getTime()
+      );
+      const globalEndWeek = trendData.weeks.findIndex(week => 
+        week.endDate.getTime() <= end.getTime()
+      );
+      
+      // Use global range if valid, otherwise use full range
+      if (globalStartWeek >= 0 && globalEndWeek >= 0 && globalStartWeek <= globalEndWeek) {
+        setTimelineRange([globalStartWeek, globalEndWeek]);
+      } else {
+        // Fallback to full range
+        setTimelineRange([0, trendData.weeks.length - 1]);
+      }
     }
-  }, [trendData?.weeks.length]);
+  }, [trendData?.weeks.length, start, end]);
 
   // Filter data based on timeline selection
   const filteredData = useMemo(() => {
