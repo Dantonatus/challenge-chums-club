@@ -4,9 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDateRange } from "@/contexts/DateRangeContext";
 import { isoWeekOf, startOfISOWeek, endOfISOWeek, weekRangeLabel } from "@/lib/date";
 import { generateParticipantColorMap } from "@/lib/participant-colors";
+import { formatEUR } from "@/lib/currency";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Eye } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { TrendingUp, Eye, Target, Euro } from "lucide-react";
 import { TimelineSlider } from "@/components/charts/TimelineSlider";
 import ChartShell, { CHART_HEIGHT, CHART_MARGIN } from "@/components/summary/ChartShell";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
@@ -37,25 +39,40 @@ export function CumulativeFailsTrend({ lang }: Props) {
   const { start, end } = useDateRange();
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
   const [weekRange, setWeekRange] = useState<[number, number]>([0, 0]);
+  const [mode, setMode] = useState<'fails' | 'penalties'>('fails');
 
   const t = {
     de: {
-      title: "Kumulativer Fails-Trend",
-      subtitle: "Gesammelte Verstöße pro Teilnehmer über die Zeit",
+      title: "Kumulativer Trend",
+      subtitle: "Gesammelte Werte pro Teilnehmer über die Zeit",
+      titleFails: "Kumulativer Fails-Trend",
+      titlePenalties: "Kumulativer Strafen-Trend",
+      subtitleFails: "Gesammelte Verstöße pro Teilnehmer über die Zeit",
+      subtitlePenalties: "Gesammelte Strafen (€) pro Teilnehmer über die Zeit",
       totalFails: "Gesamt Fails",
+      totalPenalties: "Gesamt Strafen",
       noData: "Für den gewählten Zeitraum liegen keine kumulativen Werte vor. Passe den Wochenregler oder die Teilnehmer an.",
       participants: "Teilnehmer",
       filterByWeeks: "Nach Wochen filtern",
-      toggleAll: "Alle"
+      toggleAll: "Alle",
+      fails: "Fails",
+      penalties: "€ Strafen"
     },
     en: {
-      title: "Cumulative Fails Trend",
-      subtitle: "Accumulated violations per participant over time",
+      title: "Cumulative Trend",
+      subtitle: "Accumulated values per participant over time",
+      titleFails: "Cumulative Fails Trend",
+      titlePenalties: "Cumulative Penalties Trend",
+      subtitleFails: "Accumulated violations per participant over time",
+      subtitlePenalties: "Accumulated penalties (€) per participant over time",
       totalFails: "Total Fails",
+      totalPenalties: "Total Penalties",
       noData: "No cumulative data available for the selected period. Adjust the week slider or participants.",
       participants: "Participants",
       filterByWeeks: "Filter by weeks",
-      toggleAll: "All"
+      toggleAll: "All",
+      fails: "Fails",
+      penalties: "€ Penalties"
     }
   };
 
@@ -93,7 +110,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
       // Get violations in date range
       const { data: violations } = await supabase
         .from('challenge_violations')
-        .select('user_id, created_at, challenge_id')
+        .select('user_id, created_at, challenge_id, amount_cents')
         .in('challenge_id', challengeIds)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
@@ -175,20 +192,28 @@ export function CumulativeFailsTrend({ lang }: Props) {
         weekLabel: `KW ${week.weekIdx}`
       };
 
-      // Calculate cumulative fails for each participant up to this week
+      // Calculate cumulative values for each participant up to this week
       participants.forEach(participant => {
         const userKey = `user_${participant.user_id}`;
-        const cumulativeFails = violations.filter(v => 
+        const participantViolations = violations.filter(v => 
           v.user_id === participant.user_id && 
           new Date(v.created_at) <= week.endDate
-        ).length;
+        );
         
-        row[userKey] = cumulativeFails;
+        if (mode === 'fails') {
+          row[userKey] = participantViolations.length;
+        } else {
+          // Calculate cumulative penalties in euros
+          const cumulativePenalties = participantViolations.reduce((sum, v) => 
+            sum + (v.amount_cents || 0) / 100, 0
+          );
+          row[userKey] = Math.round(cumulativePenalties * 100) / 100; // Round to 2 decimals
+        }
       });
 
       return row;
     });
-  }, [filteredWeeks, participants, violations]);
+  }, [filteredWeeks, participants, violations, mode]);
 
   // Generate series info with stable keys
   const series: SeriesInfo[] = useMemo(() => {
@@ -229,6 +254,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
 
   // Calculate totals
   const totalFails = violations.length;
+  const totalPenalties = violations.reduce((sum, v) => sum + (v.amount_cents || 0) / 100, 0);
   const totalPoints = series.reduce((acc, s) => 
     acc + chartData.filter(r => Number.isFinite(r[s.key])).length, 0
   );
@@ -265,19 +291,51 @@ export function CumulativeFailsTrend({ lang }: Props) {
   return (
     <ChartShell
       title={
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-emerald-500" />
-          <div>
-            <div className="text-lg">{t[lang].title}</div>
-            <div className="text-sm text-muted-foreground mt-1">{t[lang].subtitle}</div>
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-emerald-500" />
+            <div>
+              <div className="text-lg">
+                {mode === 'fails' ? t[lang].titleFails : t[lang].titlePenalties}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                {mode === 'fails' ? t[lang].subtitleFails : t[lang].subtitlePenalties}
+              </div>
+            </div>
           </div>
+          
+          {/* Mode Toggle */}
+          <ToggleGroup 
+            type="single" 
+            value={mode} 
+            onValueChange={(value) => value && setMode(value as 'fails' | 'penalties')}
+            className="rounded-xl border border-border bg-background/50 p-1"
+          >
+            <ToggleGroupItem 
+              value="fails" 
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg data-[state=on]:bg-gradient-to-r data-[state=on]:from-emerald-500/10 data-[state=on]:to-emerald-600/10 data-[state=on]:text-emerald-700 data-[state=on]:shadow-sm transition-all duration-200"
+            >
+              <Target className="h-3 w-3" />
+              {t[lang].fails}
+            </ToggleGroupItem>
+            <ToggleGroupItem 
+              value="penalties" 
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg data-[state=on]:bg-gradient-to-r data-[state=on]:from-orange-500/10 data-[state=on]:to-orange-600/10 data-[state=on]:text-orange-700 data-[state=on]:shadow-sm transition-all duration-200"
+            >
+              <Euro className="h-3 w-3" />
+              {t[lang].penalties}
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       }
       headerRight={
         <div className="flex items-center gap-4">
           <Badge variant="secondary" className="flex items-center gap-1">
             <Eye className="h-3 w-3" />
-            {totalFails} {t[lang].totalFails}
+            {mode === 'fails' 
+              ? `${totalFails} ${t[lang].totalFails}` 
+              : `${formatEUR(totalPenalties * 100)} ${t[lang].totalPenalties}`
+            }
           </Badge>
           <Button
             variant="ghost"
@@ -365,12 +423,23 @@ export function CumulativeFailsTrend({ lang }: Props) {
             />
             <YAxis 
               tickMargin={6}
-              allowDecimals={false}
+              allowDecimals={mode === 'penalties'}
               domain={[0, (dataMax: number) => Math.max(1, dataMax)]}
               width={40}
+              label={{ 
+                value: mode === 'fails' ? 'Fails' : '€', 
+                angle: -90, 
+                position: 'insideLeft',
+                style: { textAnchor: 'middle' }
+              }}
             />
             <Tooltip 
-              formatter={(value: any, key: string) => [`${value} Fails`, labelMap[key] ?? key]}
+              formatter={(value: any, key: string) => [
+                mode === 'fails' 
+                  ? `${value} Fails` 
+                  : `€${Number(value).toFixed(2)}`,
+                labelMap[key] ?? key
+              ]}
               labelFormatter={(label: string) => label}
               filterNull
               contentStyle={{ 
