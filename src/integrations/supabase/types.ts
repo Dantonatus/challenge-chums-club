@@ -700,6 +700,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      cleanup_expired_approval_tokens: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       get_group_info_for_member: {
         Args: { group_id_param: string }
         Returns: {
