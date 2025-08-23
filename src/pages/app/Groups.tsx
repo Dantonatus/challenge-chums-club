@@ -115,16 +115,24 @@ const GroupsPage = () => {
               <CardDescription>{g.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-muted-foreground">Invite code: <code>{g.invite_code}</code></div>
-              <div className="mt-3 flex gap-2">
+              {/* Only show invite code to group owners for security */}
+              {g.owner_id === userId && (
+                <div className="text-sm text-muted-foreground mb-3">
+                  Invite code: <code className="bg-muted px-2 py-1 rounded font-mono">{g.invite_code}</code>
+                </div>
+              )}
+              <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={async () => {
                   await loadMembers(g.id);
                   setManageOpen({ open: true, groupId: g.id });
                 }}>Mitglieder verwalten</Button>
-                <Button size="sm" variant="secondary" onClick={() => {
-                  navigator.clipboard.writeText(g.invite_code);
-                  toast({ title: 'Invite code kopiert' });
-                }}>Code kopieren</Button>
+                {/* Only show copy invite code button to group owners */}
+                {g.owner_id === userId && (
+                  <Button size="sm" variant="secondary" onClick={() => {
+                    navigator.clipboard.writeText(g.invite_code);
+                    toast({ title: 'Invite code kopiert' });
+                  }}>Code kopieren</Button>
+                )}
               </div>
             </CardContent>
           </Card>
