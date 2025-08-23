@@ -3,8 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { useDateRange } from "@/contexts/DateRangeContext";
-import { format, startOfWeek, endOfWeek, eachWeekOfInterval, getWeek, isWithinInterval } from "date-fns";
+import { format, isWithinInterval } from "date-fns";
 import { de, enUS } from "date-fns/locale";
+import { buildIsoWeeksInRange, startOfISOWeek, endOfISOWeek, isoWeekOf } from "@/lib/date";
 import { TimelineSlider } from "@/components/charts/TimelineSlider";
 import { InteractiveLegend } from "@/components/charts/InteractiveLegend";
 
@@ -167,17 +168,17 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
         .gte('measurement_date', startStr)
         .lte('measurement_date', endStr);
 
-      // Generate weeks in range with stable indices
-      const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
+      // Generate weeks in range with stable indices using buildIsoWeeksInRange
+      const isoWeeks = buildIsoWeeksInRange(start, end);
       
-      const weeklyData: WeeklyData[] = weeks.map(week => {
-        const weekStart = startOfWeek(week, { weekStartsOn: 1 });
-        const weekEnd = endOfWeek(week, { weekStartsOn: 1 });
-        const weekNumber = getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de });
+      const weeklyData: WeeklyData[] = isoWeeks.map((week, index) => {
+        const weekStart = week.start;
+        const weekEnd = endOfISOWeek(week.start);
+        const weekNumber = week.isoWeek;
 
         const weekData: WeeklyData = {
-          weekIdx: weekNumber,
-          weekLabel: `KW ${weekNumber}`
+          weekIdx: index, // Use array index for consistent slider behavior
+          weekLabel: week.label
         };
 
         // Initialize all participants with 0 fails using stable user keys
@@ -246,11 +247,11 @@ export const FailsTrendPremium = ({ lang, compareMode = false, onCompareParticip
       return {
         data: weeklyData,
         participants,
-        weeks: weeks.map((week, idx) => ({
-          weekIdx: getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de }),
-          weekLabel: `KW ${getWeek(week, { weekStartsOn: 1, firstWeekContainsDate: 4, locale: de })}`,
-          startDate: startOfWeek(week, { weekStartsOn: 1 }),
-          endDate: endOfWeek(week, { weekStartsOn: 1 })
+        weeks: isoWeeks.map((week, idx) => ({
+          weekIdx: idx, // Use array index for consistency
+          weekLabel: week.label,
+          startDate: week.start,
+          endDate: endOfISOWeek(week.start)
         })),
         challenges: challenges || []
       };

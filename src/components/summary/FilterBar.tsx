@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { de, enUS } from "date-fns/locale";
-import { useDateRange } from "@/contexts/DateRangeContext";
+import { useDateRange, SummaryRangePreset } from "@/contexts/DateRangeContext";
 import { cn } from "@/lib/utils";
 
 interface FilterBarProps {
@@ -39,7 +39,7 @@ export const FilterBar = ({
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
-  const { start, end, setRange, minDate, maxDate } = useDateRange();
+  const { start, end, setRange, preset, setPreset, minDate, maxDate } = useDateRange();
   
   const locale = lang === 'de' ? de : enUS;
 
@@ -61,7 +61,11 @@ export const FilterBar = ({
       selected: "ausgewählt",
       selectDateRange: "Zeitraum wählen",
       from: "Von",
-      to: "Bis"
+      to: "Bis",
+      thisYear: "Dieses Jahr (1. Jan – 31. Dez)",
+      last30d: "Letzte 30 Tage",
+      last6months: "Letzte 6 Monate",
+      custom: "Benutzerdefiniert"
     },
     en: {
       filters: "Filters",
@@ -80,15 +84,30 @@ export const FilterBar = ({
       selected: "selected",
       selectDateRange: "Select date range",
       from: "From",
-      to: "To"
+      to: "To",
+      thisYear: "This Year (Jan 1 – Dec 31)",
+      last30d: "Last 30 Days", 
+      last6months: "Last 6 Months",
+      custom: "Custom"
     }
   };
+
+  const rangePresets: Array<{ value: SummaryRangePreset; label: string }> = [
+    { value: 'thisYear', label: t[lang].thisYear },
+    { value: 'last30d', label: t[lang].last30d },
+    { value: 'last6months', label: t[lang].last6months },
+    { value: 'custom', label: t[lang].custom }
+  ];
 
   const challengeTypeOptions = [
     { value: "all", label: t[lang].all },
     { value: "habit", label: t[lang].habit },
     { value: "kpi", label: t[lang].kpi }
   ];
+
+  const getPresetLabel = (preset: SummaryRangePreset) => {
+    return rangePresets.find(p => p.value === preset)?.label || t[lang].custom;
+  };
 
   const handleParticipantToggle = (participantId: string) => {
     const updated = selectedParticipants.includes(participantId)
@@ -135,45 +154,66 @@ export const FilterBar = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Date Range Filter */}
+        {/* Date Range Filter - Now shows presets with custom option */}
         <div className="space-y-2">
           <label className="text-sm font-medium">{t[lang].dateRange}</label>
-          <Popover open={dateRangeOpen} onOpenChange={setDateRangeOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                aria-expanded={dateRangeOpen}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(start, "dd.MM.yy", { locale }) + " - " + format(end, "dd.MM.yy", { locale })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <div className="p-4 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t[lang].from}</label>
-                  <Calendar
-                    mode="single"
-                    selected={start}
-                    onSelect={(date) => date && setRange({ start: date, end })}
-                    disabled={(date) => date < minDate || date > maxDate || date > end}
-                    className="pointer-events-auto"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t[lang].to}</label>
-                  <Calendar
-                    mode="single"
-                    selected={end}
-                    onSelect={(date) => date && setRange({ start, end: date })}
-                    disabled={(date) => date < minDate || date > maxDate || date < start}
-                    className="pointer-events-auto"
-                  />
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <div className="space-y-2">
+            <Select
+              value={preset}
+              onValueChange={(value: SummaryRangePreset) => setPreset(value)}
+            >
+              <SelectTrigger>
+                <SelectValue>{getPresetLabel(preset)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {rangePresets.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Show custom date picker only for custom preset */}
+            {preset === 'custom' && (
+              <Popover open={dateRangeOpen} onOpenChange={setDateRangeOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-xs"
+                    aria-expanded={dateRangeOpen}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(start, "dd.MM.yy", { locale }) + " - " + format(end, "dd.MM.yy", { locale })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-4 space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">{t[lang].from}</label>
+                      <Calendar
+                        mode="single"
+                        selected={start}
+                        onSelect={(date) => date && setRange({ start: date, end })}
+                        disabled={(date) => date < minDate || date > maxDate || date > end}
+                        className="pointer-events-auto"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">{t[lang].to}</label>
+                      <Calendar
+                        mode="single"
+                        selected={end}
+                        onSelect={(date) => date && setRange({ start, end: date })}
+                        disabled={(date) => date < minDate || date > maxDate || date < start}
+                        className="pointer-events-auto"
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
         </div>
         {/* Participants Filter */}
         <div className="space-y-2">

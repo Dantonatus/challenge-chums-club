@@ -1,6 +1,8 @@
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { useDateRange } from "@/contexts/DateRangeContext";
+
 interface ExportButtonProps {
   data: any;
   filters: {
@@ -8,11 +10,12 @@ interface ExportButtonProps {
     challengeTypes: string[];
     groups: string[];
   };
-  dateRange: { start: string; end: string };
   lang: 'de' | 'en';
 }
 
-export const ExportButton = ({ data, filters, dateRange, lang }: ExportButtonProps) => {
+export const ExportButton = ({ data, filters, lang }: ExportButtonProps) => {
+  const { start, end, preset } = useDateRange();
+  
   const t = {
     de: {
       export: "Exportieren",
@@ -22,6 +25,17 @@ export const ExportButton = ({ data, filters, dateRange, lang }: ExportButtonPro
       export: "Export",
       filename: "challenge-overview"
     }
+  };
+
+  const getFileName = () => {
+    const currentYear = new Date().getFullYear();
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = end.toISOString().split('T')[0];
+    
+    if (preset === 'thisYear') {
+      return `${t[lang].filename}-${currentYear}`;
+    }
+    return `${t[lang].filename}-${startStr}-${endStr}`;
   };
 
   const handleExport = () => {
@@ -122,7 +136,7 @@ export const ExportButton = ({ data, filters, dateRange, lang }: ExportButtonPro
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `${t[lang].filename}-${dateRange.start}-${dateRange.end}.csv`);
+    link.setAttribute('download', `${getFileName()}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

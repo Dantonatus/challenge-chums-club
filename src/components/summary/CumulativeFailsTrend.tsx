@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useDateRange } from "@/contexts/DateRangeContext";
-import { isoWeekOf, startOfISOWeek, endOfISOWeek, weekRangeLabel } from "@/lib/date";
+import { isoWeekOf, startOfISOWeek, endOfISOWeek, weekRangeLabel, buildIsoWeeksInRange } from "@/lib/date";
 import { generateParticipantColorMap } from "@/lib/participant-colors";
 import { formatEUR } from "@/lib/currency";
 import { Badge } from "@/components/ui/badge";
@@ -145,24 +145,16 @@ export function CumulativeFailsTrend({ lang }: Props) {
 
   const { violations = [], participants = [] } = queryData || {};
 
-  // Generate weeks in range with stable indices
+  // Generate weeks in range with stable indices using buildIsoWeeksInRange
   const weeks = useMemo(() => {
     if (!start || !end) return [];
-    const weeks = [];
-    let current = startOfISOWeek(start);
-    const endWeek = endOfISOWeek(end);
-    
-    while (current <= endWeek) {
-      const weekNum = isoWeekOf(current);
-      weeks.push({
-        weekIdx: weekNum,
-        weekLabel: `KW ${weekNum}`,
-        startDate: current,
-        endDate: endOfISOWeek(current)
-      });
-      current = new Date(current.getTime() + 7 * 24 * 60 * 60 * 1000);
-    }
-    return weeks;
+    return buildIsoWeeksInRange(start, end).map((week, index) => ({
+      weekIdx: index, // Use array index instead of ISO week number for consistent slider
+      weekLabel: week.label,
+      weekNumber: week.isoWeek,
+      startDate: week.start,
+      endDate: endOfISOWeek(week.start)
+    }));
   }, [start, end]);
 
   // Initialize week range and selected participants
@@ -189,7 +181,7 @@ export function CumulativeFailsTrend({ lang }: Props) {
     return filteredWeeks.map(week => {
       const row: TrendRow = {
         weekIdx: week.weekIdx,
-        weekLabel: `KW ${week.weekIdx}`
+        weekLabel: week.weekLabel
       };
 
       // Calculate cumulative values for each participant up to this week

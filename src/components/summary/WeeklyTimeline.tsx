@@ -7,8 +7,8 @@ import { useDateRange } from "@/contexts/DateRangeContext";
 import { formatEUR } from "@/lib/currency";
 import { Badge } from "@/components/ui/badge";
 import { WeekDrilldownModal } from "./WeekDrilldownModal";
-import { startOfISOWeek, endOfISOWeek, isoWeekOf, weekRangeLabel } from "@/lib/date";
-import { format, eachWeekOfInterval, isWithinInterval } from "date-fns";
+import { startOfISOWeek, endOfISOWeek, isoWeekOf, weekRangeLabel, buildIsoWeeksInRange } from "@/lib/date";
+import { format, isWithinInterval } from "date-fns";
 import { motion } from "framer-motion";
 
 interface WeeklyTimelineProps {
@@ -187,13 +187,13 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
         .gte('measurement_date', startStr)
         .lte('measurement_date', endStr);
 
-      // Generate weeks using ISO week standards
-      const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
+      // Generate weeks using ISO week standards with buildIsoWeeksInRange
+      const isoWeeks = buildIsoWeeksInRange(start, end);
       
-      const weeklyData: WeekData[] = weeks.map(week => {
-        const weekStart = startOfISOWeek(week);
-        const weekEnd = endOfISOWeek(week);
-        const weekNumber = isoWeekOf(week);
+      const weeklyData: WeekData[] = isoWeeks.map(week => {
+        const weekStart = week.start;
+        const weekEnd = endOfISOWeek(week.start);
+        const weekNumber = week.isoWeek;
 
         const challengesInWeek: WeekData['challenges'] = {};
 
