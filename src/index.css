@@ -246,23 +246,30 @@ All colors MUST be HSL. */
   }
 
   .timeline-slider {
-    @apply relative w-full h-2 bg-muted rounded-full overflow-hidden;
+    @apply relative w-full h-4 bg-muted rounded-full overflow-visible;
   }
 
   .timeline-track {
-    @apply absolute top-0 left-0 h-full bg-gradient-to-r from-primary/20 to-accent/20 rounded-full;
+    @apply absolute top-0 left-0 h-full bg-gradient-to-r from-primary/30 to-accent/30 rounded-full;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px hsl(var(--primary) / 0.15);
   }
 
   .timeline-thumb {
-    @apply absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-primary rounded-full shadow-lg cursor-grab active:cursor-grabbing;
+    @apply absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-primary rounded-full shadow-lg cursor-grab active:cursor-grabbing border-2 border-background;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3), 0 0 0 0 hsl(var(--ring) / 0);
+    z-index: 10;
   }
 
   .timeline-thumb:hover {
     @apply scale-110;
-    box-shadow: 0 6px 16px hsl(var(--primary) / 0.4);
+    box-shadow: 0 6px 16px hsl(var(--primary) / 0.4), 0 0 0 2px hsl(var(--ring) / 0.2);
+  }
+
+  .timeline-thumb:focus {
+    outline: none;
+    box-shadow: 0 6px 16px hsl(var(--primary) / 0.4), 0 0 0 2px hsl(var(--ring));
   }
 
   /* Apple-style Glass Effects */
