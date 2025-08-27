@@ -38,7 +38,7 @@ export function GlobalBar({
   onFiltersChange,
   onViewApplied
 }: GlobalBarProps) {
-  const { start, end, setRange, minDate, maxDate } = useDateRange();
+  const { start, end, setRange, minDate, maxDate, preset } = useDateRange();
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const [saveViewModalOpen, setSaveViewModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -85,8 +85,14 @@ export function GlobalBar({
   });
 
   // Generate weeks array for the slider
+  // Build slider domain; for 'thisYear' show full year to last ISO week
+  const yearStart = startOfISOWeek(new Date(start.getFullYear(), 0, 1));
+  const yearEnd = endOfISOWeek(new Date(start.getFullYear(), 11, 31));
+  const domainStart = preset === 'thisYear' ? yearStart : startOfISOWeek(minDate);
+  const domainEnd = preset === 'thisYear' ? yearEnd : endOfISOWeek(maxDate);
+
   const weeks = eachWeekOfInterval(
-    { start: startOfISOWeek(minDate), end: endOfISOWeek(maxDate) },
+    { start: domainStart, end: domainEnd },
     { weekStartsOn: 1 }
   );
 
