@@ -85,14 +85,12 @@ export function GlobalBar({
   });
 
   // Generate weeks array for the slider
-  // Build slider domain; for 'thisYear' show full year to last ISO week
+  // Always show the full year in the slider, regardless of preset
   const yearStart = startOfISOWeek(new Date(start.getFullYear(), 0, 1));
   const yearEnd = endOfISOWeek(new Date(start.getFullYear(), 11, 31));
-  const domainStart = preset === 'thisYear' ? yearStart : startOfISOWeek(minDate);
-  const domainEnd = preset === 'thisYear' ? yearEnd : endOfISOWeek(maxDate);
 
   const weeks = eachWeekOfInterval(
-    { start: domainStart, end: domainEnd },
+    { start: yearStart, end: yearEnd },
     { weekStartsOn: 1 }
   );
 
