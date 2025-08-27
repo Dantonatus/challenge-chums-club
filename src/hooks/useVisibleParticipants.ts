@@ -21,7 +21,7 @@ export function useVisibleParticipants<T extends Participant>(participants: T[])
       ).filter(Boolean);
       setVisible(new Set(participantIds));
     }
-  }, [participants.length, visible.size]);
+  }, [participants, visible.size]);
 
   const toggle = (id: string) => {
     setVisible(prev => {

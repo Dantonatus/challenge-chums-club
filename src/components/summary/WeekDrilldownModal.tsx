@@ -341,8 +341,8 @@ export const WeekDrilldownModal = ({ data, isOpen, onClose, lang }: WeekDrilldow
             variant="outline" 
             size="sm"
             onClick={() => {
-              // Navigate to challenge detail (placeholder for now)
-              console.log('Navigate to challenge:', data.challengeId);
+              // Navigate to challenge detail
+              window.location.href = `/challenge/${data.challengeId}`;
             }}
             className="flex items-center gap-2"
           >

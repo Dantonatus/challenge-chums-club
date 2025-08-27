@@ -1,1 +1,1 @@
-export { PremiumFailsTrendChart as FailsTrendChart } from "../charts/PremiumFailsTrendChart";
+export { PremiumFailsTrendChart as FailsTrendChart } from "@/components/charts/PremiumFailsTrendChart";

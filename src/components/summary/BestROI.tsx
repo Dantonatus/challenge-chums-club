@@ -201,10 +201,6 @@ export function BestROI({ lang, filters }: BestROIProps) {
       daysWithFails: challenge.daysWithFails
     }));
 
-    // Log sample for debugging
-    if (points.length > 0) {
-      console.log('Sample ROI point:', points[0]);
-    }
 
     return points;
   }, [roiData]);

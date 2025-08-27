@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,26 +56,26 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
   const lang = (navigator.language?.startsWith("de") ? "de" : "en") as keyof typeof dict;
   const t = dict[lang];
 
-  const minDays = React.useMemo(() => daysSinceEpochLocal(minDate), [minDate]);
-  const maxDays = React.useMemo(() => daysSinceEpochLocal(maxDate), [maxDate]);
-  const [local, setLocal] = React.useState<[number, number]>([daysSinceEpochLocal(start), daysSinceEpochLocal(end)]);
-  const [active, setActive] = React.useState<"s" | "e" | null>(null);
-  const [dragging, setDragging] = React.useState(false);
-  const [hover, setHover] = React.useState(false);
+  const minDays = useMemo(() => daysSinceEpochLocal(minDate), [minDate]);
+  const maxDays = useMemo(() => daysSinceEpochLocal(maxDate), [maxDate]);
+  const [local, setLocal] = useState<[number, number]>([daysSinceEpochLocal(start), daysSinceEpochLocal(end)]);
+  const [active, setActive] = useState<"s" | "e" | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [hover, setHover] = useState(false);
   const showTips = dragging || hover;
 
   // Keep local in sync with provider
-  React.useEffect(() => {
+  useEffect(() => {
     const startDays = daysSinceEpochLocal(start);
     const endDays = daysSinceEpochLocal(end);
     setLocal([startDays, endDays]);
   }, [start, end]);
 
   // Throttle updates during dragging to improve performance
-  const updateTimeoutRef = React.useRef<NodeJS.Timeout>();
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Month ticks
-  const monthTicks = React.useMemo(() => {
+  const monthTicks = useMemo(() => {
     const ticks: { pos: number; label: string }[] = [];
     const d = new Date(minDate);
     d.setDate(1);
