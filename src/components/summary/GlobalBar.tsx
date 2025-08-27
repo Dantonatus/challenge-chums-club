@@ -90,21 +90,27 @@ export function GlobalBar({
     { weekStartsOn: 1 }
   );
 
-  const selectedRange: [number, number] = [
-    Math.max(0, weeks.findIndex(week => 
-      startOfISOWeek(week).getTime() <= start.getTime() && 
-      start.getTime() <= endOfISOWeek(week).getTime()
-    )),
-    Math.max(0, weeks.findIndex(week => 
-      startOfISOWeek(week).getTime() <= end.getTime() && 
-      end.getTime() <= endOfISOWeek(week).getTime()
-    ))
-  ];
+  // Map current context range to slider indices robustly (handles out-of-domain dates)
+  const getIndicesForRange = useCallback((weeksArr: Date[], s: Date, e: Date): [number, number] => {
+    // First index whose week end is on/after start
+    let sIdx = weeksArr.findIndex(w => endOfISOWeek(w).getTime() >= s.getTime());
+    if (sIdx < 0) sIdx = 0;
 
-  // Ensure valid range
+    // Last index whose week start is on/before end
+    let afterEndIdx = weeksArr.findIndex(w => startOfISOWeek(w).getTime() > e.getTime());
+    let eIdx = afterEndIdx === -1 ? weeksArr.length - 1 : Math.max(sIdx, afterEndIdx - 1);
+
+    // Ensure ordering
+    if (eIdx < sIdx) eIdx = sIdx;
+    return [sIdx, eIdx];
+  }, []);
+
+  const selectedRange: [number, number] = getIndicesForRange(weeks, start, end);
+
+  // Ensure valid range within bounds
   const normalizedRange: [number, number] = [
-    Math.max(0, selectedRange[0] === -1 ? 0 : selectedRange[0]),
-    Math.min(weeks.length - 1, selectedRange[1] === -1 ? weeks.length - 1 : selectedRange[1])
+    Math.max(0, Math.min(selectedRange[0], weeks.length - 1)),
+    Math.max(0, Math.min(selectedRange[1], weeks.length - 1))
   ];
 
   const debouncedRangeChange = useCallback((range: [number, number]) => {
