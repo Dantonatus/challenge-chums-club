@@ -27,20 +27,20 @@ export function KPIStrip({ data, dateRange, lang, onKPIClick }: KPIStripProps) {
       participants: "Teilnehmer", 
       fails: "Fails",
       penalties: "Strafen",
-      vsCurrentWeek: "Aktuelle Woche vs. Ø Zeitraum",
+      vsSelectedPeriod: "Letzte KW vs. Ø restlicher Zeitraum",
       clickToFilter: "Klicken zum Filtern",
-      currentWeek: "Aktuelle Woche",
-      periodAverage: "Ø Zeitraum"
+      lastWeek: "Letzte KW der Auswahl",
+      periodAverage: "Ø restlicher Zeitraum"
     },
     en: {
       totalChallenges: "Challenges",
       participants: "Participants",
       fails: "Fails", 
       penalties: "Penalties",
-      vsCurrentWeek: "Current week vs. Ø period",
+      vsSelectedPeriod: "Last week vs. Ø remaining period",
       clickToFilter: "Click to filter",
-      currentWeek: "Current week",
-      periodAverage: "Ø Period"
+      lastWeek: "Last week of selection",
+      periodAverage: "Ø remaining period"
     }
   };
 
@@ -211,7 +211,7 @@ export function KPIStrip({ data, dateRange, lang, onKPIClick }: KPIStripProps) {
               <TooltipContent>
                 <p>{t[lang].clickToFilter}</p>
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p className="font-medium">{t[lang].vsCurrentWeek}</p>
+                  <p className="font-medium">{t[lang].vsSelectedPeriod}</p>
                   <p>{kpi.delta.comparison}</p>
                   <p className={kpi.delta.isPositive ? 'text-success' : 'text-destructive'}>
                     {kpi.delta.isPositive ? '+' : ''}{kpi.delta.value.toFixed(1)}% Veränderung
