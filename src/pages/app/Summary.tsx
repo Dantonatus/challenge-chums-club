@@ -23,7 +23,7 @@ import { ExportButton } from "@/components/summary/ExportButton";
 import { WeeklyTimeline } from "@/components/summary/WeeklyTimeline";
 import { FailsTrendPremium } from "@/components/summary/FailsTrendPremium";
 import { GlobalBar } from "@/components/summary/GlobalBar";
-import { KPIStrip } from "@/components/summary/KPIStrip";
+import { PerformanceDashboard } from "@/components/summary/PerformanceDashboard";
 import { ChallengeCard } from "@/components/summary/ChallengeCard";
 import { CumulativeFailsTrend } from "@/components/summary/CumulativeFailsTrend";
 
@@ -502,9 +502,9 @@ const totalChallenges = processedChallenges.length;
           />
         )}
 
-        {/* KPI Strip */}
+        {/* Performance Dashboard */}
         {filteredData && (
-          <KPIStrip
+          <PerformanceDashboard
             data={filteredData}
             dateRange={{ start, end }}
             lang={lang}
