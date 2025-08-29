@@ -27,16 +27,20 @@ export function KPIStrip({ data, dateRange, lang, onKPIClick }: KPIStripProps) {
       participants: "Teilnehmer", 
       fails: "Fails",
       penalties: "Strafen",
-      vsLastWeek: "vs. letzte Woche",
-      clickToFilter: "Klicken zum Filtern"
+      vsCurrentWeek: "Aktuelle Woche vs. Ø Zeitraum",
+      clickToFilter: "Klicken zum Filtern",
+      currentWeek: "Aktuelle Woche",
+      periodAverage: "Ø Zeitraum"
     },
     en: {
       totalChallenges: "Challenges",
       participants: "Participants",
       fails: "Fails", 
       penalties: "Penalties",
-      vsLastWeek: "vs. last week",
-      clickToFilter: "Click to filter"
+      vsCurrentWeek: "Current week vs. Ø period",
+      clickToFilter: "Click to filter",
+      currentWeek: "Current week",
+      periodAverage: "Ø Period"
     }
   };
 
@@ -83,21 +87,33 @@ export function KPIStrip({ data, dateRange, lang, onKPIClick }: KPIStripProps) {
     });
   }, [data, dateRange]);
 
-  // Calculate deltas vs previous week
-  const calculateDelta = (current: number, previous: number): { value: number; isPositive: boolean } => {
-    if (previous === 0) return { value: 0, isPositive: true };
-    const delta = ((current - previous) / previous) * 100;
-    return { value: Math.abs(delta), isPositive: delta >= 0 };
+  // Calculate deltas: current week vs average of rest of period
+  const calculateDelta = (currentWeek: number, periodAverage: number): { value: number; isPositive: boolean; comparison: string } => {
+    if (periodAverage === 0) return { value: 0, isPositive: true, comparison: "0" };
+    const delta = ((currentWeek - periodAverage) / periodAverage) * 100;
+    return { 
+      value: Math.abs(delta), 
+      isPositive: delta >= 0,
+      comparison: `${currentWeek.toFixed(1)} vs Ø ${periodAverage.toFixed(1)}`
+    };
   };
 
   const currentWeekData = weeklyData[weeklyData.length - 1] || { challenges: 0, participants: 0, fails: 0, penalties: 0 };
-  const previousWeekData = weeklyData[weeklyData.length - 2] || { challenges: 0, participants: 0, fails: 0, penalties: 0 };
+  
+  // Calculate averages for the rest of the period (excluding current week)
+  const restOfPeriod = weeklyData.slice(0, -1);
+  const periodAverages = {
+    challenges: restOfPeriod.length > 0 ? restOfPeriod.reduce((sum, w) => sum + w.challenges, 0) / restOfPeriod.length : 0,
+    participants: restOfPeriod.length > 0 ? restOfPeriod.reduce((sum, w) => sum + w.participants, 0) / restOfPeriod.length : 0,
+    fails: restOfPeriod.length > 0 ? restOfPeriod.reduce((sum, w) => sum + w.fails, 0) / restOfPeriod.length : 0,
+    penalties: restOfPeriod.length > 0 ? restOfPeriod.reduce((sum, w) => sum + w.penalties, 0) / restOfPeriod.length : 0
+  };
 
   const deltas = {
-    challenges: calculateDelta(currentWeekData.challenges, previousWeekData.challenges),
-    participants: calculateDelta(currentWeekData.participants, previousWeekData.participants),
-    fails: calculateDelta(currentWeekData.fails, previousWeekData.fails),
-    penalties: calculateDelta(currentWeekData.penalties, previousWeekData.penalties)
+    challenges: calculateDelta(currentWeekData.challenges, periodAverages.challenges),
+    participants: calculateDelta(currentWeekData.participants, periodAverages.participants), 
+    fails: calculateDelta(currentWeekData.fails, periodAverages.fails),
+    penalties: calculateDelta(currentWeekData.penalties / 100, periodAverages.penalties / 100)
   };
 
   const kpis = [
@@ -160,7 +176,7 @@ export function KPIStrip({ data, dateRange, lang, onKPIClick }: KPIStripProps) {
                       <div className="flex items-center gap-1 text-xs">
                         <DeltaIcon className={`h-3 w-3 ${kpi.delta.isPositive ? 'text-success' : 'text-destructive'}`} />
                         <span className={kpi.delta.isPositive ? 'text-success' : 'text-destructive'}>
-                          {kpi.delta.value.toFixed(1)}%
+                          {kpi.delta.isPositive ? '+' : ''}{kpi.delta.value.toFixed(1)}%
                         </span>
                       </div>
                     </div>
@@ -194,9 +210,13 @@ export function KPIStrip({ data, dateRange, lang, onKPIClick }: KPIStripProps) {
               </TooltipTrigger>
               <TooltipContent>
                 <p>{t[lang].clickToFilter}</p>
-                <p className="text-xs text-muted-foreground">
-                  {kpi.delta.isPositive ? '+' : '-'}{kpi.delta.value.toFixed(1)}% {t[lang].vsLastWeek}
-                </p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p className="font-medium">{t[lang].vsCurrentWeek}</p>
+                  <p>{kpi.delta.comparison}</p>
+                  <p className={kpi.delta.isPositive ? 'text-success' : 'text-destructive'}>
+                    {kpi.delta.isPositive ? '+' : ''}{kpi.delta.value.toFixed(1)}% Veränderung
+                  </p>
+                </div>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
