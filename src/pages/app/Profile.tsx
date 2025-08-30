@@ -4,52 +4,61 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AvatarUploader } from "@/components/profile/AvatarUploader";
-import { Stats } from "@/components/profile/Stats";
-import { TopChallenges } from "@/components/profile/TopChallenges";
-import { ActivityFeed } from "@/components/profile/ActivityFeed";
-import { useQuery } from "@tanstack/react-query";
-import { formatEUR } from "@/lib/currency";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from "recharts";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Trends } from "@/components/profile/Trends";
-import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
-import { DateRangeProvider } from "@/contexts/DateRangeContext";
-import { DateRangeBar } from "@/components/profile/DateRangeBar";
-import ViolationsPerParticipant from "@/components/profile/ViolationsPerParticipant";
 import { ColorPicker } from "@/components/profile/ColorPicker";
-import { KPIAnalytics } from "@/components/profile/KPIAnalytics";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ProfileDateRangeSelector } from "@/components/profile/ProfileDateRangeSelector";
+import { ProfileDashboardHeader } from "@/components/profile/ProfileDashboardHeader";
+import { ProfileMetricCards } from "@/components/profile/ProfileMetricCards";
+import { ProfileChartsSection } from "@/components/profile/ProfileChartsSection";
+import { ProfileActivityFeed } from "@/components/profile/ProfileActivityFeed";
+import { ActiveChallengeCards } from "@/components/profile/ActiveChallengeCards";
+import { useQuery } from "@tanstack/react-query";
+import { DateRangeProvider } from "@/contexts/DateRangeContext";
+import { eachWeekOfInterval, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
 
 const dict = {
   de: {
     pageTitle: "Profil | Character Challenge",
-    pageDesc: "Verwalte deinen vollständigen Namen und dein Profilbild.",
+    pageDesc: "Verwalte dein Profil und verfolge deine Herausforderungen mit detaillierten Analysen.",
     header: "Dein Profil",
-    profileInfo: "Profilinformationen",
-    profileInfoDesc: "Vollständigen Namen festlegen und Profilbild ändern.",
+    profileSettings: "Profil-Einstellungen",
+    personalInfo: "Persönliche Informationen",
+    personalInfoDesc: "Verwalte deinen Namen, dein Profilbild und deine persönliche Farbe.",
+    analyticsInsights: "Analysen & Einblicke",
     save: "Änderungen speichern",
     upload: "Neues Bild hochladen",
-    stats: { active: "Aktive Challenges", violations30: "Verletzungen", outstanding: "Offen gesamt" },
-    top: { title: "Top-Challenges", empty: "Keine aktiven Challenges", open: "Öffnen", penalty: "Strafe/Verstoß" },
-    feed: { title: "Aktivität", empty: "Noch keine Aktivitäten", youViolation: "Du hast eine Verletzung hinzugefügt in", joinedGroup: "ist deiner Gruppe beigetreten", someone: "Jemand", challenge: "Challenge" },
-    charts: { barTitle: "Verstöße pro Teilnehmer", lineTitle: "Kumulative Strafen (€)", trendsCountsTitle: "Challenges & Verstöße (Zeitraum)", challengesLabel: "Challenges", violationsLabel: "Verstöße", empty: "Keine Daten verfügbar" },
+    activeChallenges: "Aktive Challenges",
+    engagement: "Engagement",
+    discipline: "Disziplin",
+    financialImpact: "Finanzielle Auswirkung",
+    challengesViolationsTrend: "Challenges & Verstöße Trend",
+    violationsPerParticipant: "Verstöße pro Teilnehmer",
+    cumulativePenalties: "Kumulative Strafen (€)",
+    activityFeed: "Aktivitätsfeed",
+    noData: "Keine Daten verfügbar",
   },
   en: {
     pageTitle: "Profile | Character Challenge",
-    pageDesc: "Manage your full name and profile picture.",
+    pageDesc: "Manage your profile and track your challenges with detailed analytics.",
     header: "Your Profile",
-    profileInfo: "Profile Information",
-    profileInfoDesc: "Set full name and change profile picture.",
+    profileSettings: "Profile Settings",
+    personalInfo: "Personal Information",
+    personalInfoDesc: "Manage your name, profile picture, and personal color.",
+    analyticsInsights: "Analytics & Insights",
     save: "Save changes",
     upload: "Upload new image",
-    stats: { active: "Active challenges", violations30: "Violations (30 days)", outstanding: "Outstanding total" },
-    top: { title: "Top Challenges", empty: "No active challenges", open: "Open", penalty: "Penalty/violation" },
-    feed: { title: "Activity", empty: "No activity yet", youViolation: "You added a violation in", joinedGroup: "joined your group", someone: "Someone", challenge: "Challenge" },
-    charts: { barTitle: "Violations per participant", lineTitle: "Cumulative penalties (€)", trendsCountsTitle: "Challenges & Violations (6 months)", challengesLabel: "Challenges", violationsLabel: "Violations", empty: "No data available" },
+    activeChallenges: "Active Challenges",
+    engagement: "Engagement",
+    discipline: "Discipline",
+    financialImpact: "Financial Impact",
+    challengesViolationsTrend: "Challenges & Violations Trend",
+    violationsPerParticipant: "Violations per Participant",
+    cumulativePenalties: "Cumulative Penalties (€)",
+    activityFeed: "Activity Feed",
+    noData: "No data available",
   },
 };
 
@@ -64,6 +73,14 @@ const ProfilePage = () => {
   const [customColor, setCustomColor] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [colorLoading, setColorLoading] = useState(false);
+
+  // Date range state for analytics
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30); // Default to last 30 days
+    return { start: startOfDay(start), end: endOfDay(end) };
+  });
 
   useEffect(() => {
     const init = async () => {
@@ -96,7 +113,13 @@ const ProfilePage = () => {
       .update({ display_name: displayName || null, avatar_url: avatarUrl || null })
       .eq("id", userId);
     setLoading(false);
-    if (error) return toast({ title: lang === "de" ? "Speichern fehlgeschlagen" : "Save failed", description: error.message, variant: "destructive" as any });
+    if (error) {
+      return toast({ 
+        title: lang === "de" ? "Speichern fehlgeschlagen" : "Save failed", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
     toast({ title: lang === "de" ? "Profil aktualisiert" : "Profile updated" });
   };
 
@@ -120,7 +143,7 @@ const ProfilePage = () => {
       toast({ 
         title: lang === "de" ? "Farbe speichern fehlgeschlagen" : "Color save failed", 
         description: error.message, 
-        variant: "destructive" as any 
+        variant: "destructive" 
       });
     } else {
       toast({ 
@@ -132,240 +155,270 @@ const ProfilePage = () => {
 
   const initials = (displayName || "").trim().split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase() || "?";
 
-  const today = new Date().toISOString().slice(0,10);
-
-  const myParts = useQuery({
+  // Fetch all relevant data based on date range
+  const { data: challengesData, isLoading: challengesLoading } = useQuery({
     enabled: !!userId,
-    queryKey: ["profile","parts", userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("challenge_participants")
-        .select("challenge_id, user_id, penalty_count")
-        .eq("user_id", userId!);
-      if (error) throw error;
-      return data || [];
-    }
-  });
-
-  const challengeIds = useMemo(() => Array.from(new Set((myParts.data||[]).map(p => p.challenge_id))), [myParts.data]);
-
-  const activeCh = useQuery({
-    enabled: challengeIds.length>0,
-    queryKey: ["profile","active-ch", challengeIds.join(","), today],
+    queryKey: ["profile", "challenges", userId, dateRange.start.toISOString(), dateRange.end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("challenges")
-        .select("id,title,start_date,end_date")
-        .in("id", challengeIds)
-        .lte("start_date", today)
-        .gte("end_date", today);
+        .select(`
+          id, title, start_date, end_date, penalty_amount,
+          challenge_participants!inner(user_id),
+          challenge_violations(id, user_id, amount_cents, date),
+          kpi_measurements(id, user_id, date, measured_value, target_value)
+        `)
+        .eq("challenge_participants.user_id", userId!)
+        .gte("start_date", dateRange.start.toISOString().split('T')[0])
+        .lte("end_date", dateRange.end.toISOString().split('T')[0]);
+      
       if (error) throw error;
       return data || [];
     }
   });
 
-  const relevantChallengeId = useMemo(() => (activeCh.data||[])[0]?.id as string | undefined, [activeCh.data]);
+  // Calculate analytics data
+  const analyticsData = useMemo(() => {
+    if (!challengesData) return null;
 
-  const relParticipants = useQuery({
-    enabled: !!relevantChallengeId,
-    queryKey: ["profile","rel-parts", relevantChallengeId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("challenge_participants")
-        .select("user_id, penalty_count")
-        .eq("challenge_id", relevantChallengeId!);
-      if (error) throw error;
-      return data || [];
-    }
-  });
+    const weeks = eachWeekOfInterval(
+      { start: dateRange.start, end: dateRange.end },
+      { weekStartsOn: 1 }
+    );
 
-  const relProfiles = useQuery({
-    enabled: (relParticipants.data||[]).length>0,
-    queryKey: ["profile","rel-profiles", (relParticipants.data||[]).length],
-    queryFn: async () => {
-      const ids = Array.from(new Set((relParticipants.data||[]).map(p => p.user_id)));
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, display_name, custom_color")
-        .in("id", ids);
-      if (error) throw error;
-      const map = new Map<string,{name: string, color?: string}>();
-      (data||[]).forEach(p => map.set(p.id, { name: p.display_name || "", color: p.custom_color }));
-      return map;
-    }
-  });
+    const weeklyData = weeks.map(weekStart => {
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
 
-  const relViolations = useQuery({
-    enabled: !!relevantChallengeId,
-    queryKey: ["profile","rel-violations", relevantChallengeId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("challenge_violations")
-        .select("user_id, amount_cents")
-        .eq("challenge_id", relevantChallengeId!);
-      if (error) throw error;
-      return data || [];
-    }
-  });
+      const activeChallenges = challengesData.filter(c => 
+        c.start_date <= weekEndStr && c.end_date >= weekStartStr
+      );
 
-  const barData = useMemo(() => {
-    // Sum all violation amounts per user for the relevant challenge, up to today
-    const sums = new Map<string, number>();
-    (relViolations.data || []).forEach((v: any) => {
-      const cents = v.amount_cents || 0;
-      sums.set(v.user_id, (sums.get(v.user_id) || 0) + cents);
-    });
-    // Include participants with 0€ as well for completeness
-    return (relParticipants.data || []).map((p: any) => ({
-      name: relProfiles.data?.get(p.user_id)?.name || p.user_id,
-      amount: Math.round(((sums.get(p.user_id) || 0) / 100) * 100) / 100,
-    }));
-  }, [relViolations.data, relParticipants.data, relProfiles.data]);
+      const participantsThisWeek = new Set(
+        activeChallenges.flatMap(c => c.challenge_participants.map(p => p.user_id))
+      );
 
+      const violationsThisWeek = activeChallenges.flatMap(c =>
+        (c.challenge_violations || []).filter(v => 
+          v.date >= weekStartStr && v.date <= weekEndStr
+        )
+      );
 
-  // Participants with names and colors for the cumulative chart
-  const chartParticipants = useMemo(() => {
-    return (relParticipants.data || []).map((p: any) => {
-      const profile = relProfiles.data?.get(p.user_id);
+      const missesThisWeek = activeChallenges.flatMap(c =>
+        (c.kpi_measurements || []).filter(m => 
+          m.date >= weekStartStr && m.date <= weekEndStr && 
+          m.measured_value < m.target_value
+        )
+      );
+
+      const penaltiesSum = [
+        ...violationsThisWeek.map(v => v.amount_cents),
+        ...missesThisWeek.map(m => {
+          // Find the challenge for this KPI miss
+          const challenge = activeChallenges.find(ch => 
+            (ch.kpi_measurements || []).some(measurement => 
+              measurement.id === m.id
+            )
+          );
+          return challenge?.penalty_amount || 0;
+        })
+      ].reduce((sum, cents) => sum + (cents || 0), 0);
+
       return {
-        user_id: p.user_id,
-        name: profile?.name || p.user_id,
-        custom_color: profile?.color,
+        weekStart,
+        activeChallenges: activeChallenges.length,
+        uniqueParticipants: participantsThisWeek.size,
+        fails: violationsThisWeek.length + missesThisWeek.length,
+        penalties: penaltiesSum / 100, // Convert to EUR
+        engagedParticipants: participantsThisWeek.size,
       };
     });
-  }, [relParticipants.data, relProfiles.data]);
 
-  // Default range: last 6 months up to today
-  const sixEnd = new Date();
-  const sixStart = new Date(sixEnd);
-  sixStart.setMonth(sixStart.getMonth() - 6);
+    // Calculate aggregate metrics
+    const totalParticipants = new Set(
+      challengesData.flatMap(c => c.challenge_participants.map(p => p.user_id))
+    ).size;
+
+    const avgEngagedParticipants = weeklyData.reduce((sum, w) => sum + w.engagedParticipants, 0) / weeks.length;
+    const engagementRate = totalParticipants > 0 ? (avgEngagedParticipants / totalParticipants) * 100 : 0;
+
+    const totalFails = weeklyData.reduce((sum, w) => sum + w.fails, 0);
+    const avgFailsPerParticipantWeek = totalParticipants > 0 && weeks.length > 0 
+      ? totalFails / (totalParticipants * weeks.length) 
+      : 0;
+
+    const failThreshold = 1; // 1 fail per participant per week
+    const disciplineScore = Math.max(0, 1 - avgFailsPerParticipantWeek / failThreshold);
+
+    const totalPenalties = weeklyData.reduce((sum, w) => sum + w.penalties, 0);
+    const avgPenaltyPerParticipantWeek = totalParticipants > 0 && weeks.length > 0 
+      ? totalPenalties / (totalParticipants * weeks.length) 
+      : 0;
+
+    // Calculate deltas (current week vs previous weeks average)
+    const currentWeek = weeklyData[weeklyData.length - 1];
+    const previousWeeks = weeklyData.slice(0, -1);
+    
+    const avgPreviousEngagement = previousWeeks.length > 0 
+      ? previousWeeks.reduce((sum, w) => sum + (w.engagedParticipants / totalParticipants * 100), 0) / previousWeeks.length
+      : 0;
+    
+    const engagementDelta = avgPreviousEngagement > 0 
+      ? ((engagementRate - avgPreviousEngagement) / avgPreviousEngagement) * 100 
+      : 0;
+
+    return {
+      weeklyData,
+      activeChallenges: challengesData.filter(c => 
+        c.start_date <= dateRange.end.toISOString().split('T')[0] && 
+        c.end_date >= dateRange.start.toISOString().split('T')[0]
+      ).length,
+      totalViolations: totalFails,
+      totalPenalties,
+      engagementRate,
+      disciplineScore,
+      avgPenaltyPerParticipantWeek,
+      engagementDelta,
+      currentWeek,
+      previousWeeks,
+    };
+  }, [challengesData, dateRange]);
 
   return (
-    <section>
+    <section className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <Helmet>
         <title>{t.pageTitle}</title>
         <meta name="description" content={t.pageDesc} />
         <link rel="canonical" href="/app/profile" />
       </Helmet>
 
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">{t.header}</h1>
-      </header>
+      <div className="container mx-auto px-4 py-8">
+        <header className="mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            {t.header}
+          </h1>
+        </header>
 
-      <DateRangeProvider userId={userId}>
-
-        <div className="grid gap-6 md:grid-cols-3">
-        {/* Left column: profile cards */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.profileInfo}</CardTitle>
-              <CardDescription>{t.profileInfoDesc}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
-                  <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <div>
-                  {userId ? (
-                    <AvatarUploader userId={userId} onUploaded={handleAvatarUploaded} />
-                  ) : (
-                    <Button type="button" variant="outline" size="sm" disabled>
-                      {t.upload}
-                    </Button>
-                  )}
-                </div>
-                <div className="w-full max-w-sm mx-auto grid gap-3">
-                  <Input
-                    placeholder={lang === "de" ? "Vollständiger Name" : "Full name"}
-                    aria-label={lang === "de" ? "Vollständiger Name" : "Full name"}
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                  />
-                  <div className="flex justify-center">
-                    <Button onClick={handleSave} disabled={loading}>{t.save}</Button>
+        <DateRangeProvider userId={userId}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Personal Settings */}
+            <div className="lg:col-span-1 space-y-6">
+              <Card className="bg-gradient-to-br from-card to-muted/20 border-0 shadow-xl">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-xl">{t.personalInfo}</CardTitle>
+                  <CardDescription>{t.personalInfoDesc}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative">
+                      <Avatar className="h-24 w-24 ring-4 ring-primary/20">
+                        <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
+                        <AvatarFallback className="text-lg font-semibold">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      {customColor && (
+                        <div 
+                          className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-background"
+                          style={{ backgroundColor: customColor }}
+                        />
+                      )}
+                    </div>
+                    
+                    {userId && (
+                      <AvatarUploader 
+                        userId={userId} 
+                        onUploaded={handleAvatarUploaded}
+                        label={t.upload}
+                      />
+                    )}
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <ColorPicker
-            selectedColor={customColor}
-            onColorSelect={setCustomColor}
-            onSave={handleColorSave}
-            loading={colorLoading}
-          />
-        </div>
+                  <div className="space-y-4">
+                    <Input
+                      placeholder={lang === "de" ? "Vollständiger Name" : "Full name"}
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="text-center text-lg"
+                    />
+                    
+                    <Button 
+                      onClick={handleSave} 
+                      disabled={loading}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {t.save}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* Right column: content */}
-        <div className="md:col-span-2 grid gap-6">
-          <DateRangeBar />
-          <Stats userId={userId || ""} t={t} />
-          
-          {/* Analytics Tabs */}
-          <Tabs defaultValue="habit" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="habit">Habit Analytics</TabsTrigger>
-              <TabsTrigger value="kpi">KPI Analytics</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="habit" className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                <TopChallenges userId={userId || ""} t={t} />
-                <Trends userId={userId || ""} t={t} />
-              </div>
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t.charts.barTitle}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
-                      <Skeleton className="h-48 w-full" />
-                    ) : chartParticipants.length ? (
-                      <ViolationsPerParticipant
-                        challengeId={relevantChallengeId}
-                        participants={chartParticipants}
-                      />
-                    ) : (
-                      <div className="text-sm text-muted-foreground">{t.charts.empty}</div>
-                    )}
-                  </CardContent>
-                </Card>
+              <ColorPicker
+                selectedColor={customColor}
+                onColorSelect={setCustomColor}
+                onSave={handleColorSave}
+                loading={colorLoading}
+              />
+            </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t.charts.lineTitle}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
-                      <Skeleton className="h-56 w-full" />
-                    ) : chartParticipants.length ? (
-                      <CumulativePenaltyChart
-                        challengeId={relevantChallengeId}
-                        participants={chartParticipants}
-                      />
-                    ) : (
-                      <div className="text-sm text-muted-foreground">{t.charts.empty}</div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="kpi" className="space-y-6">
-              {userId && <KPIAnalytics userId={userId} />}
-            </TabsContent>
-          </Tabs>
+            {/* Right Column - Analytics & Insights */}
+            <div className="lg:col-span-2 space-y-8">
+              <Card className="bg-gradient-to-r from-card to-muted/10 border-0 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-2xl">{t.analyticsInsights}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ProfileDateRangeSelector 
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
+                  />
+                </CardContent>
+              </Card>
 
-          <ActivityFeed userId={userId || ""} t={t} />
-        </div>
+              {/* Dashboard Header with Statistics */}
+              <ProfileDashboardHeader 
+                analyticsData={analyticsData}
+                loading={challengesLoading}
+                t={t}
+              />
+
+              {/* Active Challenges Section */}
+              <ActiveChallengeCards 
+                challengesData={challengesData}
+                dateRange={dateRange}
+                loading={challengesLoading}
+                t={t}
+              />
+
+              {/* Metric Cards */}
+              <ProfileMetricCards 
+                analyticsData={analyticsData}
+                loading={challengesLoading}
+                t={t}
+              />
+
+              {/* Charts Section */}
+              <ProfileChartsSection 
+                challengesData={challengesData}
+                analyticsData={analyticsData}
+                dateRange={dateRange}
+                loading={challengesLoading}
+                t={t}
+              />
+
+              {/* Activity Feed */}
+              <ProfileActivityFeed 
+                userId={userId}
+                dateRange={dateRange}
+                t={t}
+              />
+            </div>
+          </div>
+        </DateRangeProvider>
       </div>
-    </DateRangeProvider>
-  </section>
+    </section>
   );
 };
 
