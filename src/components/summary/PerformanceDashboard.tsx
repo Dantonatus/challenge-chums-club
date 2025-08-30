@@ -47,10 +47,10 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
       change: "Veränderung",
       pts: "Pkt",
       vs: "vs",
-      performanceInfo: "Gewichteter Index basierend auf Engagement (20%), Disziplin (50%) und finanzieller Performance (30%). Höhere Werte sind besser.",
-      engagementInfo: "Durchschnittliche Teilnehmer pro Woche vs. Gesamtteilnehmer im Zeitraum",
-      disciplineInfo: "Verstöße (Gewohnheiten + KPI-Verfehlungen) pro Teilnehmer pro Woche",
-      financialInfo: "Durchschnittliche Strafen pro Teilnehmer pro Woche in Euro",
+      performanceInfo: "Gewichteter Index: 20% Engagement, 50% Disziplin, 30% Finanzielle Performance. Höhere Werte sind besser.",
+      engagementInfo: "Prozentsatz der Teilnehmer, die mindestens einmal im gewählten Zeitraum aktiv waren.",
+      disciplineInfo: "Durchschnittliche Verstöße pro Teilnehmer pro Woche, normalisiert (höher = besser).",
+      financialInfo: "Durchschnittliche Strafe pro Teilnehmer pro Woche (EUR).",
       improvement: "Verbesserung",
       decline: "Verschlechterung"
     },
@@ -64,10 +64,10 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
       change: "Change",
       pts: "pts",
       vs: "vs",
-      performanceInfo: "Weighted index based on engagement (20%), discipline (50%), and financial performance (30%). Higher values are better.",
-      engagementInfo: "Average participants per week vs. total participants in period",
-      disciplineInfo: "Violations (habits + KPI misses) per participant per week",
-      financialInfo: "Average penalties per participant per week in Euro",
+      performanceInfo: "Weighted score: 20% Engagement, 50% Discipline, 30% Financial Impact. Higher values are better.",
+      engagementInfo: "Percentage of participants who were active at least once during the selected period.",
+      disciplineInfo: "Average fails per participant per week, normalized (higher = better).",
+      financialInfo: "Average penalty per participant per week (EUR).",
       improvement: "Improvement",
       decline: "Decline"
     }
@@ -142,7 +142,7 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
     if (weeklyMetrics.length === 0) {
       return {
         engagementRate: 0,
-        avgFailRate: 0,
+        disciplineScore: 0,
         avgPenaltyRate: 0,
         performanceIndex: 0,
         weeklyData: []
@@ -153,30 +153,38 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
       data.challenges.flatMap(c => c.participants.map((p: any) => p.user_id))
     ).size;
 
-    const avgEngagedParticipants = weeklyMetrics.reduce((sum, w) => sum + w.engagedParticipants, 0) / weeklyMetrics.length;
-    const engagementRate = totalDistinctParticipants > 0 ? avgEngagedParticipants / totalDistinctParticipants : 0;
+    // Engagement Rate: sum of active participants per week / (total unique participants × number of weeks) × 100
+    const totalActiveParticipantsWeeks = weeklyMetrics.reduce((sum, w) => sum + w.engagedParticipants, 0);
+    const engagementRate = (totalDistinctParticipants > 0 && weeklyMetrics.length > 0) 
+      ? (totalActiveParticipantsWeeks / (totalDistinctParticipants * weeklyMetrics.length)) * 100
+      : 0;
 
+    // Average fails per participant per week
     const totalFails = weeklyMetrics.reduce((sum, w) => sum + w.fails, 0);
-    const avgFailRate = (totalDistinctParticipants > 0 && weeklyMetrics.length > 0) 
+    const avgFailsPerParticipantWeek = (totalDistinctParticipants > 0 && weeklyMetrics.length > 0) 
       ? totalFails / (totalDistinctParticipants * weeklyMetrics.length) 
       : 0;
 
+    // Discipline Score: normalized (higher = better)
+    const disciplineScore = Math.max(0, 1 - (avgFailsPerParticipantWeek / BASELINE_THRESHOLDS.failsPerParticipantPerWeek));
+
+    // Financial Impact: average penalty per participant per week (EUR)
     const totalPenalties = weeklyMetrics.reduce((sum, w) => sum + w.penalties, 0);
     const avgPenaltyRate = (totalDistinctParticipants > 0 && weeklyMetrics.length > 0)
       ? totalPenalties / (totalDistinctParticipants * weeklyMetrics.length)
       : 0;
 
     // Calculate weighted performance index
-    const failScore = Math.max(0, 1 - (avgFailRate / BASELINE_THRESHOLDS.failsPerParticipantPerWeek));
+    const failScore = disciplineScore;
     const penaltyScore = Math.max(0, 1 - (avgPenaltyRate / BASELINE_THRESHOLDS.penaltyPerParticipantPerWeek));
-    const engagementScore = Math.min(1, engagementRate); // Cap at 1
+    const engagementScore = Math.min(1, engagementRate / 100); // Convert percentage to 0-1 scale
 
-    const performanceIndex = (0.5 * failScore + 0.3 * penaltyScore + 0.2 * engagementScore) * 100;
+    const performanceIndex = (0.2 * engagementScore + 0.5 * failScore + 0.3 * penaltyScore) * 100;
 
     return {
-      engagementRate: engagementRate * 100, // Convert to percentage
-      avgFailRate,
-      avgPenaltyRate,
+      engagementRate: Math.round(engagementRate * 10) / 10, // Round to 1 decimal
+      disciplineScore: Math.round(disciplineScore * 10) / 10, // Round to 1 decimal
+      avgPenaltyRate: Math.round(avgPenaltyRate * 100) / 100, // Round to 2 decimals
       performanceIndex: Math.round(performanceIndex * 10) / 10, // Round to 1 decimal
       weeklyData: weeklyMetrics
     };
@@ -213,7 +221,7 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
     const lastWeekFailScore = Math.max(0, 1 - (lastWeekFailRate / BASELINE_THRESHOLDS.failsPerParticipantPerWeek));
     const lastWeekPenaltyScore = Math.max(0, 1 - (lastWeekPenaltyRate / BASELINE_THRESHOLDS.penaltyPerParticipantPerWeek));
     const lastWeekEngagementScore = Math.min(1, lastWeekEngagementRate);
-    const lastWeekPerformanceIndex = (0.5 * lastWeekFailScore + 0.3 * lastWeekPenaltyScore + 0.2 * lastWeekEngagementScore) * 100;
+    const lastWeekPerformanceIndex = (0.2 * lastWeekEngagementScore + 0.5 * lastWeekFailScore + 0.3 * lastWeekPenaltyScore) * 100;
 
     // Calculate previous weeks average performance index
     const prevWeeksPerformanceIndices = previousWeeks.map(week => {
@@ -224,7 +232,7 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
       const weekFailScore = Math.max(0, 1 - (weekFailRate / BASELINE_THRESHOLDS.failsPerParticipantPerWeek));
       const weekPenaltyScore = Math.max(0, 1 - (weekPenaltyRate / BASELINE_THRESHOLDS.penaltyPerParticipantPerWeek));
       const weekEngagementScore = Math.min(1, weekEngagementRate);
-      return (0.5 * weekFailScore + 0.3 * weekPenaltyScore + 0.2 * weekEngagementScore) * 100;
+      return (0.2 * weekEngagementScore + 0.5 * weekFailScore + 0.3 * weekPenaltyScore) * 100;
     });
     const avgPreviousPerformanceIndex = prevWeeksPerformanceIndices.reduce((sum, idx) => sum + idx, 0) / prevWeeksPerformanceIndices.length;
 
@@ -274,7 +282,7 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
     {
       key: 'discipline',
       title: t[lang].discipline,
-      value: aggregateMetrics.avgFailRate.toFixed(1),
+      value: aggregateMetrics.disciplineScore.toFixed(1),
       icon: AlertTriangle,
       color: 'from-rose-500/20 to-rose-600/5',
       iconColor: 'text-rose-600 dark:text-rose-400',
@@ -301,9 +309,9 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {/* Performance Index Card - Takes 2 columns on md+ */}
+      {/* Performance Index Card - Takes 1 column on lg+ to fit all 4 in one row */}
       <motion.div 
-        className="md:col-span-2 lg:col-span-2"
+        className="md:col-span-2 lg:col-span-1"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
@@ -327,9 +335,9 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
                 <TooltipTrigger asChild>
                   <HelpCircle className="absolute top-4 right-4 h-5 w-5 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent side="left" className="max-w-xs">
-                  <p className="text-sm">{t[lang].performanceInfo}</p>
-                </TooltipContent>
+                 <TooltipContent side="bottom" align="center" className="max-w-sm px-3 py-2 text-sm text-left shadow-lg rounded-md bg-background border" sideOffset={8}>
+                   <p>{t[lang].performanceInfo}</p>
+                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
@@ -345,13 +353,13 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
                   startAngle={90}
                   endAngle={-270}
                 >
-                  <defs>
-                    <linearGradient id="performanceGradient" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
-                      <stop offset="50%" stopColor="hsl(var(--warning))" stopOpacity={0.8} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                    </linearGradient>
-                  </defs>
+                   <defs>
+                     <linearGradient id="performanceGradient" x1="0" y1="0" x2="1" y2="1">
+                       <stop offset="0%" stopColor="#EF4444" stopOpacity={0.9} />
+                       <stop offset="50%" stopColor="#F59E0B" stopOpacity={0.9} />
+                       <stop offset="100%" stopColor="#10B981" stopOpacity={0.9} />
+                     </linearGradient>
+                   </defs>
                   <RadialBar 
                     dataKey="value" 
                     cornerRadius={8}
@@ -430,9 +438,9 @@ export function PerformanceDashboard({ data, dateRange, lang, onKPIClick }: Perf
                       <TooltipTrigger asChild>
                         <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs">
-                        <p className="text-sm">{card.info}</p>
-                      </TooltipContent>
+                       <TooltipContent side="bottom" align="center" className="max-w-sm px-3 py-2 text-sm text-left shadow-lg rounded-md bg-background border" sideOffset={8}>
+                         <p>{card.info}</p>
+                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
