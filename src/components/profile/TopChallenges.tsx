@@ -111,11 +111,18 @@ export const TopChallenges = ({ userId, t }: TopChallengesProps) => {
 
   if (loading) {
     return (
-      <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
-        <Skeleton className="h-40 rounded-xl" />
-        <Skeleton className="h-40 rounded-xl" />
-        <Skeleton className="h-40 rounded-xl" />
-      </div>
+      <Card className="rounded-xl shadow-lg">
+        <CardHeader>
+          <CardTitle>{t.top.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <Skeleton className="h-40 rounded-xl" />
+            <Skeleton className="h-40 rounded-xl" />
+            <Skeleton className="h-40 rounded-xl" />
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -129,33 +136,40 @@ export const TopChallenges = ({ userId, t }: TopChallengesProps) => {
   }
 
   return (
-    <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
-      {cards.map(({ c, participants }) => {
+    <Card className="rounded-xl shadow-lg">
+      <CardHeader>
+        <CardTitle>{t.top.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {cards.map(({ c, participants }) => {
         const leaderboard = [...participants].sort((a,b) => (b.penalty_count||0) - (a.penalty_count||0)).slice(0,3);
         return (
-          <Card key={c.id} className="rounded-xl">
-            <CardHeader>
-              <CardTitle className="text-base">{c.title}</CardTitle>
-              <CardDescription>
-                {c.start_date} — {c.end_date} · {t.top.penalty}: {(c.penalty_cents ?? 0)/100}€
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm space-y-2">
-                {leaderboard.map((p) => (
-                  <li key={p.user_id} className="flex items-center justify-between">
-                    <span className="truncate mr-2">{profileMapQuery.data?.get(p.user_id) || p.user_id}</span>
-                    <span className="font-mono tabular-nums">{p.penalty_count ?? 0}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button size="sm" onClick={() => navigate(`/challenges/${c.id}`)}>{t.top.open}</Button>
-            </CardFooter>
-          </Card>
-        );
-      })}
-    </div>
+            <Card className="rounded-xl bg-gradient-to-br from-muted/20 to-muted/5 border-muted/40">
+              <CardHeader>
+                <CardTitle className="text-base">{c.title}</CardTitle>
+                <CardDescription>
+                  {c.start_date} — {c.end_date} · {t.top.penalty}: {(c.penalty_cents ?? 0)/100}€
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="text-sm space-y-2">
+                  {leaderboard.map((p) => (
+                    <li key={p.user_id} className="flex items-center justify-between">
+                      <span className="truncate mr-2">{profileMapQuery.data?.get(p.user_id) || p.user_id}</span>
+                      <span className="font-mono tabular-nums">{p.penalty_count ?? 0}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button size="sm" onClick={() => navigate(`/challenges/${c.id}`)}>{t.top.open}</Button>
+              </CardFooter>
+            </Card>
+          );
+        })}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

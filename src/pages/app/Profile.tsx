@@ -465,92 +465,23 @@ const ProfilePage = () => {
               </TabsList>
               
               <TabsContent value="habit" className="space-y-6 mt-6">
-                <div className="grid gap-6 lg:grid-cols-2">
-                  <TopChallenges userId={userId || ""} t={t} />
-                  
-                  {/* Enhanced Trends with better height */}
-                  <Card className="rounded-xl shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5" />
-                        {t.charts.trendsCountsTitle}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <Trends userId={userId || ""} t={t} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                {/* Expanded Active Challenges - Full Width Grid */}
+                <TopChallenges userId={userId || ""} t={t} />
                 
-                <div className="grid gap-6 lg:grid-cols-2">
-                  {/* Enhanced Violations chart */}
-                  <Card className="rounded-xl shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Trophy className="h-5 w-5" />
-                        {t.charts.barTitle}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-80">
-                        {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
-                          <div className="flex items-center justify-center h-full">
-                            <Skeleton className="h-full w-full" />
-                          </div>
-                        ) : chartParticipants.length ? (
-                          <ViolationsPerParticipant
-                            challengeId={relevantChallengeId}
-                            participants={chartParticipants}
-                          />
-                        ) : (
-                          <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="flex flex-col items-center justify-center h-full text-muted-foreground"
-                          >
-                            <Calendar className="h-12 w-12 mb-4 opacity-50" />
-                            <p className="text-center">{t.charts.noDataMessage}</p>
-                          </motion.div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Enhanced Cumulative Penalties chart */}
-                  <Card className="rounded-xl shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingDown className="h-5 w-5" />
-                        {t.charts.lineTitle}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-80">
-                        {(!relevantChallengeId || relParticipants.isLoading || relProfiles.isLoading) ? (
-                          <div className="flex items-center justify-center h-full">
-                            <Skeleton className="h-full w-full" />
-                          </div>
-                        ) : chartParticipants.length ? (
-                          <CumulativePenaltyChart
-                            challengeId={relevantChallengeId}
-                            participants={chartParticipants}
-                          />
-                        ) : (
-                          <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="flex flex-col items-center justify-center h-full text-muted-foreground"
-                          >
-                            <Clock className="h-12 w-12 mb-4 opacity-50" />
-                            <p className="text-center">{t.charts.noDataMessage}</p>
-                          </motion.div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                {/* Full-Width Trends Chart Below */}
+                <Card className="rounded-xl shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      {t.charts.trendsCountsTitle}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-96">
+                      <Trends userId={userId || ""} t={t} />
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
               
               <TabsContent value="kpi" className="space-y-6 mt-6">
