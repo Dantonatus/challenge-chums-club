@@ -41,18 +41,47 @@ export default function ViolationsPerParticipant({ challengeId, participants }: 
     }));
   }, [data, participants, colorMap]);
 
-  if (isLoading) return <Skeleton className="h-48 w-full" />;
+  if (isLoading) return <Skeleton className="h-full w-full" />;
 
-  if (!barData.length) return <div className="text-sm text-muted-foreground">Keine Daten verfügbar</div>;
+  if (!barData.length || barData.every(d => d.amount === 0)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+        <div className="text-4xl mb-4">🏆</div>
+        <p className="text-center text-sm">No violations found - excellent work!</p>
+      </div>
+    );
+  }
 
   return (
-    <ChartContainer config={{ amount: { label: "€", color: "hsl(var(--primary))" } }}>
-      <BarChart data={barData}>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} height={60} angle={0} dy={10} />
-        <YAxis tickLine={false} axisLine={false} />
+    <ChartContainer 
+      config={{ amount: { label: "€", color: "hsl(var(--primary))" } }}
+      className="h-full w-full"
+    >
+      <BarChart data={barData} height={300}>
+        <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
+        <XAxis 
+          dataKey="name" 
+          tickLine={false} 
+          axisLine={false} 
+          interval={0} 
+          height={60} 
+          angle={-45} 
+          textAnchor="end"
+          fontSize={12}
+          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+        />
+        <YAxis 
+          tickLine={false} 
+          axisLine={false}
+          fontSize={12}
+          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+        />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="amount" radius={[6,6,0,0]} />
+        <Bar 
+          dataKey="amount" 
+          radius={[8,8,0,0]}
+          className="hover:opacity-80 transition-opacity"
+        />
       </BarChart>
     </ChartContainer>
   );

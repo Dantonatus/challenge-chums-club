@@ -64,15 +64,43 @@ export default function CumulativePenaltyChart({ challengeId, participants }: Pr
     return rows;
   }, [violations, participants, start, end]);
 
+  if (chartData.length === 0 || participants.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+        <div className="text-4xl mb-4">📈</div>
+        <p className="text-center text-sm">No penalty data available for this period</p>
+      </div>
+    );
+  }
+
   return (
-    <ChartContainer config={chartConfig} className="w-full h-56 md:h-64" withAspect={false}>
-      <Recharts.LineChart data={chartData}>
-        <Recharts.CartesianGrid strokeDasharray="3 3" />
-        <Recharts.XAxis dataKey="date" />
-        <Recharts.YAxis />
+    <ChartContainer config={chartConfig} className="w-full h-full" withAspect={false}>
+      <Recharts.LineChart data={chartData} height={300}>
+        <Recharts.CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+        <Recharts.XAxis 
+          dataKey="date" 
+          fontSize={12}
+          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+          tickLine={false}
+          axisLine={false}
+        />
+        <Recharts.YAxis 
+          fontSize={12}
+          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+          tickLine={false}
+          axisLine={false}
+        />
         <ChartTooltip content={<ChartTooltipContent />} />
         {participants.map((p) => (
-          <Recharts.Line key={p.user_id} type="linear" dataKey={p.name} stroke={colorMap[p.user_id]} dot={false} strokeWidth={2} />
+          <Recharts.Line 
+            key={p.user_id} 
+            type="monotone" 
+            dataKey={p.name} 
+            stroke={colorMap[p.user_id]} 
+            dot={{ r: 3 }} 
+            activeDot={{ r: 5 }}
+            strokeWidth={3} 
+          />
         ))}
       </Recharts.LineChart>
     </ChartContainer>

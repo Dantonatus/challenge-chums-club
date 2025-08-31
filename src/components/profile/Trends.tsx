@@ -84,26 +84,58 @@ export const Trends = ({ userId, t }: TrendsProps) => {
   const loading = challengesQuery.isLoading || violationsQuery.isLoading;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t?.charts?.trendsCountsTitle || 'Challenges & Verstöße (6 Monate)'}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <Skeleton className="h-40 w-full" />
-        ) : (
-          <ChartContainer config={{ challenges: { label: t?.charts?.challengesLabel || 'Challenges', color: 'hsl(var(--primary))' }, penalties: { label: t?.charts?.violationsLabel || 'Violations', color: 'hsl(var(--muted-foreground))' } }}>
-            <LineChart data={data}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="m" tickLine={false} axisLine={false} />
-              <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line type="monotone" dataKey="challenges" stroke="var(--color-challenges)" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="penalties" stroke="var(--color-penalties)" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ChartContainer>
-        )}
-      </CardContent>
-    </Card>
+    <>
+      {loading ? (
+        <Skeleton className="h-full w-full" />
+      ) : data.length > 0 ? (
+        <ChartContainer 
+          config={{ 
+            challenges: { label: t?.charts?.challengesLabel || 'Challenges', color: 'hsl(var(--primary))' }, 
+            penalties: { label: t?.charts?.violationsLabel || 'Violations', color: 'hsl(var(--destructive))' } 
+          }}
+          className="h-full w-full"
+        >
+          <LineChart data={data} height={250}>
+            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
+            <XAxis 
+              dataKey="m" 
+              tickLine={false} 
+              axisLine={false} 
+              fontSize={12}
+              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+            />
+            <YAxis 
+              allowDecimals={false} 
+              tickLine={false} 
+              axisLine={false} 
+              fontSize={12}
+              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Line 
+              type="monotone" 
+              dataKey="challenges" 
+              stroke="var(--color-challenges)" 
+              strokeWidth={3} 
+              dot={{ fill: "var(--color-challenges)", strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="penalties" 
+              stroke="var(--color-penalties)" 
+              strokeWidth={3} 
+              dot={{ fill: "var(--color-penalties)", strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+          </LineChart>
+        </ChartContainer>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+          <div className="text-4xl mb-4">📊</div>
+          <p className="text-center">{t?.charts?.empty || 'No data available'}</p>
+        </div>
+      )}
+    </>
   );
 };

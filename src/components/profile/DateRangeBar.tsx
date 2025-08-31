@@ -127,14 +127,24 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
   const hiDate = dateFromLocalDayNumber(hiDays);
 
   return (
-    <Card className={cn("rounded-xl shadow-sm border bg-gradient-to-r from-background to-muted/30", sticky && "sticky top-0 z-30")}> 
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <CardTitle className="text-sm text-muted-foreground">{t.title}</CardTitle>
-          <div className="text-sm font-medium tabular-nums">{formatPPP(loDate)} — {formatPPP(hiDate)}</div>
-          <div className="flex items-center gap-1">
+    <Card className={cn("rounded-2xl shadow-lg border-0 bg-gradient-to-br from-background via-muted/10 to-background", sticky && "sticky top-0 z-30")}> 
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            📅 {t.title}
+          </CardTitle>
+          <div className="text-sm font-medium tabular-nums bg-muted/50 px-3 py-1 rounded-lg">
+            {formatPPP(loDate)} — {formatPPP(hiDate)}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
             {t.presetsList.map((key) => (
-              <Button key={key} size="sm" variant="secondary" className="h-7 px-2" onClick={() => applyPreset(key)}>
+              <Button 
+                key={key} 
+                size="sm" 
+                variant="outline" 
+                className="h-8 px-3 rounded-lg hover:scale-105 transition-transform" 
+                onClick={() => applyPreset(key)}
+              >
                 {key}
               </Button>
             ))}
@@ -202,21 +212,31 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             onMouseLeave={() => setHover(false)}
             aria-label={t.title}
           >
-            <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
-              <SliderPrimitive.Range className="absolute h-full bg-primary" />
+            <SliderPrimitive.Track className="relative h-3 w-full grow overflow-hidden rounded-full bg-muted/50 shadow-inner">
+              <SliderPrimitive.Range className="absolute h-full bg-gradient-to-r from-primary to-primary/80 shadow-sm" />
             </SliderPrimitive.Track>
 
             {/* Start thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.startThumb}
               onPointerDown={() => setActive("s")}
-              className="block h-6 w-6 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className={cn(
+                "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-lg ring-offset-background transition-all duration-200",
+                "hover:scale-110 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                active === "s" && "scale-110 shadow-xl",
+                dragging && active === "s" && "scale-125"
+              )}
             />
             {/* End thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.endThumb}
               onPointerDown={() => setActive("e")}
-              className="block h-6 w-6 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className={cn(
+                "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-lg ring-offset-background transition-all duration-200",
+                "hover:scale-110 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                active === "e" && "scale-110 shadow-xl",
+                dragging && active === "e" && "scale-125"
+              )}
             />
           </SliderPrimitive.Root>
 
