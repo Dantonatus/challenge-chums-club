@@ -24,6 +24,7 @@ import { WeeklyTimeline } from "@/components/summary/WeeklyTimeline";
 import { FailsTrendPremium } from "@/components/summary/FailsTrendPremium";
 import { GlobalBar } from "@/components/summary/GlobalBar";
 import { PerformanceDashboard } from "@/components/summary/PerformanceDashboard";
+import { EnhancedKPIStrip } from "@/components/summary/EnhancedKPIStrip";
 import { ChallengeCard } from "@/components/summary/ChallengeCard";
 import { CumulativeFailsTrend } from "@/components/summary/CumulativeFailsTrend";
 
@@ -502,9 +503,9 @@ const totalChallenges = processedChallenges.length;
           />
         )}
 
-        {/* Performance Dashboard */}
+        {/* Enhanced KPI Dashboard */}
         {filteredData && (
-          <PerformanceDashboard
+          <EnhancedKPIStrip
             data={filteredData}
             dateRange={{ start, end }}
             lang={lang}
