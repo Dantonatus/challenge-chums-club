@@ -16,10 +16,10 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trends } from "@/components/profile/Trends";
-
+import CumulativePenaltyChart from "@/components/challenges/CumulativePenaltyChart";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
 import { DateRangeBar } from "@/components/profile/DateRangeBar";
-
+import ViolationsPerParticipant from "@/components/profile/ViolationsPerParticipant";
 import { ColorPicker } from "@/components/profile/ColorPicker";
 import { KPIAnalytics } from "@/components/profile/KPIAnalytics";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -458,7 +458,7 @@ const ProfilePage = () => {
             <Stats userId={userId || ""} t={t} />
             
             {/* Enhanced Analytics Tabs */}
-            <Tabs defaultValue="kpi" className="w-full">
+            <Tabs defaultValue="habit" className="w-full">
               <TabsList className="grid w-full grid-cols-2 rounded-xl">
                 <TabsTrigger value="habit" className="rounded-lg">📊 Habit Analytics</TabsTrigger>
                 <TabsTrigger value="kpi" className="rounded-lg">🎯 KPI Analytics</TabsTrigger>
