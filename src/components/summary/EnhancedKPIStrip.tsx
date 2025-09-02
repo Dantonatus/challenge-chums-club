@@ -217,13 +217,21 @@ function PerformanceRing({ value, size = 180 }: { value: number; size?: number }
           strokeWidth={strokeWidth}
         />
         
+        {/* Gradient definition */}
+        <defs>
+          <linearGradient id="performanceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="hsl(339 60% 70%)" /> {/* Pink/Red */}
+            <stop offset="100%" stopColor="hsl(220 70% 60%)" /> {/* Blue */}
+          </linearGradient>
+        </defs>
+        
         {/* Progress circle */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="hsl(var(--primary))"
+          stroke="url(#performanceGradient)"
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={strokeDasharray}

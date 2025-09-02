@@ -255,9 +255,15 @@ export function KPIAnalytics({ userId }: KPIAnalyticsProps) {
               <div className="relative w-32 h-32">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
+                    <defs>
+                      <linearGradient id="performanceGradientProfile" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="hsl(339 60% 70%)" /> {/* Pink/Red */}
+                        <stop offset="100%" stopColor="hsl(220 70% 60%)" /> {/* Blue */}
+                      </linearGradient>
+                    </defs>
                     <Pie
                       data={[
-                        { value: kpiMetrics.performance, fill: "hsl(var(--primary))" },
+                        { value: kpiMetrics.performance, fill: "url(#performanceGradientProfile)" },
                         { value: 100 - kpiMetrics.performance, fill: "hsl(var(--muted))" }
                       ]}
                       cx="50%"
