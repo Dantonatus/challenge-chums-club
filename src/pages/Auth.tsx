@@ -138,7 +138,7 @@ const Auth = () => {
       // Clean up existing state
       cleanupAuthState();
       
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `${window.location.origin}/auth`;
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -189,6 +189,28 @@ const Auth = () => {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      setMessage("Bitte E-Mail eingeben, um den Reset-Link zu erhalten.");
+      setMessageType("error");
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    try {
+      const redirectTo = `${window.location.origin}/auth/reset`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) throw error;
+      setMessage("Reset-E-Mail gesendet. Prüfe deinen Posteingang.");
+      setMessageType("success");
+    } catch (e: any) {
+      setMessage(e?.message || "Senden fehlgeschlagen.");
+      setMessageType("error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getMessageIcon = () => {
     switch (messageType) {
       case "success":
@@ -199,7 +221,6 @@ const Auth = () => {
         return <AlertCircle className="h-4 w-4" />;
     }
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <Helmet>
