@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { User, Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,29 +20,58 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const navigate = useNavigate();
 
-  // Check if user is already logged in
+  // Handle auth state changes and check existing session
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        // Check if user is approved
-        const { data: userRole } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .single();
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email);
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Check user role
+          const { data: userRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
 
-        if (userRole?.role === 'admin' || userRole?.role === 'user') {
-          navigate('/app/summary');
-        } else if (userRole?.role === 'pending') {
-          setMessage("Your account is pending approval. You will receive an email once approved.");
-          setMessageType("info");
+          if (userRole?.role === 'admin' || userRole?.role === 'user') {
+            navigate('/app/summary');
+          } else if (userRole?.role === 'pending') {
+            setMessage("Your account is pending approval. Please wait for an administrator to approve your request.");
+            setMessageType("info");
+            // Sign out pending users
+            await supabase.auth.signOut();
+          } else {
+            setMessage("Account not found or access denied. Please contact support.");
+            setMessageType("error");
+          }
+        }
+        
+        if (event === 'PASSWORD_RECOVERY') {
+          setMessage("Password reset successful! You can now sign in with your new password.");
+          setMessageType("success");
+        }
+        
+        if (event === 'SIGNED_OUT') {
+          setMessage("");
         }
       }
-    };
-    checkUser();
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const cleanupAuthState = () => {
@@ -138,13 +168,11 @@ const Auth = () => {
       // Clean up existing state
       cleanupAuthState();
       
-      const redirectUrl = `${window.location.origin}/auth`;
-      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
+          emailRedirectTo: 'https://habitbattle.lovable.app/auth',
           data: {
             display_name: displayName
           }
@@ -198,8 +226,9 @@ const Auth = () => {
     setLoading(true);
     setMessage("");
     try {
-      const redirectTo = `${window.location.origin}/auth/reset`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://habitbattle.lovable.app/auth/reset'
+      });
       if (error) throw error;
       setMessage("Reset-E-Mail gesendet. Prüfe deinen Posteingang.");
       setMessageType("success");
@@ -295,19 +324,28 @@ const Auth = () => {
                       disabled={loading}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Signing In...
-                      </>
-                    ) : (
-                      <>
-                        <LogIn className="mr-2 h-4 w-4" />
-                        Sign In
-                      </>
-                    )}
-                  </Button>
+                   <Button type="submit" className="w-full" disabled={loading}>
+                     {loading ? (
+                       <>
+                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                         Signing In...
+                       </>
+                     ) : (
+                       <>
+                         <LogIn className="mr-2 h-4 w-4" />
+                         Sign In
+                       </>
+                     )}
+                   </Button>
+                   <Button 
+                     type="button" 
+                     variant="link" 
+                     className="w-full" 
+                     onClick={handleResetPassword}
+                     disabled={loading}
+                   >
+                     Forgot password?
+                   </Button>
                 </form>
               </TabsContent>
 
