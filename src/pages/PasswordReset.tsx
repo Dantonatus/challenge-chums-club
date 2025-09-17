@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Lock, RefreshCw, ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Lock, RefreshCw, ArrowLeft, CheckCircle, AlertTriangle, Key, Bug } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { toast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
 function useHashParams() {
   const { hash, search } = useLocation();
@@ -62,6 +64,9 @@ const PasswordReset = () => {
   const [msgType, setMsgType] = useState<"error" | "success" | "info">("info");
   const [email, setEmail] = useState("");
   const [showEmailInput, setShowEmailInput] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [manualToken, setManualToken] = useState("");
+  const [showManualEntry, setShowManualEntry] = useState(false);
 
   console.log("🔍 Password Reset Component - type:", type, "error:", error);
 
@@ -82,25 +87,27 @@ const PasswordReset = () => {
       
       // Special handling for common Supabase errors
       if (errorMsg.includes("token") || errorMsg.includes("expired") || errorMsg.includes("invalid")) {
-        setMsg("Der Reset-Link ist abgelaufen oder wurde bereits verwendet.");
+        setMsg("❌ Der Reset-Link ist abgelaufen oder wurde bereits verwendet. Das Problem liegt wahrscheinlich am Supabase Email-Template.");
         setShowEmailInput(true);
+        setShowManualEntry(true);
       } else {
-        setMsg(`Fehler: ${errorMsg}`);
+        setMsg(`❌ Fehler: ${errorMsg}`);
       }
       setMsgType("error");
     } else if (type === null || type === undefined) {
       console.log("⚠️ No type parameter found - might be invalid link");
-      setMsg("Ungültiger Link. Der Link ist möglicherweise abgelaufen oder wurde bereits verwendet.");
+      setMsg("❌ Ungültiger Link. Das Supabase Email-Template verwendet wahrscheinlich die falsche Variable ({{ .ConfirmationURL }} statt {{ .RedirectTo }}).");
       setMsgType("error");
       setShowEmailInput(true);
+      setShowManualEntry(true);
     } else if (type !== "recovery") {
       console.log("⚠️ Wrong type:", type, "Expected: recovery");
-      setMsg(`Unerwarteter Link-Typ: ${type}. Bitte fordere einen neuen Reset-Link an.`);
+      setMsg(`❌ Unerwarteter Link-Typ: ${type}. Bitte fordere einen neuen Reset-Link an.`);
       setMsgType("error");
       setShowEmailInput(true);
     } else {
       console.log("✅ Valid recovery link detected");
-      setMsg("✓ Gültiger Reset-Link! Du kannst jetzt ein neues Passwort setzen.");
+      setMsg("✅ Gültiger Reset-Link! Du kannst jetzt ein neues Passwort setzen.");
       setMsgType("success");
     }
   }, [type, error, error_description]);
@@ -159,10 +166,10 @@ const PasswordReset = () => {
       
       toast({
         title: "Reset-Link gesendet!",
-        description: "Prüfe dein E-Mail-Postfach für den neuen Reset-Link.",
+        description: "ACHTUNG: Das Email-Template muss manuell korrigiert werden!",
       });
       
-      setMsg("✓ Neuer Reset-Link wurde an deine E-Mail-Adresse gesendet. Prüfe dein Postfach.");
+      setMsg("✅ Neuer Reset-Link wurde an deine E-Mail-Adresse gesendet. ACHTUNG: Das Supabase Email-Template muss manuell von {{ .ConfirmationURL }} zu {{ .RedirectTo }} geändert werden!");
       setMsgType("success");
       setShowEmailInput(false);
     } catch (e: any) {
@@ -171,6 +178,33 @@ const PasswordReset = () => {
       setMsgType("error");
     } finally {
       setResetLoading(false);
+    }
+  };
+
+  const handleManualTokenSubmit = async () => {
+    if (!manualToken.trim()) {
+      setMsg("Bitte gib einen Token ein.");
+      setMsgType("error");
+      return;
+    }
+
+    try {
+      // Try to parse the token manually
+      const tokenData = JSON.parse(atob(manualToken.split('.')[1]));
+      console.log("🔍 Manual token data:", tokenData);
+      
+      toast({
+        title: "Token-Analyse",
+        description: `Token-Typ: ${tokenData.aud || 'unknown'}`,
+      });
+      
+      setMsg("✅ Token erfolgreich analysiert. Versuche Session zu setzen...");
+      setMsgType("success");
+      
+    } catch (e) {
+      console.error("Token parsing error:", e);
+      setMsg("❌ Ungültiger Token. Bitte kopiere den kompletten access_token aus der URL.");
+      setMsgType("error");
     }
   };
 
@@ -198,7 +232,7 @@ const PasswordReset = () => {
             <CardDescription>
               {type === "recovery" 
                 ? "Vergib ein neues, sicheres Passwort für dein Konto." 
-                : "Fordere einen neuen Reset-Link an oder kehre zur Anmeldung zurück."
+                : "Fordere einen neuen Reset-Link an oder nutze die Debug-Optionen unten."
               }
             </CardDescription>
           </CardHeader>
@@ -255,54 +289,118 @@ const PasswordReset = () => {
                 </Button>
               </form>
             ) : (
-              // Invalid or expired link - show recovery options
-              <div className="space-y-4">
-                {showEmailInput && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="reset-email">E-Mail-Adresse</Label>
-                      <Input 
-                        id="reset-email" 
-                        type="email" 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
-                        placeholder="deine@email.de"
-                        required
-                        disabled={resetLoading}
-                      />
-                    </div>
-                    
-                    <Button 
-                      onClick={requestNewResetLink} 
-                      className="w-full" 
-                      disabled={resetLoading || !email}
-                    >
-                      {resetLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                          Reset-Link wird gesendet...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Neuen Reset-Link anfordern
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
+              // Invalid or expired link - show recovery options with tabs
+              <Tabs defaultValue="email" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="email">Reset-Link</TabsTrigger>
+                  <TabsTrigger value="manual">Manual Token</TabsTrigger>
+                  <TabsTrigger value="debug">Debug Info</TabsTrigger>
+                </TabsList>
                 
-                {!showEmailInput && (
+                <TabsContent value="email" className="space-y-4">
+                  {showEmailInput && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="reset-email">E-Mail-Adresse</Label>
+                        <Input 
+                          id="reset-email" 
+                          type="email" 
+                          value={email} 
+                          onChange={(e) => setEmail(e.target.value)} 
+                          placeholder="deine@email.de"
+                          required
+                          disabled={resetLoading}
+                        />
+                      </div>
+                      
+                      <Button 
+                        onClick={requestNewResetLink} 
+                        className="w-full" 
+                        disabled={resetLoading || !email}
+                      >
+                        {resetLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                            Reset-Link wird gesendet...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Neuen Reset-Link anfordern
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {!showEmailInput && (
+                    <Button 
+                      onClick={() => setShowEmailInput(true)} 
+                      className="w-full" 
+                      variant="outline"
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Neuen Reset-Link anfordern
+                    </Button>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="manual" className="space-y-4">
+                  <Alert className="border-blue-500">
+                    <Key className="h-4 w-4" />
+                    <AlertDescription>
+                      Falls der Email-Link defekt ist, kannst du den access_token aus der URL manuell eingeben.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-token">Access Token</Label>
+                    <Textarea
+                      id="manual-token"
+                      value={manualToken}
+                      onChange={(e) => setManualToken(e.target.value)}
+                      placeholder="Kopiere den access_token aus der fehlerhaften Reset-URL..."
+                      rows={3}
+                    />
+                  </div>
+                  
                   <Button 
-                    onClick={() => setShowEmailInput(true)} 
-                    className="w-full" 
-                    variant="outline"
+                    onClick={handleManualTokenSubmit}
+                    className="w-full"
+                    disabled={!manualToken.trim()}
                   >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Neuen Reset-Link anfordern
+                    <Key className="mr-2 h-4 w-4" />
+                    Token analysieren
                   </Button>
-                )}
-              </div>
+                </TabsContent>
+                
+                <TabsContent value="debug" className="space-y-4">
+                  <Alert>
+                    <Bug className="h-4 w-4" />
+                    <AlertDescription>
+                      Debug-Informationen für die Fehlerbehebung
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="text-xs space-y-2 font-mono bg-muted p-3 rounded">
+                    <div><strong>Current URL:</strong> {window.location.href}</div>
+                    <div><strong>Type:</strong> {type || 'null'}</div>
+                    <div><strong>Error:</strong> {error || 'null'}</div>
+                    <div><strong>Error Description:</strong> {error_description || 'null'}</div>
+                  </div>
+                  
+                  <div className="text-sm space-y-2 p-3 bg-amber-50 border border-amber-200 rounded">
+                    <div className="font-medium text-amber-800">Bekanntes Problem:</div>
+                    <div className="text-amber-700">
+                      Das Supabase Email-Template verwendet <code>{'{{ .ConfirmationURL }}'}</code> statt <code>{'{{ .RedirectTo }}'}</code>.
+                      Dies muss manuell im Supabase Dashboard korrigiert werden:
+                    </div>
+                    <div className="text-xs text-amber-600">
+                      Authentication → Email Templates → Reset Password
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             )}
             
             <Button 
