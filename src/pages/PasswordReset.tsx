@@ -16,6 +16,13 @@ function useHashParams() {
     console.log("🔍 Password Reset Debug - Current URL:", window.location.href);
     console.log("🔍 Hash:", hash);
     console.log("🔍 Search:", search);
+    console.log("🔍 Full location:", window.location);
+    
+    // Also check if we're being redirected from Supabase with different URL format
+    const fullUrl = window.location.href;
+    if (fullUrl.includes('access_token=') || fullUrl.includes('type=recovery')) {
+      console.log("🔍 Detected Supabase redirect URL format");
+    }
     
     // Supabase may use hash fragment for tokens; also support query params
     const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
