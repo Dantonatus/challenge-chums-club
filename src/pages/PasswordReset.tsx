@@ -87,7 +87,7 @@ const PasswordReset = () => {
       
       // Special handling for common Supabase errors
       if (errorMsg.includes("token") || errorMsg.includes("expired") || errorMsg.includes("invalid")) {
-        setMsg("❌ Der Reset-Link ist abgelaufen oder wurde bereits verwendet. Das Problem liegt wahrscheinlich am Supabase Email-Template.");
+        setMsg("❌ Der Reset-Link ist abgelaufen oder wurde bereits verwendet. Bitte fordere einen neuen Link an.");
         setShowEmailInput(true);
         setShowManualEntry(true);
       } else {
@@ -95,8 +95,8 @@ const PasswordReset = () => {
       }
       setMsgType("error");
     } else if (type === null || type === undefined) {
-      console.log("⚠️ No type parameter found - might be invalid link");
-      setMsg("❌ Ungültiger Link. Das Supabase Email-Template verwendet wahrscheinlich die falsche Variable ({{ .ConfirmationURL }} statt {{ .RedirectTo }}).");
+      console.log("⚠️ No type parameter found - might be invalid link or direct access");
+      setMsg("❌ Ungültiger Link. Bitte fordere einen neuen Reset-Link an.");
       setMsgType("error");
       setShowEmailInput(true);
       setShowManualEntry(true);
@@ -158,18 +158,21 @@ const PasswordReset = () => {
     setMsg(null);
     
     try {
+      // Use the correct preview URL for redirects
+      const redirectUrl = `${window.location.protocol}//${window.location.host}/auth/reset`;
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset`
+        redirectTo: redirectUrl
       });
       
       if (error) throw error;
       
       toast({
         title: "Reset-Link gesendet!",
-        description: "ACHTUNG: Das Email-Template muss manuell korrigiert werden!",
+        description: `E-Mail an ${email} gesendet.`,
       });
       
-      setMsg("✅ Neuer Reset-Link wurde an deine E-Mail-Adresse gesendet. ACHTUNG: Das Supabase Email-Template muss manuell von {{ .ConfirmationURL }} zu {{ .RedirectTo }} geändert werden!");
+      setMsg(`✅ Neuer Reset-Link wurde an ${email} gesendet. Prüfe dein E-Mail-Postfach. Redirect URL: ${redirectUrl}`);
       setMsgType("success");
       setShowEmailInput(false);
     } catch (e: any) {
