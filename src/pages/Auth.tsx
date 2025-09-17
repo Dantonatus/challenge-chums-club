@@ -337,15 +337,18 @@ const Auth = () => {
                        </>
                      )}
                    </Button>
-                   <Button 
-                     type="button" 
-                     variant="link" 
-                     className="w-full" 
-                     onClick={handleResetPassword}
-                     disabled={loading}
-                   >
-                     Forgot password?
-                   </Button>
+                   
+                   <div className="text-center">
+                     <Button 
+                       type="button" 
+                       variant="ghost" 
+                       className="text-primary hover:text-primary/80 underline" 
+                       onClick={handleResetPassword}
+                       disabled={loading}
+                     >
+                       Passwort vergessen?
+                     </Button>
+                   </div>
                 </form>
               </TabsContent>
 
