@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Lock } from "lucide-react";
+import { Loader2, Lock, RefreshCw, ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import { toast } from "@/hooks/use-toast";
 
 function useHashParams() {
   const { hash, search } = useLocation();
@@ -56,8 +57,11 @@ const PasswordReset = () => {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [msgType, setMsgType] = useState<"error" | "success" | "info">("info");
+  const [email, setEmail] = useState("");
+  const [showEmailInput, setShowEmailInput] = useState(false);
 
   console.log("🔍 Password Reset Component - type:", type, "error:", error);
 
@@ -78,22 +82,25 @@ const PasswordReset = () => {
       
       // Special handling for common Supabase errors
       if (errorMsg.includes("token") || errorMsg.includes("expired") || errorMsg.includes("invalid")) {
-        setMsg("Der Reset-Link ist abgelaufen oder wurde bereits verwendet. Bitte fordere einen neuen Link an.");
+        setMsg("Der Reset-Link ist abgelaufen oder wurde bereits verwendet.");
+        setShowEmailInput(true);
       } else {
         setMsg(`Fehler: ${errorMsg}`);
       }
       setMsgType("error");
     } else if (type === null || type === undefined) {
       console.log("⚠️ No type parameter found - might be invalid link");
-      setMsg("Ungültiger Link. Der Link ist möglicherweise abgelaufen oder wurde bereits verwendet. Bitte fordere einen neuen Reset-Link an.");
+      setMsg("Ungültiger Link. Der Link ist möglicherweise abgelaufen oder wurde bereits verwendet.");
       setMsgType("error");
+      setShowEmailInput(true);
     } else if (type !== "recovery") {
       console.log("⚠️ Wrong type:", type, "Expected: recovery");
       setMsg(`Unerwarteter Link-Typ: ${type}. Bitte fordere einen neuen Reset-Link an.`);
       setMsgType("error");
+      setShowEmailInput(true);
     } else {
       console.log("✅ Valid recovery link detected");
-      setMsg("Link erkannt! Du kannst jetzt ein neues Passwort setzen.");
+      setMsg("✓ Gültiger Reset-Link! Du kannst jetzt ein neues Passwort setzen.");
       setMsgType("success");
     }
   }, [type, error, error_description]);
@@ -101,7 +108,7 @@ const PasswordReset = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
-      setMsg("Passwort muss mind. 6 Zeichen haben.");
+      setMsg("Passwort muss mindestens 6 Zeichen haben.");
       setMsgType("error");
       return;
     }
@@ -115,55 +122,212 @@ const PasswordReset = () => {
     try {
       const { error: updateErr } = await supabase.auth.updateUser({ password });
       if (updateErr) throw updateErr;
-      setMsg("Passwort aktualisiert. Du kannst dich jetzt anmelden.");
+      
+      toast({
+        title: "Passwort erfolgreich aktualisiert!",
+        description: "Du wirst automatisch zur Anmeldung weitergeleitet.",
+      });
+      
+      setMsg("✓ Passwort erfolgreich aktualisiert! Weiterleitung zur Anmeldung...");
       setMsgType("success");
-      setTimeout(() => navigate("/auth"), 1200);
+      setTimeout(() => navigate("/auth"), 2000);
     } catch (e: any) {
-      setMsg(e?.message || "Aktualisierung fehlgeschlagen.");
+      console.error("Password update error:", e);
+      setMsg(e?.message || "Passwort-Aktualisierung fehlgeschlagen. Bitte versuche es erneut.");
       setMsgType("error");
     } finally {
       setLoading(false);
     }
   };
 
+  const requestNewResetLink = async () => {
+    if (!email) {
+      setMsg("Bitte gib deine E-Mail-Adresse ein.");
+      setMsgType("error");
+      return;
+    }
+    
+    setResetLoading(true);
+    setMsg(null);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset`
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Reset-Link gesendet!",
+        description: "Prüfe dein E-Mail-Postfach für den neuen Reset-Link.",
+      });
+      
+      setMsg("✓ Neuer Reset-Link wurde an deine E-Mail-Adresse gesendet. Prüfe dein Postfach.");
+      setMsgType("success");
+      setShowEmailInput(false);
+    } catch (e: any) {
+      console.error("Reset email error:", e);
+      setMsg(e?.message || "Fehler beim Senden der Reset-E-Mail. Bitte versuche es erneut.");
+      setMsgType("error");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const getStatusIcon = () => {
+    if (msgType === "success") return <CheckCircle className="h-4 w-4" />;
+    if (msgType === "error") return <AlertTriangle className="h-4 w-4" />;
+    return <AlertTriangle className="h-4 w-4" />;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <Helmet>
         <title>Passwort zurücksetzen – Sicherer Zugriff</title>
-        <meta name="description" content="Setze dein Passwort sicher zurück." />
+        <meta name="description" content="Setze dein Passwort sicher zurück. Sicherer Reset-Prozess mit E-Mail-Verifizierung." />
         <link rel="canonical" href={`${window.location.origin}/auth/reset`} />
       </Helmet>
-      <div className="w-full max-w-md">
+      
+      <div className="w-full max-w-md space-y-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5" /> Passwort zurücksetzen</CardTitle>
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
+              <Lock className="h-5 w-5" /> 
+              Passwort zurücksetzen
+            </CardTitle>
             <CardDescription>
-              {type === "recovery" ? "Bitte neues Passwort vergeben." : "Der Link ist ungültig oder abgelaufen."}
+              {type === "recovery" 
+                ? "Vergib ein neues, sicheres Passwort für dein Konto." 
+                : "Fordere einen neuen Reset-Link an oder kehre zur Anmeldung zurück."
+              }
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          
+          <CardContent className="space-y-4">
             {msg && (
               <Alert className={msgType === 'error' ? 'border-destructive' : msgType === 'success' ? 'border-green-500' : 'border-blue-500'}>
+                {getStatusIcon()}
                 <AlertDescription>{msg}</AlertDescription>
               </Alert>
             )}
 
-            <form onSubmit={submit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-pass">Neues Passwort</Label>
-                <Input id="new-pass" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            {type === "recovery" ? (
+              // Valid reset link - show password form
+              <form onSubmit={submit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-pass">Neues Passwort</Label>
+                  <Input 
+                    id="new-pass" 
+                    type="password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    placeholder="Mindestens 6 Zeichen"
+                    required 
+                    minLength={6}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-pass">Passwort bestätigen</Label>
+                  <Input 
+                    id="confirm-pass" 
+                    type="password" 
+                    value={confirm} 
+                    onChange={(e) => setConfirm(e.target.value)} 
+                    placeholder="Passwort erneut eingeben"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                      Passwort wird gespeichert...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Passwort speichern
+                    </>
+                  )}
+                </Button>
+              </form>
+            ) : (
+              // Invalid or expired link - show recovery options
+              <div className="space-y-4">
+                {showEmailInput && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">E-Mail-Adresse</Label>
+                      <Input 
+                        id="reset-email" 
+                        type="email" 
+                        value={email} 
+                        onChange={(e) => setEmail(e.target.value)} 
+                        placeholder="deine@email.de"
+                        required
+                        disabled={resetLoading}
+                      />
+                    </div>
+                    
+                    <Button 
+                      onClick={requestNewResetLink} 
+                      className="w-full" 
+                      disabled={resetLoading || !email}
+                    >
+                      {resetLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                          Reset-Link wird gesendet...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Neuen Reset-Link anfordern
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+                
+                {!showEmailInput && (
+                  <Button 
+                    onClick={() => setShowEmailInput(true)} 
+                    className="w-full" 
+                    variant="outline"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Neuen Reset-Link anfordern
+                  </Button>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-pass">Passwort bestätigen</Label>
-                <Input id="confirm-pass" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+            )}
+            
+            <Button 
+              type="button" 
+              variant="secondary" 
+              className="w-full" 
+              onClick={() => navigate('/auth')}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Zurück zur Anmeldung
+            </Button>
+          </CardContent>
+        </Card>
+        
+        {/* Help Card */}
+        <Card className="border-muted">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-2">
+              <h3 className="font-medium text-sm">Probleme beim Reset?</h3>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>• Prüfe dein E-Mail-Postfach und Spam-Ordner</p>
+                <p>• Reset-Links sind nur 1 Stunde gültig</p>
+                <p>• Jeder Link kann nur einmal verwendet werden</p>
               </div>
-              <Button type="submit" className="w-full" disabled={loading || type !== 'recovery'}>
-                {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Speichern…</>) : "Passwort speichern"}
-              </Button>
-              <Button type="button" variant="secondary" className="w-full" onClick={() => navigate('/auth')}>
-                Zurück zum Login
-              </Button>
-            </form>
+            </div>
           </CardContent>
         </Card>
       </div>
