@@ -6,76 +6,101 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Lock, RefreshCw, ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Lock, RefreshCw, ArrowLeft, CheckCircle, AlertTriangle, Mail } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { toast } from "@/hooks/use-toast";
 
 const PasswordReset = () => {
   const navigate = useNavigate();
-  const { hash } = useLocation();
+  const location = useLocation();
   
-  // Extract URL parameters
-  const urlParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
-  const type = urlParams.get("type");
-  const access_token = urlParams.get("access_token");
-  const refresh_token = urlParams.get("refresh_token");
-  const error = urlParams.get("error");
+  // Parse URL parameters from hash
+  const hashParams = new URLSearchParams(
+    location.hash ? location.hash.substring(1) : ""
+  );
   
-  // State
+  const type = hashParams.get("type");
+  const access_token = hashParams.get("access_token");
+  const refresh_token = hashParams.get("refresh_token");
+  const error = hashParams.get("error");
+  
+  // Component state
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "info" }>({ text: "", type: "info" });
-  const [isValidResetLink, setIsValidResetLink] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(true);
 
-  // Check if this is a valid reset link
+  // Handle initial state based on URL parameters
   useEffect(() => {
+    console.log("🔍 Password Reset - URL Parameters:", {
+      type,
+      hasAccessToken: !!access_token,
+      hasRefreshToken: !!refresh_token,
+      error
+    });
+
+    // Handle errors in URL
     if (error) {
-      setMessage({ 
-        text: "Der Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.", 
-        type: "error" 
-      });
+      console.error("❌ Error in reset URL:", error);
+      setMessage("Der Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.");
+      setMessageType("error");
+      setShowEmailForm(true);
+      setShowPasswordForm(false);
       return;
     }
 
+    // Handle valid recovery link
     if (type === "recovery" && access_token && refresh_token) {
-      // Establish session with the tokens
+      console.log("✅ Valid recovery tokens found, establishing session...");
+      
       const establishSession = async () => {
         try {
-          const { error: sessionError } = await supabase.auth.setSession({
+          const { data, error: sessionError } = await supabase.auth.setSession({
             access_token,
-            refresh_token
+            refresh_token,
           });
-          
-          if (sessionError) throw sessionError;
-          
-          setIsValidResetLink(true);
-          setMessage({ 
-            text: "Gültiger Reset-Link! Du kannst jetzt ein neues Passwort eingeben.", 
-            type: "success" 
-          });
-        } catch (e: any) {
-          setMessage({ 
-            text: "Fehler beim Verarbeiten des Reset-Links. Bitte fordere einen neuen Link an.", 
-            type: "error" 
-          });
+
+          if (sessionError) {
+            console.error("❌ Session error:", sessionError);
+            throw sessionError;
+          }
+
+          if (data.session) {
+            console.log("✅ Session established successfully!");
+            setMessage("✅ Reset-Link erfolgreich validiert! Du kannst jetzt dein neues Passwort eingeben.");
+            setMessageType("success");
+            setShowPasswordForm(true);
+            setShowEmailForm(false);
+          }
+        } catch (err: any) {
+          console.error("❌ Failed to establish session:", err);
+          setMessage("Fehler beim Verarbeiten des Reset-Links. Bitte fordere einen neuen Link an.");
+          setMessageType("error");
+          setShowEmailForm(true);
+          setShowPasswordForm(false);
         }
       };
-      
+
       establishSession();
-    } else if (!type && !access_token) {
-      // Direct access without reset link
-      setMessage({ 
-        text: "Bitte fordere einen Reset-Link über deine E-Mail-Adresse an.", 
-        type: "info" 
-      });
+    } else if (type === "recovery") {
+      // Recovery type but missing tokens
+      console.warn("⚠️ Recovery type detected but tokens missing");
+      setMessage("Reset-Link unvollständig. Bitte fordere einen neuen Link an.");
+      setMessageType("error");
+      setShowEmailForm(true);
+      setShowPasswordForm(false);
     } else {
-      setMessage({ 
-        text: "Ungültiger Reset-Link. Bitte fordere einen neuen Link an.", 
-        type: "error" 
-      });
+      // Direct access or other cases
+      console.log("ℹ️ Direct access to reset page");
+      setMessage("Gib deine E-Mail-Adresse ein, um einen Reset-Link zu erhalten.");
+      setMessageType("info");
+      setShowEmailForm(true);
+      setShowPasswordForm(false);
     }
   }, [type, access_token, refresh_token, error]);
 
@@ -83,36 +108,58 @@ const PasswordReset = () => {
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password.length < 6) {
-      setMessage({ text: "Das Passwort muss mindestens 6 Zeichen lang sein.", type: "error" });
+    if (!password || !confirmPassword) {
+      setMessage("Bitte fülle beide Passwort-Felder aus.");
+      setMessageType("error");
       return;
     }
-    
+
+    if (password.length < 6) {
+      setMessage("Das Passwort muss mindestens 6 Zeichen lang sein.");
+      setMessageType("error");
+      return;
+    }
+
     if (password !== confirmPassword) {
-      setMessage({ text: "Die Passwörter stimmen nicht überein.", type: "error" });
+      setMessage("Die Passwörter stimmen nicht überein.");
+      setMessageType("error");
       return;
     }
 
     setLoading(true);
-    
+    setMessage("");
+
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      console.log("🔄 Updating user password...");
       
-      if (error) throw error;
+      const { error } = await supabase.auth.updateUser({ 
+        password: password 
+      });
+
+      if (error) {
+        console.error("❌ Password update error:", error);
+        throw error;
+      }
+
+      console.log("✅ Password updated successfully!");
       
       toast({
-        title: "Passwort erfolgreich geändert!",
-        description: "Du wirst zur Anmeldung weitergeleitet.",
+        title: "✅ Erfolgreich!",
+        description: "Dein Passwort wurde erfolgreich geändert.",
       });
-      
-      setMessage({ text: "Passwort erfolgreich geändert! Weiterleitung...", type: "success" });
-      
-      setTimeout(() => navigate("/auth"), 2000);
-    } catch (e: any) {
-      setMessage({ 
-        text: e.message || "Fehler beim Ändern des Passworts. Bitte versuche es erneut.", 
-        type: "error" 
-      });
+
+      setMessage("✅ Passwort erfolgreich geändert! Du wirst zur Anmeldung weitergeleitet...");
+      setMessageType("success");
+
+      // Redirect after success
+      setTimeout(() => {
+        navigate("/auth");
+      }, 2000);
+
+    } catch (err: any) {
+      console.error("❌ Password update failed:", err);
+      setMessage(err.message || "Fehler beim Ändern des Passworts. Bitte versuche es erneut.");
+      setMessageType("error");
     } finally {
       setLoading(false);
     }
@@ -122,36 +169,49 @@ const PasswordReset = () => {
   const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email) {
-      setMessage({ text: "Bitte gib deine E-Mail-Adresse ein.", type: "error" });
+    if (!email || !email.includes("@")) {
+      setMessage("Bitte gib eine gültige E-Mail-Adresse ein.");
+      setMessageType("error");
       return;
     }
 
     setResetLoading(true);
-    
+    setMessage("");
+
     try {
+      console.log("🔄 Sending reset email to:", email);
+      
       const redirectUrl = `${window.location.origin}/auth/reset`;
-      
+      console.log("🔄 Using redirect URL:", redirectUrl);
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl
+        redirectTo: redirectUrl,
       });
-      
-      if (error) throw error;
+
+      if (error) {
+        console.error("❌ Reset email error:", error);
+        throw error;
+      }
+
+      console.log("✅ Reset email sent successfully!");
       
       toast({
-        title: "Reset-Link gesendet!",
+        title: "✅ E-Mail gesendet!",
         description: `Ein Reset-Link wurde an ${email} gesendet.`,
       });
+
+      setMessage(`✅ Reset-Link wurde an ${email} gesendet! Bitte überprüfe deine E-Mails und klicke auf den Link.`);
+      setMessageType("success");
+
+    } catch (err: any) {
+      console.error("❌ Reset email failed:", err);
       
-      setMessage({ 
-        text: `Reset-Link wurde an ${email} gesendet. Bitte überprüfe deine E-Mails.`, 
-        type: "success" 
-      });
-    } catch (e: any) {
-      setMessage({ 
-        text: e.message || "Fehler beim Senden der E-Mail. Bitte versuche es erneut.", 
-        type: "error" 
-      });
+      if (err.message.includes("rate")) {
+        setMessage("Zu viele Anfragen. Bitte warte einen Moment und versuche es erneut.");
+      } else {
+        setMessage(err.message || "Fehler beim Senden der E-Mail. Bitte versuche es erneut.");
+      }
+      setMessageType("error");
     } finally {
       setResetLoading(false);
     }
@@ -160,63 +220,79 @@ const PasswordReset = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <Helmet>
-        <title>Passwort zurücksetzen</title>
-        <meta name="description" content="Setze dein Passwort zurück" />
+        <title>Passwort zurücksetzen - HabitBattle</title>
+        <meta name="description" content="Setze dein Passwort zurück und erhalte wieder Zugang zu deinem HabitBattle Account." />
+        <meta name="robots" content="noindex" />
       </Helmet>
       
       <div className="w-full max-w-md">
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2">
-              <Lock className="h-5 w-5" /> 
+              <Lock className="h-5 w-5 text-primary" /> 
               Passwort zurücksetzen
             </CardTitle>
             <CardDescription>
-              {isValidResetLink 
-                ? "Gib dein neues Passwort ein" 
-                : "Fordere einen Reset-Link für deine E-Mail-Adresse an"
+              {showPasswordForm 
+                ? "Gib dein neues Passwort ein"
+                : "Wir senden dir einen Reset-Link per E-Mail"
               }
             </CardDescription>
           </CardHeader>
           
           <CardContent className="space-y-4">
-            {message.text && (
+            {/* Status Message */}
+            {message && (
               <Alert className={
-                message.type === 'error' ? 'border-destructive' : 
-                message.type === 'success' ? 'border-green-500' : 'border-blue-500'
+                messageType === 'error' ? 'border-destructive bg-destructive/10' : 
+                messageType === 'success' ? 'border-green-500 bg-green-50' : 
+                'border-blue-500 bg-blue-50'
               }>
-                {message.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                <AlertDescription>{message.text}</AlertDescription>
+                {messageType === 'success' ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : messageType === 'error' ? (
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                ) : (
+                  <Mail className="h-4 w-4 text-blue-600" />
+                )}
+                <AlertDescription className={
+                  messageType === 'success' ? 'text-green-700' :
+                  messageType === 'error' ? 'text-destructive' :
+                  'text-blue-700'
+                }>
+                  {message}
+                </AlertDescription>
               </Alert>
             )}
 
-            {isValidResetLink ? (
-              // Password update form
+            {/* Password Update Form */}
+            {showPasswordForm && (
               <form onSubmit={handlePasswordUpdate} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="password">Neues Passwort</Label>
                   <Input 
-                    id="password" 
+                    id="password"
                     type="password" 
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)} 
                     placeholder="Mindestens 6 Zeichen"
                     required 
-                    minLength={6}
                     disabled={loading}
+                    autoComplete="new-password"
                   />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Passwort bestätigen</Label>
                   <Input 
-                    id="confirmPassword" 
+                    id="confirmPassword"
                     type="password" 
                     value={confirmPassword} 
                     onChange={(e) => setConfirmPassword(e.target.value)} 
                     placeholder="Passwort wiederholen"
                     required
                     disabled={loading}
+                    autoComplete="new-password"
                   />
                 </div>
                 
@@ -234,19 +310,22 @@ const PasswordReset = () => {
                   )}
                 </Button>
               </form>
-            ) : (
-              // Reset email request form
+            )}
+
+            {/* Email Request Form */}
+            {showEmailForm && (
               <form onSubmit={handleResetRequest} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">E-Mail-Adresse</Label>
                   <Input 
-                    id="email" 
+                    id="email"
                     type="email" 
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)} 
                     placeholder="deine@email.de"
                     required
                     disabled={resetLoading}
+                    autoComplete="email"
                   />
                 </div>
                 
@@ -266,7 +345,8 @@ const PasswordReset = () => {
               </form>
             )}
             
-            <div className="text-center">
+            {/* Back to Login */}
+            <div className="text-center pt-4 border-t">
               <Button 
                 variant="ghost" 
                 onClick={() => navigate("/auth")}
