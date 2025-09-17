@@ -24,10 +24,15 @@ function useHashParams() {
       console.log("🔍 Detected Supabase redirect URL format");
     }
     
-    // Supabase may use hash fragment for tokens; also support query params
+    // Parse both hash fragment and query parameters
     const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
     const q = new URLSearchParams(search);
-    const get = (key: string) => params.get(key) || q.get(key);
+    
+    // Also try parsing the entire URL for edge cases
+    const url = new URL(window.location.href);
+    const allParams = new URLSearchParams(url.search);
+    
+    const get = (key: string) => params.get(key) || q.get(key) || allParams.get(key);
     
     const result = {
       type: get("type"),
@@ -35,6 +40,9 @@ function useHashParams() {
       refresh_token: get("refresh_token"),
       error: get("error"),
       error_description: get("error_description"),
+      // Also check for potential error codes from Supabase
+      error_code: get("error_code"),
+      message: get("message"),
     };
     
     console.log("🔍 Parsed params:", result);
@@ -67,19 +75,26 @@ const PasswordReset = () => {
     if (error) {
       const errorMsg = error_description || error;
       console.log("❌ Error detected:", errorMsg);
-      setMsg(`Fehler bei der Anmeldung: ${errorMsg}`);
+      
+      // Special handling for common Supabase errors
+      if (errorMsg.includes("token") || errorMsg.includes("expired") || errorMsg.includes("invalid")) {
+        setMsg("Der Reset-Link ist abgelaufen oder wurde bereits verwendet. Bitte fordere einen neuen Link an.");
+      } else {
+        setMsg(`Fehler: ${errorMsg}`);
+      }
       setMsgType("error");
     } else if (type === null || type === undefined) {
       console.log("⚠️ No type parameter found - might be invalid link");
-      setMsg("Ungültiger Link. Bitte fordere erneut einen Reset an.");
+      setMsg("Ungültiger Link. Der Link ist möglicherweise abgelaufen oder wurde bereits verwendet. Bitte fordere einen neuen Reset-Link an.");
       setMsgType("error");
     } else if (type !== "recovery") {
       console.log("⚠️ Wrong type:", type, "Expected: recovery");
-      setMsg(`Unerwarteter Link-Typ: ${type}. Erwartet: recovery. Bitte fordere erneut einen Reset an.`);
+      setMsg(`Unerwarteter Link-Typ: ${type}. Bitte fordere einen neuen Reset-Link an.`);
       setMsgType("error");
     } else {
       console.log("✅ Valid recovery link detected");
-      setMsg(null);
+      setMsg("Link erkannt! Du kannst jetzt ein neues Passwort setzen.");
+      setMsgType("success");
     }
   }, [type, error, error_description]);
 
