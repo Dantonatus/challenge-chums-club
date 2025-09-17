@@ -12,27 +12,39 @@ import { Helmet } from "react-helmet-async";
 function useHashParams() {
   const { hash, search } = useLocation();
   return useMemo(() => {
+    // Debug logs for URL parameters
+    console.log("🔍 Password Reset Debug - Current URL:", window.location.href);
+    console.log("🔍 Hash:", hash);
+    console.log("🔍 Search:", search);
+    
     // Supabase may use hash fragment for tokens; also support query params
     const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
     const q = new URLSearchParams(search);
     const get = (key: string) => params.get(key) || q.get(key);
-    return {
+    
+    const result = {
       type: get("type"),
       access_token: get("access_token"),
       refresh_token: get("refresh_token"),
       error: get("error"),
+      error_description: get("error_description"),
     };
+    
+    console.log("🔍 Parsed params:", result);
+    return result;
   }, [hash, search]);
 }
 
 const PasswordReset = () => {
   const navigate = useNavigate();
-  const { type, error } = useHashParams();
+  const { type, error, error_description } = useHashParams();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [msgType, setMsgType] = useState<"error" | "success" | "info">("info");
+
+  console.log("🔍 Password Reset Component - type:", type, "error:", error);
 
   // Ensure session is initialized when redirected from email link
   useEffect(() => {
@@ -43,14 +55,26 @@ const PasswordReset = () => {
   }, []);
 
   useEffect(() => {
+    console.log("🔍 Effect triggered - type:", type, "error:", error, "error_description:", error_description);
+    
     if (error) {
-      setMsg(`Fehler bei der Anmeldung: ${error}`);
+      const errorMsg = error_description || error;
+      console.log("❌ Error detected:", errorMsg);
+      setMsg(`Fehler bei der Anmeldung: ${errorMsg}`);
+      setMsgType("error");
+    } else if (type === null || type === undefined) {
+      console.log("⚠️ No type parameter found - might be invalid link");
+      setMsg("Ungültiger Link. Bitte fordere erneut einen Reset an.");
       setMsgType("error");
     } else if (type !== "recovery") {
-      setMsg("Ungültiger oder abgelaufener Link. Bitte fordere erneut einen Reset an.");
+      console.log("⚠️ Wrong type:", type, "Expected: recovery");
+      setMsg(`Unerwarteter Link-Typ: ${type}. Erwartet: recovery. Bitte fordere erneut einen Reset an.`);
       setMsgType("error");
+    } else {
+      console.log("✅ Valid recovery link detected");
+      setMsg(null);
     }
-  }, [type, error]);
+  }, [type, error, error_description]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
