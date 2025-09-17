@@ -227,7 +227,7 @@ const Auth = () => {
     setMessage("");
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://habitbattle.lovable.app/auth/reset'
+        redirectTo: `${window.location.origin}/auth/reset`
       });
       if (error) throw error;
       setMessage("Reset-E-Mail gesendet. Prüfe deinen Posteingang.");
