@@ -74,10 +74,12 @@ const handler = async (req: Request): Promise<Response> => {
     const urlParams = new URL(resetUrl);
     const token = urlParams.searchParams.get('token');
     const tokenHash = urlParams.searchParams.get('token_hash');
+    const accessToken = urlParams.searchParams.get('access_token');
     
     console.log('Reset URL:', resetUrl);
     console.log('Token:', token ? 'present' : 'missing');
     console.log('Token Hash:', tokenHash ? 'present' : 'missing');
+    console.log('Access Token:', accessToken ? 'present' : 'missing');
 
     // Send email with both the link and manual token
     const emailResponse = await resend.emails.send({
@@ -105,6 +107,14 @@ const handler = async (req: Request): Promise<Response> => {
               ${token || 'Token konnte nicht generiert werden'}
             </code>
             <p><small>Gehen Sie zu <a href="https://habitbattle.lovable.app/auth/reset">habitbattle.lovable.app/auth/reset</a> und verwenden Sie den "Manual Token" Tab.</small></p>
+          </div>
+          
+          <div style="background: #e7f3ff; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #bee5eb;">
+            <h3>Option 3: Access Token (Alternative)</h3>
+            <p>Falls der Email-Link defekt ist, kannst du den access_token aus der URL manuell eingeben:</p>
+            <code style="background: #f8f9fa; padding: 8px 12px; border-radius: 4px; display: block; margin: 10px 0; font-family: monospace; word-break: break-all;">
+              ${accessToken || 'Access Token nicht verfügbar'}
+            </code>
           </div>
           
           <p style="color: #666; font-size: 14px;">
