@@ -22,7 +22,6 @@ interface FilterBarProps {
   onGroupsChange: (groups: string[]) => void;
   onClearAll: () => void;
   lang: 'de' | 'en';
-  'data-testid'?: string;
 }
 
 export const FilterBar = ({
@@ -35,8 +34,7 @@ export const FilterBar = ({
   onChallengeTypesChange,
   onGroupsChange,
   onClearAll,
-  lang,
-  'data-testid': dataTestId
+  lang
 }: FilterBarProps) => {
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
@@ -144,11 +142,11 @@ export const FilterBar = ({
   const hasActiveFilters = selectedParticipants.length > 0 || selectedChallengeTypes.length > 0 || selectedGroups.length > 0;
 
   return (
-    <div className="space-y-4 p-4 bg-card rounded-lg border" data-testid={dataTestId}>
+    <div className="space-y-4 p-4 bg-card rounded-lg border">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">{t[lang].filters}</h3>
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={onClearAll} data-testid="button-reset-all">
+          <Button variant="ghost" size="sm" onClick={onClearAll}>
             <X className="h-4 w-4 mr-1" />
             {t[lang].clearAll}
           </Button>
@@ -164,7 +162,7 @@ export const FilterBar = ({
               value={preset}
               onValueChange={(value: SummaryRangePreset) => setPreset(value)}
             >
-              <SelectTrigger data-testid="filter-timeframe">
+              <SelectTrigger>
                 <SelectValue>{getPresetLabel(preset)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -226,7 +224,6 @@ export const FilterBar = ({
                 variant="outline"
                 className="w-full justify-between"
                 aria-expanded={participantsOpen}
-                data-testid="filter-participants"
               >
                 {selectedParticipants.length === 0 ? (
                   t[lang].all
@@ -272,7 +269,7 @@ export const FilterBar = ({
             value={selectedChallengeTypes.length === 0 ? "all" : selectedChallengeTypes[0]}
             onValueChange={handleChallengeTypeChange}
           >
-            <SelectTrigger data-testid="filter-challenge-type">
+            <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -294,7 +291,6 @@ export const FilterBar = ({
                 variant="outline"
                 className="w-full justify-between"
                 aria-expanded={groupsOpen}
-                data-testid="filter-groups"
               >
                 {selectedGroups.length === 0 ? (
                   t[lang].all

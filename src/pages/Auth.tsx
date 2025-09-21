@@ -18,7 +18,7 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | React.ReactNode>("");
+  const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -33,46 +33,30 @@ const Auth = () => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Handle PASSWORD_RECOVERY - do nothing, let PasswordReset page handle it
-        if (event === 'PASSWORD_RECOVERY') {
-          return;
+        if (session?.user) {
+          // Check user role
+          const { data: userRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (userRole?.role === 'admin' || userRole?.role === 'user') {
+            navigate('/app/summary');
+          } else if (userRole?.role === 'pending') {
+            setMessage("Your account is pending approval. Please wait for an administrator to approve your request.");
+            setMessageType("info");
+            // Sign out pending users
+            await supabase.auth.signOut();
+          } else {
+            setMessage("Account not found or access denied. Please contact support.");
+            setMessageType("error");
+          }
         }
         
-        // Handle SIGNED_IN - check user role and navigate
-        if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            // Fetch user role
-            const { data: userRole, error } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', session.user.id)
-              .single();
-
-            if (error) {
-              throw error;
-            }
-
-            if (userRole?.role === 'admin' || userRole?.role === 'user') {
-              navigate('/app/summary');
-            } else if (userRole?.role === 'pending') {
-              setMessage("Your account is pending approval. Please wait for an administrator to approve your request.");
-              setMessageType("info");
-              // Sign out pending users
-              await supabase.auth.signOut();
-            } else {
-              setMessage("Account not found or access denied. Please contact support.");
-              setMessageType("error");
-            }
-          } catch (error: any) {
-            console.error('Error checking user role:', error);
-            setMessage("Failed to verify account status. Please try again or contact support.");
-            setMessageType("error");
-            toast({
-              title: "Authentication Error",
-              description: "Failed to verify your account status.",
-              variant: "destructive"
-            });
-          }
+        if (event === 'PASSWORD_RECOVERY') {
+          setMessage("Password reset successful! You can now sign in with your new password.");
+          setMessageType("success");
         }
         
         if (event === 'SIGNED_OUT') {
@@ -127,23 +111,7 @@ const Auth = () => {
         password,
       });
 
-      if (error) {
-        // Log failed login attempt
-        try {
-          await supabase.rpc('log_security_event', {
-            event_type: 'login_failed',
-            user_id_param: null,
-            metadata_param: {
-              email,
-              error: error.message,
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.warn('Failed to log security event:', logError);
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       if (data.user) {
         // Check user approval status
@@ -154,21 +122,6 @@ const Auth = () => {
           .single();
 
         if (userRole?.role === 'admin' || userRole?.role === 'user') {
-          // Log successful login
-          try {
-            await supabase.rpc('log_security_event', {
-              event_type: 'login_success',
-              user_id_param: data.user.id,
-              metadata_param: {
-                email,
-                role: userRole.role,
-                timestamp: new Date().toISOString()
-              }
-            });
-          } catch (logError) {
-            console.warn('Failed to log security event:', logError);
-          }
-
           toast({
             title: "Successfully signed in!",
             description: "Welcome back to the platform.",
@@ -264,6 +217,28 @@ const Auth = () => {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      setMessage("Bitte E-Mail eingeben, um den Reset-Link zu erhalten.");
+      setMessageType("error");
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset`
+      });
+      if (error) throw error;
+      setMessage("Reset-E-Mail gesendet. Prüfe deinen Posteingang.");
+      setMessageType("success");
+    } catch (e: any) {
+      setMessage(e?.message || "Senden fehlgeschlagen.");
+      setMessageType("error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getMessageIcon = () => {
     switch (messageType) {
@@ -363,6 +338,17 @@ const Auth = () => {
                      )}
                    </Button>
                    
+                   <div className="text-center">
+                     <Button 
+                       type="button" 
+                       variant="ghost" 
+                       className="text-primary hover:text-primary/80 underline" 
+                       onClick={handleResetPassword}
+                       disabled={loading}
+                     >
+                       Passwort vergessen?
+                     </Button>
+                   </div>
                 </form>
               </TabsContent>
 
@@ -437,33 +423,7 @@ const Auth = () => {
                         Request Access
                       </>
                     )}
-                   </Button>
-                   
-                   <div className="text-center">
-                     <Button 
-                       variant="ghost" 
-                       className="text-primary hover:text-primary/80 underline" 
-                       onClick={async () => {
-                         setLoading(true);
-                         setMessage("");
-                         try {
-                           await supabase.auth.resetPasswordForEmail(email, {
-                             redirectTo: "https://habitbattle.lovable.app/auth/reset",
-                           });
-                           setMessage("Reset-E-Mail wurde gesendet! Bitte überprüfen Sie Ihr Postfach.");
-                           setMessageType("success");
-                         } catch (error: any) {
-                           setMessage("Fehler beim Senden der Reset-E-Mail. Bitte versuchen Sie es erneut.");
-                           setMessageType("error");
-                         } finally {
-                           setLoading(false);
-                         }
-                       }}
-                       disabled={loading || !email}
-                     >
-                       Passwort vergessen?
-                     </Button>
-                   </div>
+                  </Button>
                 </form>
               </TabsContent>
             </Tabs>

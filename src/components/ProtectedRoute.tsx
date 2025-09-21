@@ -100,19 +100,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   const handleSignOut = async () => {
     try {
-      // Log security event
-      try {
-        await supabase.rpc('log_security_event', {
-          event_type: 'user_logout',
-          metadata_param: {
-            timestamp: new Date().toISOString(),
-            route: window.location.pathname
-          }
-        });
-      } catch (error) {
-        console.warn('Failed to log security event:', error);
-      }
-
       // Clean up auth state
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('supabase.auth.') || key.includes('sb-')) {

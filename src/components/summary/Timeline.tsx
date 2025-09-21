@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { formatEUR } from "@/lib/currency";
-import { useSummaryFiltersContext } from "@/contexts/SummaryFiltersContext";
 
 interface TimelineData {
   challenges: Array<{
@@ -29,7 +28,6 @@ interface TimelineData {
 
 export const Timeline = () => {
   const { start, end } = useDateRange();
-  const { allFilters } = useSummaryFiltersContext();
   const navigate = useNavigate();
   const lang = navigator.language.startsWith('de') ? 'de' : 'en';
   const locale = lang === 'de' ? de : enUS;
@@ -66,13 +64,13 @@ export const Timeline = () => {
   };
 
   const { data: timelineData, isLoading } = useQuery({
-    queryKey: ['timeline-data', allFilters],
+    queryKey: ['timeline-data', start, end],
     queryFn: async (): Promise<TimelineData> => {
       // Generate all days in the range
       const days = eachDayOfInterval({ start: new Date(start), end: new Date(end) });
 
       // Fetch challenges that overlap with the date range
-      let challengesQuery = supabase
+      const { data: challenges, error: challengesError } = await supabase
         .from('challenges')
         .select(`
           id,
@@ -86,24 +84,14 @@ export const Timeline = () => {
             unit
           )
         `)
-        .lte('start_date', allFilters.endDate)
-        .gte('end_date', allFilters.startDate);
-
-      // Apply filters
-      if (allFilters.challengeTypes.length > 0) {
-        challengesQuery = challengesQuery.in('challenge_type', allFilters.challengeTypes);
-      }
-      if (allFilters.groups.length > 0) {
-        challengesQuery = challengesQuery.in('group_id', allFilters.groups);
-      }
-
-      const { data: challenges, error: challengesError } = await challengesQuery;
+        .lte('start_date', end)
+        .gte('end_date', start);
 
       if (challengesError) throw challengesError;
 
       // Fetch participants for all challenges
       const challengeIds = challenges.map(c => c.id);
-      let participantsQuery = supabase
+      const { data: participants, error: participantsError } = await supabase
         .from('challenge_participants')
         .select(`
           challenge_id,
@@ -112,27 +100,15 @@ export const Timeline = () => {
         `)
         .in('challenge_id', challengeIds);
 
-      if (allFilters.participants.length > 0) {
-        participantsQuery = participantsQuery.in('user_id', allFilters.participants);
-      }
-
-      const { data: participants, error: participantsError } = await participantsQuery;
-
       if (participantsError) throw participantsError;
 
       // Fetch violations in the date range
-      let violationsQuery = supabase
+      const { data: violations, error: violationsError } = await supabase
         .from('challenge_violations')
         .select('challenge_id, user_id, amount_cents, created_at')
         .in('challenge_id', challengeIds)
-        .gte('created_at', allFilters.startDate + 'T00:00:00')
-        .lte('created_at', allFilters.endDate + 'T23:59:59');
-
-      if (allFilters.participants.length > 0) {
-        violationsQuery = violationsQuery.in('user_id', allFilters.participants);
-      }
-
-      const { data: violations, error: violationsError } = await violationsQuery;
+        .gte('created_at', start + 'T00:00:00')
+        .lte('created_at', end + 'T23:59:59');
 
       if (violationsError) throw violationsError;
 
@@ -143,7 +119,7 @@ export const Timeline = () => {
 
       let kpiMeasurements: any[] = [];
       if (kpiChallengeIds.length > 0) {
-        let kpiQuery = supabase
+        const { data: kpiData, error: kpiError } = await supabase
           .from('kpi_measurements')
           .select(`
             kpi_definition_id,
@@ -155,14 +131,8 @@ export const Timeline = () => {
               target_value
             )
           `)
-          .gte('measurement_date', allFilters.startDate)
-          .lte('measurement_date', allFilters.endDate);
-
-        if (allFilters.participants.length > 0) {
-          kpiQuery = kpiQuery.in('user_id', allFilters.participants);
-        }
-
-        const { data: kpiData, error: kpiError } = await kpiQuery;
+          .gte('measurement_date', start)
+          .lte('measurement_date', end);
 
         if (kpiError) throw kpiError;
         kpiMeasurements = kpiData || [];
@@ -215,7 +185,7 @@ export const Timeline = () => {
         days
       };
     },
-    enabled: !!allFilters.startDate && !!allFilters.endDate
+    enabled: !!start && !!end
   });
 
   const getCellStatus = (challenge: TimelineData['challenges'][0], day: Date) => {

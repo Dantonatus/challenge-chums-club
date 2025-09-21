@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
 import { Resend } from "npm:resend@4.0.0";
-import { supabase } from '../_shared/client.ts';
 
 // Resend is initialized lazily inside the handler to avoid crashing on missing secrets
 // Force redeploy: 2025-08-21T21:16:00Z
@@ -52,7 +52,10 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error getting RESEND_API_KEY:", e);
     }
     
-    const supabaseClient = supabase;
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
 
     const { userId, userEmail, userName }: AdminNotificationRequest = await req.json();
     console.log("Processing approval request for:", { userId, userEmail, userName });

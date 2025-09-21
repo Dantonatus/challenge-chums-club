@@ -559,7 +559,6 @@ export type Database = {
           display_name: string | null
           id: string
           is_approved: boolean | null
-          privacy_settings: Json | null
           updated_at: string
         }
         Insert: {
@@ -569,7 +568,6 @@ export type Database = {
           display_name?: string | null
           id: string
           is_approved?: boolean | null
-          privacy_settings?: Json | null
           updated_at?: string
         }
         Update: {
@@ -579,7 +577,6 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_approved?: boolean | null
-          privacy_settings?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -719,13 +716,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
-      cleanup_expired_approval_tokens_enhanced: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          deleted_count: number
-          suspicious_tokens: number
-        }[]
-      }
       consume_approval_token: {
         Args: { consuming_user_id?: string; token_value: string }
         Returns: boolean
@@ -794,23 +784,6 @@ export type Database = {
         Args: { p_invite_code: string }
         Returns: string
       }
-      log_security_event: {
-        Args: {
-          event_type: string
-          metadata_param?: Json
-          user_id_param?: string
-        }
-        Returns: undefined
-      }
-      monitor_failed_auth_attempts: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          attempt_count: number
-          is_suspicious: boolean
-          last_attempt: string
-          user_email: string
-        }[]
-      }
       monitor_token_security: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -819,10 +792,6 @@ export type Database = {
           recommendations: string[]
           suspicious_activity_count: number
         }[]
-      }
-      send_password_reset_email: {
-        Args: { user_email: string }
-        Returns: Json
       }
       validate_approval_token: {
         Args: { token_value: string; user_email?: string }
