@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, CheckCircle, AlertCircle, ArrowLeft, Key, Mail, Bug } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,11 +19,20 @@ const PasswordReset = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
+  const [manualToken, setManualToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | React.ReactNode>("");
   const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
-  const [view, setView] = useState<"request_link" | "update_password">("request_link");
+  const [view, setView] = useState<"request_link" | "update_password" | "manual_token">("request_link");
   const [sessionEstablished, setSessionEstablished] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({
+    fullURL: "",
+    hasTokenHash: false,
+    hasAccessToken: false,
+    type: "",
+    searchParams: "",
+    hashParams: ""
+  });
 
   // Check for token_hash in URL and validate recovery tokens
   useEffect(() => {
@@ -37,6 +47,16 @@ const PasswordReset = () => {
       const accessToken = searchParams.get('access_token') || hashParams.get('access_token');
       const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token');
       
+      // Update debug info
+      setDebugInfo({
+        fullURL: window.location.href,
+        hasTokenHash: !!tokenHash,
+        hasAccessToken: !!accessToken,
+        type: type || "none",
+        searchParams: location.search,
+        hashParams: location.hash
+      });
+      
       // Enhanced debugging
       console.log('Password reset URL analysis:', {
         fullURL: window.location.href,
@@ -48,43 +68,28 @@ const PasswordReset = () => {
         hasRefreshToken: !!refreshToken
       });
       
-      // Wait briefly for potential delayed URL updates
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // If no type detected, this is just a normal page load
+      if (!type) {
+        return;
+      }
       
-      // Re-check after delay in case parameters were updated
-      const finalSearchParams = new URLSearchParams(window.location.search);
-      const finalHashParams = new URLSearchParams(window.location.hash.substring(1));
-      const finalType = finalSearchParams.get('type') || finalHashParams.get('type');
-      const finalTokenHash = finalSearchParams.get('token_hash') || finalHashParams.get('token_hash');
-      
-      console.log('Post-delay URL check:', {
-        finalType,
-        hasFinalTokenHash: !!finalTokenHash,
-        URLChanged: type !== finalType || !!tokenHash !== !!finalTokenHash
-      });
-      
-      const effectiveType = finalType || type;
-      const effectiveTokenHash = finalTokenHash || tokenHash;
-      
-      // Handle missing tokens for recovery type with enhanced error messaging
-      if (effectiveType === 'recovery' && !effectiveTokenHash && !accessToken) {
+      // Handle missing tokens for recovery type - show manual token option
+      if (type === 'recovery' && !tokenHash && !accessToken) {
         console.error('Password reset error: Recovery type detected but no valid tokens found');
         setMessage(
           <>
-            <strong>Reset-Link erkannt, aber Tokens fehlen.</strong>
+            <strong>Automatische Token-Erkennung fehlgeschlagen.</strong>
             <br />
-            Dies deutet auf ein Supabase-Konfigurationsproblem hin.
-            <br />
-            Bitte fordern Sie einen neuen Reset-Link an oder kontaktieren Sie den Support.
+            Verwenden Sie den "Manueller Token" Tab oder fordern Sie einen neuen Link an.
           </>
         );
         setMessageType("error");
-        setView("request_link");
+        setView("manual_token");
         return;
       }
       
       // Handle token_hash recovery (modern flow)
-      if (effectiveType === 'recovery' && effectiveTokenHash) {
+      if (type === 'recovery' && tokenHash) {
         setLoading(true);
         setMessage("Verarbeite Reset-Link...");
         setMessageType("info");
@@ -93,7 +98,7 @@ const PasswordReset = () => {
           console.log('Attempting OTP verification with token_hash');
           const { data, error } = await supabase.auth.verifyOtp({
             type: 'recovery',
-            token_hash: effectiveTokenHash
+            token_hash: tokenHash
           });
           
           console.log('OTP verification result:', { 
@@ -136,7 +141,7 @@ const PasswordReset = () => {
         }
       }
       // Handle legacy access_token flow (fallback)
-      else if (accessToken && refreshToken && effectiveType === 'recovery') {
+      else if (accessToken && refreshToken && type === 'recovery') {
         setLoading(true);
         setMessage("Verarbeite Reset-Link (Legacy-Modus)...");
         setMessageType("info");
@@ -270,6 +275,56 @@ const PasswordReset = () => {
     }
   };
 
+  const handleManualTokenReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!manualToken || manualToken.length < 10) {
+      setMessage("Bitte geben Sie einen gültigen Token ein.");
+      setMessageType("error");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("Token wird verarbeitet...");
+    setMessageType("info");
+
+    try {
+      // Try to verify the manual token
+      const { data, error } = await supabase.auth.verifyOtp({
+        type: 'recovery',
+        token_hash: manualToken
+      });
+
+      if (error) {
+        throw new Error(`Token-Verifikation fehlgeschlagen: ${error.message}`);
+      }
+
+      if (data.session) {
+        console.log('Session established via manual token');
+        setSessionEstablished(true);
+        setView("update_password");
+        setMessage("Token erfolgreich! Sie können jetzt Ihr neues Passwort eingeben.");
+        setMessageType("success");
+      } else {
+        throw new Error('Keine Session nach Token-Verifikation');
+      }
+    } catch (error: any) {
+      console.error('Manual token verification failed:', error);
+      setMessage(
+        <>
+          <strong>Token ungültig oder abgelaufen.</strong>
+          <br />
+          Fehler: {error.message}
+          <br />
+          Bitte fordern Sie einen neuen Reset-Link an.
+        </>
+      );
+      setMessageType("error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -291,7 +346,15 @@ const PasswordReset = () => {
         setMessage(error.message || "Fehler beim Senden der Reset-E-Mail.");
         setMessageType("error");
       } else {
-        setMessage("Reset-E-Mail wurde gesendet! Bitte überprüfen Sie Ihr Postfach.");
+        setMessage(
+          <>
+            <strong>Reset-E-Mail wurde gesendet!</strong>
+            <br />
+            Falls der Link nicht funktioniert, verwenden Sie den "Manueller Token" Tab.
+            <br />
+            Kopieren Sie den Token aus der E-Mail und fügen Sie ihn manuell ein.
+          </>
+        );
         setMessageType("success");
       }
     } catch (error: any) {
@@ -327,7 +390,9 @@ const PasswordReset = () => {
               {view === 'update_password' ? 'Neues Passwort' : 'Passwort zurücksetzen'}
             </CardTitle>
             <CardDescription className="text-center">
-              {view === 'update_password' ? "Geben Sie Ihr neues Passwort ein" : "Wir senden Ihnen einen Reset-Link"}
+              {view === 'update_password' 
+                ? "Geben Sie Ihr neues Passwort ein" 
+                : "Mehrere Wege zum Zurücksetzen Ihres Passworts"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -377,30 +442,123 @@ const PasswordReset = () => {
                 </Button>
               </form>
             ) : (
-              <form onSubmit={handleResetRequest} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-Mail-Adresse</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Ihre E-Mail-Adresse"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Reset-Link wird gesendet...
-                    </>
-                  ) : (
-                    "Reset-Link senden"
-                  )}
-                </Button>
-              </form>
+              <Tabs defaultValue="reset-link" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="reset-link" className="text-xs">
+                    <Mail className="w-4 h-4 mr-1" />
+                    Reset-Link
+                  </TabsTrigger>
+                  <TabsTrigger value="manual-token" className="text-xs">
+                    <Key className="w-4 h-4 mr-1" />
+                    Manual Token
+                  </TabsTrigger>
+                  <TabsTrigger value="debug" className="text-xs">
+                    <Bug className="w-4 h-4 mr-1" />
+                    Debug Info
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="reset-link" className="space-y-4 mt-4">
+                  <form onSubmit={handleResetRequest} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">E-Mail-Adresse</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="Ihre E-Mail-Adresse"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Reset-Link wird gesendet...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="mr-2 h-4 w-4" />
+                          Neuen Reset-Link anfordern
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </TabsContent>
+                
+                <TabsContent value="manual-token" className="space-y-4 mt-4">
+                  <form onSubmit={handleManualTokenReset} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="manualToken">Reset-Token aus E-Mail</Label>
+                      <Input
+                        id="manualToken"
+                        type="text"
+                        placeholder="Kopieren Sie den Token aus der Reset-E-Mail hier ein"
+                        value={manualToken}
+                        onChange={(e) => setManualToken(e.target.value)}
+                        required
+                        disabled={loading}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Öffnen Sie die Reset-E-Mail und kopieren Sie den langen Token-String (beginnt meist mit token_hash=)
+                      </p>
+                    </div>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Token wird verarbeitet...
+                        </>
+                      ) : (
+                        <>
+                          <Key className="mr-2 h-4 w-4" />
+                          Token verwenden
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </TabsContent>
+                
+                <TabsContent value="debug" className="space-y-4 mt-4">
+                  <div className="text-sm space-y-2">
+                    <div>
+                      <strong>URL:</strong> {debugInfo.fullURL || "Keine URL"}
+                    </div>
+                    <div>
+                      <strong>Typ:</strong> {debugInfo.type || "Kein Typ erkannt"}
+                    </div>
+                    <div>
+                      <strong>Token Hash vorhanden:</strong> {debugInfo.hasTokenHash ? "✅ Ja" : "❌ Nein"}
+                    </div>
+                    <div>
+                      <strong>Access Token vorhanden:</strong> {debugInfo.hasAccessToken ? "✅ Ja" : "❌ Nein"}
+                    </div>
+                    <div>
+                      <strong>Search Parameter:</strong> {debugInfo.searchParams || "Keine"}
+                    </div>
+                    <div>
+                      <strong>Hash Parameter:</strong> {debugInfo.hashParams || "Keine"}
+                    </div>
+                  </div>
+                  
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Probleme beim Reset?</strong>
+                      <br />
+                      • Prüfen Sie Ihr E-Mail-Postfach und Spam-Ordner
+                      • Reset-Links sind nur 1 Stunde gültig
+                      • Jeder Link kann nur einmal verwendet werden
+                      <br />
+                      <strong>Fehlende Tokens?</strong>
+                      <br />
+                      Dies ist ein Supabase-Konfigurationsproblem. Verwenden Sie den "Manual Token" Tab als Workaround.
+                    </AlertDescription>
+                  </Alert>
+                </TabsContent>
+              </Tabs>
             )}
 
             <div className="text-center">
