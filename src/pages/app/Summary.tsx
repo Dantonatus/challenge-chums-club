@@ -15,6 +15,7 @@ import { Timeline } from "@/components/summary/Timeline";
 import { FilterBar } from "@/components/summary/FilterBar";
 import { ParticipantRanking } from "@/components/summary/ParticipantRanking";
 import { ToughestVsEasiestChallenges } from "@/components/summary/ToughestVsEasiestChallenges";
+import { SummaryFiltersProvider, useSummaryFiltersContext } from "@/contexts/SummaryFiltersContext";
 
 import { MostPopularByDuration } from "@/components/summary/MostPopularByDuration";
 import { StreakBreakers } from "@/components/summary/StreakBreakers";
@@ -28,19 +29,13 @@ import { EnhancedKPIStrip } from "@/components/summary/EnhancedKPIStrip";
 import { ChallengeCard } from "@/components/summary/ChallengeCard";
 import { CumulativeFailsTrend } from "@/components/summary/CumulativeFailsTrend";
 
-const Summary = () => {
+const SummaryContent = () => {
+  const { allFilters: filters } = useSummaryFiltersContext();
   const { start, end } = useDateRange();
-  const startStr = format(start, 'yyyy-MM-dd');
-  const endStr = format(end, 'yyyy-MM-dd');
+  const startStr = filters.startDate;
+  const endStr = filters.endDate;
   const lang = navigator.language.startsWith('de') ? 'de' : 'en';
   const locale = lang === 'de' ? de : enUS;
-  
-  // Filter state
-  const [filters, setFilters] = useState({
-    participants: [] as string[],
-    challengeTypes: [] as string[],
-    groups: [] as string[]
-  });
 
   // Global bar state
   const [compareMode, setCompareMode] = useState(false);
@@ -159,7 +154,7 @@ return {
 
   // Fetch challenges with participants and violations data (with filters applied)
   const { data: challengesData, isLoading } = useQuery({
-    queryKey: ['challenges-summary', start, end, filters],
+    queryKey: ['challenges-summary', filters],
     queryFn: async () => {
       // Build base query for challenges that overlap with the date range
       let challengesQuery = supabase
@@ -392,7 +387,7 @@ const totalChallenges = processedChallenges.length;
         }
       };
     },
-    enabled: !!start && !!end
+    enabled: !!filters.startDate && !!filters.endDate
   });
 
   // Filter data based on current filters
@@ -402,11 +397,17 @@ const totalChallenges = processedChallenges.length;
     return challengesData; // Filtering is already applied in the query
   }, [challengesData]);
 
+  const { 
+    filters: currentFilters, 
+    updateFilter, 
+    resetAllFilters 
+  } = useSummaryFiltersContext();
+
   const handleFilterChange = {
-    participants: (participants: string[]) => setFilters(prev => ({ ...prev, participants })),
-    challengeTypes: (challengeTypes: string[]) => setFilters(prev => ({ ...prev, challengeTypes })),
-    groups: (groups: string[]) => setFilters(prev => ({ ...prev, groups })),
-    clearAll: () => setFilters({ participants: [], challengeTypes: [], groups: [] })
+    participants: (participants: string[]) => updateFilter('participants', participants),
+    challengeTypes: (challengeTypes: string[]) => updateFilter('challengeTypes', challengeTypes),
+    groups: (groups: string[]) => updateFilter('groups', groups),
+    clearAll: resetAllFilters
   };
 
   // Global bar handlers
@@ -481,8 +482,12 @@ const totalChallenges = processedChallenges.length;
         lang={lang}
         compareMode={compareMode}
         onCompareToggle={() => setCompareMode(!compareMode)}
-        filters={filters}
-        onFiltersChange={setFilters}
+        filters={currentFilters}
+        onFiltersChange={(newFilters) => {
+          updateFilter('participants', newFilters.participants);
+          updateFilter('challengeTypes', newFilters.challengeTypes);
+          updateFilter('groups', newFilters.groups);
+        }}
       />
 
       {/* Main Content */}
@@ -490,11 +495,12 @@ const totalChallenges = processedChallenges.length;
         {/* Filter Bar */}
         {filterOptions && (
           <FilterBar
+            data-testid="filter-bar"
             participants={filterOptions.participants}
             groups={filterOptions.groups}
-            selectedParticipants={filters.participants}
-            selectedChallengeTypes={filters.challengeTypes}
-            selectedGroups={filters.groups}
+            selectedParticipants={currentFilters.participants}
+            selectedChallengeTypes={currentFilters.challengeTypes}
+            selectedGroups={currentFilters.groups}
             onParticipantsChange={handleFilterChange.participants}
             onChallengeTypesChange={handleFilterChange.challengeTypes}
             onGroupsChange={handleFilterChange.groups}
@@ -615,6 +621,14 @@ const totalChallenges = processedChallenges.length;
         </div>
       </div>
     </div>
+  );
+};
+
+const Summary = () => {
+  return (
+    <SummaryFiltersProvider>
+      <SummaryContent />
+    </SummaryFiltersProvider>
   );
 };
 

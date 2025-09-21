@@ -10,6 +10,8 @@ import { WeekDrilldownModal } from "./WeekDrilldownModal";
 import { startOfISOWeek, endOfISOWeek, isoWeekOf, weekRangeLabel, buildIsoWeeksInRange } from "@/lib/date";
 import { format, isWithinInterval } from "date-fns";
 import { motion } from "framer-motion";
+import { useSummaryFiltersContext } from "@/contexts/SummaryFiltersContext";
+import { Slider } from "@/components/ui/slider";
 
 interface WeeklyTimelineProps {
   lang: 'de' | 'en';
@@ -65,8 +67,10 @@ interface DrilldownData {
 }
 
 export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
-  const { start, end } = useDateRange();
+  const { start, end, setRange } = useDateRange();
+  const { allFilters } = useSummaryFiltersContext();
   const [selectedDrilldown, setSelectedDrilldown] = useState<DrilldownData | null>(null);
+  const [kwRange, setKwRange] = useState<[number, number]>([1, 1]);
 
   const t = {
     de: {
@@ -110,10 +114,10 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
   };
 
   const { data: timelineData, isLoading } = useQuery({
-    queryKey: ['weekly-timeline-matrix', start.toISOString(), end.toISOString()],
+    queryKey: ['weekly-timeline-matrix', allFilters],
     queryFn: async () => {
-      const startStr = format(start, 'yyyy-MM-dd');
-      const endStr = format(end, 'yyyy-MM-dd');
+      const startStr = allFilters.startDate;
+      const endStr = allFilters.endDate;
 
       // Get user's groups
       const { data: userGroups } = await supabase
@@ -126,7 +130,7 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
       const groupIds = userGroups.map(g => g.group_id);
 
       // Get challenges in date range
-      const { data: challenges } = await supabase
+      let challengesQuery = supabase
         .from('challenges')
         .select(`
           id,
@@ -141,15 +145,34 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
         .lte('start_date', endStr)
         .gte('end_date', startStr);
 
+      // Apply challenge type filter
+      if (allFilters.challengeTypes.length > 0) {
+        challengesQuery = challengesQuery.in('challenge_type', allFilters.challengeTypes);
+      }
+
+      // Apply group filter
+      if (allFilters.groups.length > 0) {
+        challengesQuery = challengesQuery.in('group_id', allFilters.groups);
+      }
+
+      const { data: challenges } = await challengesQuery;
+
       if (!challenges || challenges.length === 0) return null;
 
       const challengeIds = challenges.map(c => c.id);
 
       // Get all participants
-      const { data: participantsRaw } = await supabase
+      let participantsQuery = supabase
         .from('challenge_participants')
         .select('challenge_id, user_id')
         .in('challenge_id', challengeIds);
+
+      // Apply participant filter
+      if (allFilters.participants.length > 0) {
+        participantsQuery = participantsQuery.in('user_id', allFilters.participants);
+      }
+
+      const { data: participantsRaw } = await participantsQuery;
 
       // Get profiles
       const userIds = Array.from(new Set((participantsRaw || []).map(p => p.user_id)));
@@ -164,15 +187,22 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
       }]));
 
       // Get violations
-      const { data: violations } = await supabase
+      let violationsQuery = supabase
         .from('challenge_violations')
         .select('challenge_id, user_id, amount_cents, created_at')
         .in('challenge_id', challengeIds)
         .gte('created_at', `${startStr}T00:00:00`)
         .lte('created_at', `${endStr}T23:59:59`);
 
+      // Apply participant filter
+      if (allFilters.participants.length > 0) {
+        violationsQuery = violationsQuery.in('user_id', allFilters.participants);
+      }
+
+      const { data: violations } = await violationsQuery;
+
       // Get KPI measurements
-      const { data: kpiMeasurements } = await supabase
+      let kpiQuery = supabase
         .from('kpi_measurements')
         .select(`
           user_id,
@@ -186,6 +216,13 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
         `)
         .gte('measurement_date', startStr)
         .lte('measurement_date', endStr);
+
+      // Apply participant filter
+      if (allFilters.participants.length > 0) {
+        kpiQuery = kpiQuery.in('user_id', allFilters.participants);
+      }
+
+      const { data: kpiMeasurements } = await kpiQuery;
 
       // Generate weeks using ISO week standards with buildIsoWeeksInRange
       const isoWeeks = buildIsoWeeksInRange(start, end);
@@ -293,7 +330,7 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
 
       return { weeklyData, violations: violations || [], kpiMeasurements: kpiMeasurements || [] };
     },
-    enabled: !!start && !!end
+    enabled: !!allFilters.startDate && !!allFilters.endDate
   });
 
   const { challengeTotals, weekTotals, uniqueChallenges } = useMemo(() => {
@@ -322,6 +359,42 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
 
     return { challengeTotals, weekTotals, uniqueChallenges };
   }, [timelineData]);
+
+  // Calculate week range for slider
+  const weekRange = useMemo(() => {
+    if (!timelineData?.weeklyData || timelineData.weeklyData.length === 0) {
+      return { min: 1, max: 1, weeks: [] };
+    }
+    
+    const weeks = timelineData.weeklyData.map(w => w.weekNumber);
+    const min = Math.min(...weeks);
+    const max = Math.max(...weeks);
+    
+    // Update KW range when data changes
+    if (kwRange[0] === 1 && kwRange[1] === 1) {
+      setKwRange([min, max]);
+    }
+    
+    return { min, max, weeks };
+  }, [timelineData, kwRange]);
+
+  // Handle KW slider change - synchronize with date range
+  const handleKwRangeChange = useCallback((values: number[]) => {
+    const [startWeek, endWeek] = values;
+    setKwRange([startWeek, endWeek]);
+    
+    if (timelineData?.weeklyData) {
+      // Find the actual date range for these weeks
+      const startWeekData = timelineData.weeklyData.find(w => w.weekNumber === startWeek);
+      const endWeekData = timelineData.weeklyData.find(w => w.weekNumber === endWeek);
+      
+      if (startWeekData && endWeekData) {
+        const newStart = startOfISOWeek(startWeekData.week);
+        const newEnd = endOfISOWeek(endWeekData.week);
+        setRange({ start: newStart, end: newEnd });
+      }
+    }
+  }, [timelineData, setRange]);
 
   const handleCellClick = useCallback((challengeId: string, weekNumber: number) => {
     if (!challengeId || !timelineData) return;
@@ -477,11 +550,36 @@ export const WeeklyTimeline = ({ lang }: WeeklyTimelineProps) => {
   return (
     <>
       <Card className="w-full overflow-hidden">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-primary to-primary/60" />
-            {t[lang].title}
-          </CardTitle>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-r from-primary to-primary/60" />
+              {t[lang].title}
+            </CardTitle>
+          </div>
+          
+          {/* KW Range Slider */}
+          {weekRange.weeks.length > 1 && (
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Start: KW {kwRange[0]}</span>
+                <span>Ende: KW {kwRange[1]}</span>
+              </div>
+              <Slider
+                value={kwRange}
+                onValueChange={handleKwRangeChange}
+                min={weekRange.min}
+                max={weekRange.max}
+                step={1}
+                className="w-full"
+                data-testid="slider-kw-range"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>KW {weekRange.min}</span>
+                <span>KW {weekRange.max}</span>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-auto max-h-[600px]">
