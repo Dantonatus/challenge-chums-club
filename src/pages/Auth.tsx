@@ -111,7 +111,23 @@ const Auth = () => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Log failed login attempt
+        try {
+          await supabase.rpc('log_security_event', {
+            event_type: 'login_failed',
+            user_id_param: null,
+            metadata_param: {
+              email,
+              error: error.message,
+              timestamp: new Date().toISOString()
+            }
+          });
+        } catch (logError) {
+          console.warn('Failed to log security event:', logError);
+        }
+        throw error;
+      }
 
       if (data.user) {
         // Check user approval status
@@ -122,6 +138,21 @@ const Auth = () => {
           .single();
 
         if (userRole?.role === 'admin' || userRole?.role === 'user') {
+          // Log successful login
+          try {
+            await supabase.rpc('log_security_event', {
+              event_type: 'login_success',
+              user_id_param: data.user.id,
+              metadata_param: {
+                email,
+                role: userRole.role,
+                timestamp: new Date().toISOString()
+              }
+            });
+          } catch (logError) {
+            console.warn('Failed to log security event:', logError);
+          }
+
           toast({
             title: "Successfully signed in!",
             description: "Welcome back to the platform.",
