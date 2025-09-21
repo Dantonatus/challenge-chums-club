@@ -6,6 +6,7 @@ import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import PasswordReset from "./pages/PasswordReset";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import GroupsPage from "./pages/app/Groups";
@@ -32,6 +33,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/reset" element={<PasswordReset />} />
             <Route path="/features" element={<FeaturesRedirect />} />
             <Route
               path="/app"

@@ -54,6 +54,11 @@ const Auth = () => {
           }
         }
         
+        if (event === 'PASSWORD_RECOVERY') {
+          setMessage("Passwort erfolgreich zurückgesetzt! Sie können sich jetzt anmelden.");
+          setMessageType("success");
+        }
+        
         
         if (event === 'SIGNED_OUT') {
           setMessage("");
@@ -417,7 +422,18 @@ const Auth = () => {
                         Request Access
                       </>
                     )}
-                  </Button>
+                   </Button>
+                   
+                   <div className="text-center">
+                     <Button 
+                       variant="ghost" 
+                       className="text-primary hover:text-primary/80 underline" 
+                       onClick={() => navigate('/auth/reset')}
+                       disabled={loading}
+                     >
+                       Passwort vergessen?
+                     </Button>
+                   </div>
                 </form>
               </TabsContent>
             </Tabs>
