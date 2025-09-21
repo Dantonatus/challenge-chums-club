@@ -22,76 +22,100 @@ const PasswordReset = () => {
   const [message, setMessage] = useState<string | React.ReactNode>("");
   const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
   const [view, setView] = useState<"request_link" | "update_password">("request_link");
+  const [sessionEstablished, setSessionEstablished] = useState(false);
 
-  // Check if we have tokens in the URL hash for password update
+  // Check for token_hash in URL and validate recovery tokens
   useEffect(() => {
-    let sessionCheckTimeout: NodeJS.Timeout;
-    
-    const handleUrlHash = async () => {
-      const hash = location.hash;
-      console.log('Password reset URL hash:', hash);
+    const validateRecoveryToken = async () => {
+      const urlParams = new URLSearchParams(location.search);
+      const type = urlParams.get('type');
+      const tokenHash = urlParams.get('token_hash');
       
-      if (hash && hash.includes('access_token')) {
-        const params = new URLSearchParams(hash.substring(1));
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        const type = params.get('type');
+      console.log('Password reset URL params:', { type, tokenHash: !!tokenHash });
+      
+      if (type === 'recovery' && tokenHash) {
+        setLoading(true);
+        setMessage("Verarbeite Reset-Link...");
+        setMessageType("info");
         
-        console.log('Reset parameters:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
-        
-        if (accessToken && type === 'recovery') {
-          setLoading(true);
-          setMessage("Verarbeite Reset-Link...");
-          setMessageType("info");
+        try {
+          // Verify the OTP token and establish session
+          const { data, error } = await supabase.auth.verifyOtp({
+            type: 'recovery',
+            token_hash: tokenHash
+          });
           
-          // Wait for Supabase to automatically process the session
-          let attempts = 0;
-          const maxAttempts = 10;
+          console.log('OTP verification result:', { session: !!data.session, error });
           
-          const checkSession = async () => {
+          if (error) {
+            throw error;
+          }
+          
+          if (data.session) {
+            console.log('Session established successfully via token_hash');
+            setSessionEstablished(true);
+            setView("update_password");
+            setMessage("Sie können jetzt Ihr neues Passwort eingeben.");
+            setMessageType("info");
+            
+            // Clean the URL for security
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } else {
+            throw new Error('No session created after OTP verification');
+          }
+        } catch (error: any) {
+          console.error('Token verification failed:', error);
+          setMessage("Auth session missing! Der Reset-Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.");
+          setMessageType("error");
+          setView("request_link");
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Fallback: Check for legacy access_token in hash (for backwards compatibility)
+        const hash = location.hash;
+        if (hash && hash.includes('access_token')) {
+          const params = new URLSearchParams(hash.substring(1));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          const type = params.get('type');
+          
+          console.log('Legacy hash parameters:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+          
+          if (accessToken && refreshToken && type === 'recovery') {
+            setLoading(true);
+            setMessage("Verarbeite Reset-Link (Legacy-Modus)...");
+            setMessageType("info");
+            
             try {
-              const { data: { session }, error } = await supabase.auth.getSession();
-              console.log(`Session check attempt ${attempts + 1}:`, { session: !!session, error });
+              const { data, error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              });
               
-              if (session && session.user) {
-                console.log('Session established successfully');
+              if (error) throw error;
+              
+              if (data.session) {
+                console.log('Session established via legacy tokens');
+                setSessionEstablished(true);
                 setView("update_password");
                 setMessage("Sie können jetzt Ihr neues Passwort eingeben.");
                 setMessageType("info");
-                setLoading(false);
                 
-                // Clear the URL hash for security after successful session establishment
+                // Clear the URL hash for security
                 window.history.replaceState({}, document.title, window.location.pathname);
-                return;
-              }
-              
-              attempts++;
-              if (attempts < maxAttempts) {
-                sessionCheckTimeout = setTimeout(checkSession, 500);
               } else {
-                console.error('Session not established after maximum attempts');
-                setMessage("Fehler beim Verarbeiten des Reset-Links. Bitte fordern Sie einen neuen an.");
-                setMessageType("error");
-                setLoading(false);
-                
-                // Clear the URL hash even on failure
-                window.history.replaceState({}, document.title, window.location.pathname);
+                throw new Error('No session created from legacy tokens');
               }
-            } catch (error) {
-              console.error('Error checking session:', error);
-              setMessage("Fehler beim Verarbeiten des Reset-Links. Bitte versuchen Sie es erneut.");
+            } catch (error: any) {
+              console.error('Legacy token processing failed:', error);
+              setMessage("Auth session missing! Der Reset-Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.");
               setMessageType("error");
+              setView("request_link");
+            } finally {
               setLoading(false);
             }
-          };
-          
-          // Start checking for session
-          checkSession();
-        } else {
-          setMessage("Ungültiger Reset-Link. Bitte fordern Sie einen neuen an.");
-          setMessageType("error");
-          // Clear invalid hash
-          window.history.replaceState({}, document.title, window.location.pathname);
+          }
         }
       }
     };
@@ -102,31 +126,20 @@ const PasswordReset = () => {
       
       if (event === 'PASSWORD_RECOVERY' && session) {
         console.log('PASSWORD_RECOVERY event received with session');
+        setSessionEstablished(true);
         setView("update_password");
         setMessage("Sie können jetzt Ihr neues Passwort eingeben.");
         setMessageType("info");
         setLoading(false);
-      } else if (event === 'TOKEN_REFRESHED' && session) {
-        console.log('TOKEN_REFRESHED event received');
-        // Session is valid, ensure we're in the right view
-        if (view !== "update_password") {
-          setView("update_password");
-          setMessage("Sie können jetzt Ihr neues Passwort eingeben.");
-          setMessageType("info");
-          setLoading(false);
-        }
       }
     });
 
-    handleUrlHash();
+    validateRecoveryToken();
 
     return () => {
       subscription.unsubscribe();
-      if (sessionCheckTimeout) {
-        clearTimeout(sessionCheckTimeout);
-      }
     };
-  }, [location.hash]);
+  }, [location.search, location.hash]);
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +158,16 @@ const PasswordReset = () => {
 
     setLoading(true);
     setMessage("");
+
+    // Verify session exists before attempting password update
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setMessage("Auth session missing! Bitte fordern Sie einen neuen Reset-Link an.");
+      setMessageType("error");
+      setLoading(false);
+      setView("request_link");
+      return;
+    }
 
     try {
       const { error } = await supabase.auth.updateUser({ password });
@@ -200,7 +223,7 @@ const PasswordReset = () => {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset`
+        redirectTo: "https://habitbattle.lovable.app/auth/reset"
       });
 
       if (error) {

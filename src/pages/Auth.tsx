@@ -33,32 +33,47 @@ const Auth = () => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (session?.user) {
-          // Check user role
-          const { data: userRole } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .single();
+        // Handle PASSWORD_RECOVERY - do nothing, let PasswordReset page handle it
+        if (event === 'PASSWORD_RECOVERY') {
+          return;
+        }
+        
+        // Handle SIGNED_IN - check user role and navigate
+        if (event === 'SIGNED_IN' && session?.user) {
+          try {
+            // Fetch user role
+            const { data: userRole, error } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', session.user.id)
+              .single();
 
-          if (userRole?.role === 'admin' || userRole?.role === 'user') {
-            navigate('/app/summary');
-          } else if (userRole?.role === 'pending') {
-            setMessage("Your account is pending approval. Please wait for an administrator to approve your request.");
-            setMessageType("info");
-            // Sign out pending users
-            await supabase.auth.signOut();
-          } else {
-            setMessage("Account not found or access denied. Please contact support.");
+            if (error) {
+              throw error;
+            }
+
+            if (userRole?.role === 'admin' || userRole?.role === 'user') {
+              navigate('/app/summary');
+            } else if (userRole?.role === 'pending') {
+              setMessage("Your account is pending approval. Please wait for an administrator to approve your request.");
+              setMessageType("info");
+              // Sign out pending users
+              await supabase.auth.signOut();
+            } else {
+              setMessage("Account not found or access denied. Please contact support.");
+              setMessageType("error");
+            }
+          } catch (error: any) {
+            console.error('Error checking user role:', error);
+            setMessage("Failed to verify account status. Please try again or contact support.");
             setMessageType("error");
+            toast({
+              title: "Authentication Error",
+              description: "Failed to verify your account status.",
+              variant: "destructive"
+            });
           }
         }
-        
-        if (event === 'PASSWORD_RECOVERY') {
-          setMessage("Passwort erfolgreich zurückgesetzt! Sie können sich jetzt anmelden.");
-          setMessageType("success");
-        }
-        
         
         if (event === 'SIGNED_OUT') {
           setMessage("");
@@ -428,8 +443,23 @@ const Auth = () => {
                      <Button 
                        variant="ghost" 
                        className="text-primary hover:text-primary/80 underline" 
-                       onClick={() => navigate('/auth/reset')}
-                       disabled={loading}
+                       onClick={async () => {
+                         setLoading(true);
+                         setMessage("");
+                         try {
+                           await supabase.auth.resetPasswordForEmail(email, {
+                             redirectTo: "https://habitbattle.lovable.app/auth/reset",
+                           });
+                           setMessage("Reset-E-Mail wurde gesendet! Bitte überprüfen Sie Ihr Postfach.");
+                           setMessageType("success");
+                         } catch (error: any) {
+                           setMessage("Fehler beim Senden der Reset-E-Mail. Bitte versuchen Sie es erneut.");
+                           setMessageType("error");
+                         } finally {
+                           setLoading(false);
+                         }
+                       }}
+                       disabled={loading || !email}
                      >
                        Passwort vergessen?
                      </Button>
