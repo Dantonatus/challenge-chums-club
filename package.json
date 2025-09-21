@@ -52,6 +52,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.12",
     "input-otp": "^1.4.2",
+    "jsdom": "^27.0.0",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "lottie-react": "^2.4.1",
