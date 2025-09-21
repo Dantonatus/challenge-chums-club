@@ -118,45 +118,41 @@ const PasswordReset = () => {
     setMessage("");
 
     console.log("=== PASSWORD RESET DEBUG START ===");
-    console.log("Attempting to call send-password-reset function with email:", email);
-    console.log("Supabase project URL: https://kehbzhcmalmqxygmhijp.supabase.co");
+    console.log("Calling ONLY our edge function, NO standard resetPasswordForEmail");
 
     try {
-      console.log("Invoking edge function...");
+      console.log("Invoking send-password-reset edge function...");
       const { data, error } = await supabase.functions.invoke('send-password-reset', {
         body: { email }
       });
 
-      console.log("=== EDGE FUNCTION RESPONSE ===");
-      console.log("Function response data:", data);
-      console.log("Function response error:", error);
-      console.log("=== PASSWORD RESET DEBUG END ===");
+      console.log("Edge function response:", { data, error });
 
       if (error) {
-        console.error("=== EDGE FUNCTION ERROR ===", error);
-        setMessage("Fehler: " + (error.message || 'Unbekannter Fehler beim Aufrufen der Edge Function'));
+        console.error("Edge function error:", error);
+        setMessage("Fehler: " + (error.message || 'Unbekannter Fehler'));
         setMessageType("error");
         return;
       }
 
       if (data?.error) {
-        console.error("=== BUSINESS LOGIC ERROR ===", data.error);
+        console.error("Business logic error:", data.error);
         setMessage(data.error);
         setMessageType("error");
         return;
       }
 
       if (data?.success) {
-        console.log("=== SUCCESS ===", data.message);
+        console.log("SUCCESS:", data.message);
         setMessage(data.message || "Reset-Link wurde gesendet!");
         setMessageType("success");
       } else {
-        console.warn("=== UNEXPECTED RESPONSE ===", data);
+        console.warn("Unexpected response:", data);
         setMessage("Unerwartete Antwort vom Server");
         setMessageType("error");
       }
     } catch (error) {
-      console.error("=== REQUEST ERROR ===", error);
+      console.error("Request error:", error);
       setMessage("Fehler beim Senden der E-Mail. Bitte versuche es erneut.");
       setMessageType("error");
     }
