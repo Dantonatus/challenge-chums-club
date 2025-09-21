@@ -256,15 +256,44 @@ const Auth = () => {
     }
     setLoading(true);
     setMessage("");
+
+    console.log("=== AUTH.TSX PASSWORD RESET DEBUG ===");
+    console.log("Calling our custom send-password-reset edge function");
+
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset`
+      console.log("Invoking send-password-reset edge function...");
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email }
       });
-      if (error) throw error;
-      setMessage("Reset-E-Mail gesendet. Prüfe deinen Posteingang.");
-      setMessageType("success");
-    } catch (e: any) {
-      setMessage(e?.message || "Senden fehlgeschlagen.");
+
+      console.log("Edge function response:", { data, error });
+
+      if (error) {
+        console.error("Edge function error:", error);
+        setMessage("Fehler: " + (error.message || 'Unbekannter Fehler'));
+        setMessageType("error");
+        return;
+      }
+
+      if (data?.error) {
+        console.error("Business logic error:", data.error);
+        setMessage(data.error);
+        setMessageType("error");
+        return;
+      }
+
+      if (data?.success) {
+        console.log("SUCCESS:", data.message);
+        setMessage(data.message || "Reset-Link wurde gesendet!");
+        setMessageType("success");
+      } else {
+        console.warn("Unexpected response:", data);
+        setMessage("Unerwartete Antwort vom Server");
+        setMessageType("error");
+      }
+    } catch (error) {
+      console.error("Request error:", error);
+      setMessage("Fehler beim Senden der E-Mail. Bitte versuche es erneut.");
       setMessageType("error");
     } finally {
       setLoading(false);
