@@ -33,6 +33,14 @@ const PasswordReset = () => {
       
       console.log('Password reset URL params:', { type, tokenHash: !!tokenHash });
       
+      // If we have type=recovery but no tokens, show clear error
+      if (type === 'recovery' && !tokenHash) {
+        setMessage("Reset link recognized, but tokens are missing. Please contact support or request a new reset link.");
+        setMessageType("error");
+        setView("request_link");
+        return;
+      }
+      
       if (type === 'recovery' && tokenHash) {
         setLoading(true);
         setMessage("Verarbeite Reset-Link...");
