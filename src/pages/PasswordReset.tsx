@@ -84,9 +84,25 @@ const PasswordReset = () => {
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
+      // Log failed password reset
+      try {
+        await supabase.rpc('log_security_event', {
+          event_type: 'password_reset_failed',
+          metadata_param: { error: error.message }
+        });
+      } catch {}
+      
       setMessage(error.message || "Fehler beim Ändern des Passworts.");
       setMessageType("error");
     } else {
+      // Log successful password reset
+      try {
+        await supabase.rpc('log_security_event', {
+          event_type: 'password_reset_success',
+          metadata_param: { timestamp: new Date().toISOString() }
+        });
+      } catch {}
+      
       await supabase.auth.signOut(); // Wichtig: Temporäre Sitzung beenden
       toast({
         title: "Erfolgreich!",
