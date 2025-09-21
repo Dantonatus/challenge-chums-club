@@ -143,6 +143,9 @@ const PasswordReset = () => {
 
       console.log("✅ Password updated successfully!");
       
+      // WICHTIGE ERGÄNZUNG: Alte Sitzung sicher beenden
+      await supabase.auth.signOut();
+      
       toast({
         title: "✅ Erfolgreich!",
         description: "Dein Passwort wurde erfolgreich geändert.",
@@ -151,7 +154,6 @@ const PasswordReset = () => {
       setMessage("✅ Passwort erfolgreich geändert! Du wirst zur Anmeldung weitergeleitet...");
       setMessageType("success");
 
-      // Redirect after success
       setTimeout(() => {
         navigate("/auth");
       }, 2000);
