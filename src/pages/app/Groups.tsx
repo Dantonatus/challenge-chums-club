@@ -7,6 +7,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Edit, Trash2, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface Group { id: string; name: string; description: string | null; invite_code: string; owner_id: string; }
 
@@ -19,6 +22,10 @@ const GroupsPage = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [members, setMembers] = useState<Record<string, { user_id: string; name: string; avatar_url?: string }[]>>({});
   const [manageOpen, setManageOpen] = useState<{ open: boolean; groupId: string | null }>({ open: false, groupId: null });
+  const [editOpen, setEditOpen] = useState<{ open: boolean; group: Group | null }>({ open: false, group: null });
+  const [deleteOpen, setDeleteOpen] = useState<{ open: boolean; group: Group | null }>({ open: false, group: null });
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
 
   const fetchGroups = async () => {
     const { data } = await supabase.from('groups').select('*').order('created_at', { ascending: false });
@@ -71,6 +78,46 @@ const GroupsPage = () => {
     fetchGroups();
   };
 
+  const openEditDialog = (group: Group) => {
+    setEditName(group.name);
+    setEditDescription(group.description || '');
+    setEditOpen({ open: true, group });
+  };
+
+  const updateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editOpen.group) return;
+    
+    const { error } = await supabase
+      .from('groups')
+      .update({ 
+        name: editName, 
+        description: editDescription || null 
+      })
+      .eq('id', editOpen.group.id);
+    
+    if (error) return toast({ title: 'Fehler beim Aktualisieren', description: error.message, variant: 'destructive' as any });
+    
+    setEditOpen({ open: false, group: null });
+    toast({ title: 'Gruppe aktualisiert' });
+    fetchGroups();
+  };
+
+  const deleteGroup = async () => {
+    if (!deleteOpen.group) return;
+    
+    const { error } = await supabase
+      .from('groups')
+      .delete()
+      .eq('id', deleteOpen.group.id);
+    
+    if (error) return toast({ title: 'Fehler beim Löschen', description: error.message, variant: 'destructive' as any });
+    
+    setDeleteOpen({ open: false, group: null });
+    toast({ title: 'Gruppe gelöscht' });
+    fetchGroups();
+  };
+
   return (
     <section>
       <Helmet>
@@ -110,9 +157,33 @@ const GroupsPage = () => {
       <div className="grid gap-4 md:grid-cols-2">
         {groups.map((g) => (
           <Card key={g.id}>
-            <CardHeader>
-              <CardTitle>{g.name}</CardTitle>
-              <CardDescription>{g.description}</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle>{g.name}</CardTitle>
+                <CardDescription>{g.description}</CardDescription>
+              </div>
+              {g.owner_id === userId && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openEditDialog(g)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Bearbeiten
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => setDeleteOpen({ open: true, group: g })}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Löschen
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </CardHeader>
             <CardContent>
               {/* Only show invite code to group owners for security */}
@@ -182,6 +253,62 @@ const GroupsPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Group Dialog */}
+      <Dialog open={editOpen.open} onOpenChange={(o) => setEditOpen({ open: o, group: o ? editOpen.group : null })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Gruppe bearbeiten</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={updateGroup} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Name</label>
+              <Input 
+                value={editName} 
+                onChange={(e) => setEditName(e.target.value)} 
+                required 
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Beschreibung</label>
+              <Input 
+                value={editDescription} 
+                onChange={(e) => setEditDescription(e.target.value)} 
+                placeholder="Optional"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditOpen({ open: false, group: null })}>
+                Abbrechen
+              </Button>
+              <Button type="submit">
+                Speichern
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Group Dialog */}
+      <AlertDialog open={deleteOpen.open} onOpenChange={(o) => setDeleteOpen({ open: o, group: o ? deleteOpen.group : null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Gruppe löschen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchten Sie die Gruppe "{deleteOpen.group?.name}" wirklich löschen? 
+              Diese Aktion kann nicht rückgängig gemacht werden und alle zugehörigen Challenges werden ebenfalls gelöscht.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteOpen({ open: false, group: null })}>
+              Abbrechen
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={deleteGroup} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 };
