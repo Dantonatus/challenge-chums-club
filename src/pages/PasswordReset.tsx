@@ -25,34 +25,62 @@ const PasswordReset = () => {
 
   // Check if we have tokens in the URL hash for password update
   useEffect(() => {
-    const handleUrlHash = () => {
+    const handleUrlHash = async () => {
       const hash = location.hash;
+      console.log('Password reset URL hash:', hash);
+      
       if (hash && hash.includes('access_token')) {
         const params = new URLSearchParams(hash.substring(1));
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
         
-        if (accessToken && refreshToken) {
-          // Set the session with the tokens
-          supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          }).then(({ error }) => {
-            if (error) {
-              setMessage("Ungültiger oder abgelaufener Reset-Link.");
-              setMessageType("error");
-            } else {
-              setView("update_password");
-              setMessage("Sie können jetzt Ihr neues Passwort eingeben.");
-              setMessageType("info");
-            }
-          });
+        console.log('Reset parameters:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+        
+        if (accessToken && type === 'recovery') {
+          try {
+            // Instead of setSession, let Supabase handle the session automatically
+            // The tokens in the URL will be processed by Supabase automatically
+            setView("update_password");
+            setMessage("Sie können jetzt Ihr neues Passwort eingeben.");
+            setMessageType("info");
+            
+            // Clear the URL hash for security
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch (error) {
+            console.error('Error processing reset tokens:', error);
+            setMessage("Ungültiger oder abgelaufener Reset-Link.");
+            setMessageType("error");
+          }
+        } else {
+          setMessage("Ungültiger Reset-Link. Bitte fordern Sie einen neuen an.");
+          setMessageType("error");
         }
       }
     };
 
+    // Also listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change during password reset:', event, !!session);
+      
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        setView("update_password");
+        setMessage("Sie können jetzt Ihr neues Passwort eingeben.");
+        setMessageType("info");
+      } else if (event === 'SIGNED_OUT' || !session) {
+        // If no session and we're in update mode, something went wrong
+        if (view === "update_password") {
+          setMessage("Session abgelaufen. Bitte fordern Sie einen neuen Reset-Link an.");
+          setMessageType("error");
+          setView("request_link");
+        }
+      }
+    });
+
     handleUrlHash();
-  }, [location.hash]);
+
+    return () => subscription.unsubscribe();
+  }, [location.hash, view]);
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
