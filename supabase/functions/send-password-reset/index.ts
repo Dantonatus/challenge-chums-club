@@ -4,6 +4,11 @@ import { supabase } from "../_shared/client.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+console.log("=== EDGE FUNCTION STARTUP ===");
+console.log("RESEND_API_KEY available:", !!Deno.env.get("RESEND_API_KEY"));
+console.log("SUPABASE_URL available:", !!Deno.env.get("SUPABASE_URL"));
+console.log("SUPABASE_SERVICE_ROLE_KEY available:", !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

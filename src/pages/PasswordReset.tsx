@@ -19,7 +19,7 @@ const PasswordReset = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<{type: "success" | "error" | "info", text: string} | string>("");
   const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
   const [view, setView] = useState<'request_link' | 'update_password'>('request_link');
 
@@ -117,28 +117,46 @@ const PasswordReset = () => {
     setLoading(true);
     setMessage("");
 
+    console.log("=== PASSWORD RESET DEBUG START ===");
     console.log("Attempting to call send-password-reset function with email:", email);
+    console.log("Supabase project URL: https://kehbzhcmalmqxygmhijp.supabase.co");
 
     try {
+      console.log("Invoking edge function...");
       const { data, error } = await supabase.functions.invoke('send-password-reset', {
         body: { email }
       });
 
-      console.log("Function response:", { data, error });
+      console.log("=== EDGE FUNCTION RESPONSE ===");
+      console.log("Function response data:", data);
+      console.log("Function response error:", error);
+      console.log("=== PASSWORD RESET DEBUG END ===");
 
       if (error) {
-        console.error("Edge Function error:", error);
-        setMessage("Fehler beim Senden der E-Mail. Bitte versuche es erneut.");
+        console.error("=== EDGE FUNCTION ERROR ===", error);
+        setMessage("Fehler: " + (error.message || 'Unbekannter Fehler beim Aufrufen der Edge Function'));
         setMessageType("error");
-      } else if (data?.error) {
+        return;
+      }
+
+      if (data?.error) {
+        console.error("=== BUSINESS LOGIC ERROR ===", data.error);
         setMessage(data.error);
         setMessageType("error");
-      } else {
-        setMessage(data?.message || `Ein Reset-Link wurde an ${email} gesendet!`);
+        return;
+      }
+
+      if (data?.success) {
+        console.log("=== SUCCESS ===", data.message);
+        setMessage(data.message || "Reset-Link wurde gesendet!");
         setMessageType("success");
+      } else {
+        console.warn("=== UNEXPECTED RESPONSE ===", data);
+        setMessage("Unerwartete Antwort vom Server");
+        setMessageType("error");
       }
     } catch (error) {
-      console.error("Request error:", error);
+      console.error("=== REQUEST ERROR ===", error);
       setMessage("Fehler beim Senden der E-Mail. Bitte versuche es erneut.");
       setMessageType("error");
     }
@@ -167,7 +185,7 @@ const PasswordReset = () => {
               messageType === 'success' ? 'border-green-500 bg-green-50 text-green-700' : ''
             }>
               {messageType === 'success' ? <CheckCircle className="h-4 w-4" /> : messageType === 'error' ? <AlertTriangle className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
-              <AlertDescription>{message}</AlertDescription>
+              <AlertDescription>{typeof message === 'string' ? message : message.text}</AlertDescription>
             </Alert>
           )}
 
