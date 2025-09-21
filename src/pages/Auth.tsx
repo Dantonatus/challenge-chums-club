@@ -18,7 +18,7 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<string | React.ReactNode>("");
   const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -282,9 +282,27 @@ const Auth = () => {
         return;
       }
 
-      if (data?.success) {
+      if (data?.success && data?.resetLink) {
         console.log("SUCCESS:", data.message);
-        setMessage(data.message || "Reset-Link wurde gesendet!");
+        setMessage(
+          <div className="space-y-3">
+            <p>{data.message}</p>
+            <div className="p-3 bg-muted rounded-md">
+              <p className="text-sm font-medium mb-2">Reset-Link:</p>
+              <a 
+                href={data.resetLink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline break-all"
+              >
+                {data.resetLink}
+              </a>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tipp: Klicke auf den Link, um ihn in einem neuen Tab zu öffnen.
+            </p>
+          </div>
+        );
         setMessageType("success");
       } else {
         console.warn("Unexpected response:", data);
