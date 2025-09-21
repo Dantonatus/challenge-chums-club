@@ -338,26 +338,33 @@ const PasswordReset = () => {
     setMessage("");
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://habitbattle.lovable.app/auth/reset"
+      // Use our custom edge function for proper token generation
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email }
       });
 
       if (error) {
+        console.error('Password reset error:', error);
         setMessage(error.message || "Fehler beim Senden der Reset-E-Mail.");
         setMessageType("error");
-      } else {
+      } else if (data?.success) {
         setMessage(
           <>
             <strong>Reset-E-Mail wurde gesendet!</strong>
             <br />
-            Falls der Link nicht funktioniert, verwenden Sie den "Manueller Token" Tab.
+            Prüfen Sie Ihr E-Mail-Postfach. Die E-Mail enthält sowohl einen Reset-Link als auch einen manuellen Token.
             <br />
-            Kopieren Sie den Token aus der E-Mail und fügen Sie ihn manuell ein.
+            Falls der Link nicht funktioniert, verwenden Sie den "Manueller Token" Tab.
           </>
         );
         setMessageType("success");
+        console.log('Password reset debug info:', data.debug);
+      } else {
+        setMessage("Ein unerwarteter Fehler ist aufgetreten.");
+        setMessageType("error");
       }
     } catch (error: any) {
+      console.error('Password reset request failed:', error);
       setMessage("Ein unerwarteter Fehler ist aufgetreten.");
       setMessageType("error");
     } finally {

@@ -820,6 +820,10 @@ export type Database = {
           suspicious_activity_count: number
         }[]
       }
+      send_password_reset_email: {
+        Args: { user_email: string }
+        Returns: Json
+      }
       validate_approval_token: {
         Args: { token_value: string; user_email?: string }
         Returns: boolean
