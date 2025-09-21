@@ -69,67 +69,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Sending email with reset link:", resetLink);
 
-    // Send custom email with Resend
+    // Send simple text email with Resend
     const emailResponse = await resend.emails.send({
       from: "HabitBattle <noreply@habitbattle.lovable.app>",
       to: [email],
       subject: "Passwort zurücksetzen - HabitBattle",
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Passwort zurücksetzen</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 8px; }
-            .content { padding: 20px; }
-            .button { 
-              display: inline-block; 
-              background: #007bff; 
-              color: white; 
-              padding: 12px 24px; 
-              text-decoration: none; 
-              border-radius: 6px; 
-              margin: 20px 0;
-            }
-            .footer { font-size: 12px; color: #666; text-align: center; margin-top: 30px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🔐 Passwort zurücksetzen</h1>
-            </div>
-            <div class="content">
-              <p>Hallo,</p>
-              <p>du hast eine Anfrage zum Zurücksetzen deines Passworts für HabitBattle gestellt.</p>
-              
-              <p>Klicke auf den folgenden Button, um dein Passwort zurückzusetzen:</p>
-              
-              <div style="text-align: center;">
-                <a href="${resetLink}" class="button" style="color: white;">Passwort zurücksetzen</a>
-              </div>
-              
-              <p>Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:</p>
-              <p style="word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace;">
-                ${resetLink}
-              </p>
-              
-              <p><strong>Wichtige Hinweise:</strong></p>
-              <ul>
-                <li>Dieser Link ist 1 Stunde gültig</li>
-                <li>Falls du diese E-Mail nicht angefordert hast, ignoriere sie einfach</li>
-                <li>Teile diesen Link mit niemandem</li>
-              </ul>
-            </div>
-            <div class="footer">
-              <p>© 2024 HabitBattle - Deine Gewohnheiten, deine Herausforderungen</p>
-            </div>
-          </div>
-        </body>
-        </html>
+      text: `
+Hallo,
+
+du hast eine Anfrage zum Zurücksetzen deines Passworts für HabitBattle gestellt.
+
+Kopiere diesen Link in deinen Browser, um dein Passwort zurückzusetzen:
+
+${resetLink}
+
+Wichtige Hinweise:
+- Dieser Link ist 1 Stunde gültig
+- Falls du diese E-Mail nicht angefordert hast, ignoriere sie einfach
+- Teile diesen Link mit niemandem
+
+© 2024 HabitBattle - Deine Gewohnheiten, deine Herausforderungen
       `,
     });
 
