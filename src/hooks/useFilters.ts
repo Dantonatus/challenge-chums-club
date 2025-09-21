@@ -9,6 +9,7 @@ export function useFilters() {
   const filters = {
     search: searchParams.get('search') || '',
     category: searchParams.get('category') || '',
+    brand: searchParams.get('brand') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
     sortBy: searchParams.get('sortBy') || '',
