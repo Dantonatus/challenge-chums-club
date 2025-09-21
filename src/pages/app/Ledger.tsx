@@ -28,13 +28,24 @@ const LedgerPage = () => {
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null)); }, []);
 
   const fetchPayments = async () => {
-    if (!groupId) return;
-    const { data } = await supabase.from('payments').select('*').eq('group_id', groupId).order('created_at', { ascending: false });
+    if (!groupId || !userId) return;
+    
+    // With the new security policy, users can only see their own payments
+    // Group owners can no longer see all group payments for privacy protection
+    const { data } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('group_id', groupId)
+      .eq('user_id', userId) // Only fetch current user's payments
+      .order('created_at', { ascending: false });
+    
     setPayments(data || []);
+    
+    // Check if user is group owner (for showing owner actions)
     const { data: owner } = await supabase.rpc('is_group_owner', { _group_id: groupId });
     setIsOwner(!!owner);
   };
-  useEffect(() => { fetchPayments(); }, [groupId]);
+  useEffect(() => { fetchPayments(); }, [groupId, userId]);
 
   const addPaid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,13 +133,38 @@ const LedgerPage = () => {
         </Card>
       )}
 
-      <div className="space-y-3">
-        {payments.map((p) => (
-          <div key={p.id} className="text-sm text-muted-foreground">
-            <span className="font-medium">{p.type.toUpperCase()}</span> — ${(p.amount_cents/100).toFixed(2)} — user {p.user_id} — {new Date(p.created_at).toLocaleString()} {p.note ? `— ${p.note}` : ''}
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Payment History</CardTitle>
+          <CardDescription>View your personal payment records (enhanced privacy protection)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {payments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No payment records found for this group.</p>
+            ) : (
+              payments.map((p) => (
+                <div key={p.id} className="flex justify-between items-center p-3 border rounded-lg">
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm">
+                      {p.type === 'paid' ? '💰 Payment Made' : p.type === 'owed' ? '📝 Amount Owed' : '⚖️ Adjustment'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(p.created_at).toLocaleDateString()} at {new Date(p.created_at).toLocaleTimeString()}
+                    </span>
+                    {p.note && <span className="text-xs text-muted-foreground mt-1">Note: {p.note}</span>}
+                  </div>
+                  <div className="text-right">
+                    <span className={`font-bold ${p.type === 'paid' ? 'text-green-600' : 'text-red-600'}`}>
+                      ${(p.amount_cents/100).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-        ))}
-      </div>
+        </CardContent>
+      </Card>
     </section>
   );
 };
