@@ -27,36 +27,83 @@ const PasswordReset = () => {
   // Check for token_hash in URL and validate recovery tokens
   useEffect(() => {
     const validateRecoveryToken = async () => {
-      const urlParams = new URLSearchParams(location.search);
-      const type = urlParams.get('type');
-      const tokenHash = urlParams.get('token_hash');
+      // Enhanced URL parameter extraction supporting both search and hash
+      const searchParams = new URLSearchParams(location.search);
+      const hashParams = new URLSearchParams(location.hash.substring(1));
       
-      console.log('Password reset URL params:', { type, tokenHash: !!tokenHash });
+      // Try search params first, then hash params
+      const type = searchParams.get('type') || hashParams.get('type');
+      const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
+      const accessToken = searchParams.get('access_token') || hashParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token');
       
-      // If we have type=recovery but no tokens, show clear error
-      if (type === 'recovery' && !tokenHash) {
-        setMessage("Reset link recognized, but tokens are missing. Please contact support or request a new reset link.");
+      // Enhanced debugging
+      console.log('Password reset URL analysis:', {
+        fullURL: window.location.href,
+        search: location.search,
+        hash: location.hash,
+        type,
+        hasTokenHash: !!tokenHash,
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken
+      });
+      
+      // Wait briefly for potential delayed URL updates
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Re-check after delay in case parameters were updated
+      const finalSearchParams = new URLSearchParams(window.location.search);
+      const finalHashParams = new URLSearchParams(window.location.hash.substring(1));
+      const finalType = finalSearchParams.get('type') || finalHashParams.get('type');
+      const finalTokenHash = finalSearchParams.get('token_hash') || finalHashParams.get('token_hash');
+      
+      console.log('Post-delay URL check:', {
+        finalType,
+        hasFinalTokenHash: !!finalTokenHash,
+        URLChanged: type !== finalType || !!tokenHash !== !!finalTokenHash
+      });
+      
+      const effectiveType = finalType || type;
+      const effectiveTokenHash = finalTokenHash || tokenHash;
+      
+      // Handle missing tokens for recovery type with enhanced error messaging
+      if (effectiveType === 'recovery' && !effectiveTokenHash && !accessToken) {
+        console.error('Password reset error: Recovery type detected but no valid tokens found');
+        setMessage(
+          <>
+            <strong>Reset-Link erkannt, aber Tokens fehlen.</strong>
+            <br />
+            Dies deutet auf ein Supabase-Konfigurationsproblem hin.
+            <br />
+            Bitte fordern Sie einen neuen Reset-Link an oder kontaktieren Sie den Support.
+          </>
+        );
         setMessageType("error");
         setView("request_link");
         return;
       }
       
-      if (type === 'recovery' && tokenHash) {
+      // Handle token_hash recovery (modern flow)
+      if (effectiveType === 'recovery' && effectiveTokenHash) {
         setLoading(true);
         setMessage("Verarbeite Reset-Link...");
         setMessageType("info");
         
         try {
-          // Verify the OTP token and establish session
+          console.log('Attempting OTP verification with token_hash');
           const { data, error } = await supabase.auth.verifyOtp({
             type: 'recovery',
-            token_hash: tokenHash
+            token_hash: effectiveTokenHash
           });
           
-          console.log('OTP verification result:', { session: !!data.session, error });
+          console.log('OTP verification result:', { 
+            hasSession: !!data?.session, 
+            hasUser: !!data?.user,
+            error: error?.message || 'none' 
+          });
           
           if (error) {
-            throw error;
+            throw new Error(`OTP verification failed: ${error.message}`);
           }
           
           if (data.session) {
@@ -69,61 +116,67 @@ const PasswordReset = () => {
             // Clean the URL for security
             window.history.replaceState({}, document.title, window.location.pathname);
           } else {
-            throw new Error('No session created after OTP verification');
+            throw new Error('No session created after successful OTP verification');
           }
         } catch (error: any) {
           console.error('Token verification failed:', error);
-          setMessage("Auth session missing! Der Reset-Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.");
+          setMessage(
+            <>
+              <strong>Reset-Link ungültig oder abgelaufen.</strong>
+              <br />
+              Fehler: {error.message}
+              <br />
+              Bitte fordern Sie einen neuen Reset-Link an.
+            </>
+          );
           setMessageType("error");
           setView("request_link");
         } finally {
           setLoading(false);
         }
-      } else {
-        // Fallback: Check for legacy access_token in hash (for backwards compatibility)
-        const hash = location.hash;
-        if (hash && hash.includes('access_token')) {
-          const params = new URLSearchParams(hash.substring(1));
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
-          const type = params.get('type');
+      }
+      // Handle legacy access_token flow (fallback)
+      else if (accessToken && refreshToken && effectiveType === 'recovery') {
+        setLoading(true);
+        setMessage("Verarbeite Reset-Link (Legacy-Modus)...");
+        setMessageType("info");
+        
+        try {
+          console.log('Attempting legacy token session establishment');
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
           
-          console.log('Legacy hash parameters:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+          if (error) throw new Error(`Legacy session failed: ${error.message}`);
           
-          if (accessToken && refreshToken && type === 'recovery') {
-            setLoading(true);
-            setMessage("Verarbeite Reset-Link (Legacy-Modus)...");
+          if (data.session) {
+            console.log('Session established via legacy tokens');
+            setSessionEstablished(true);
+            setView("update_password");
+            setMessage("Sie können jetzt Ihr neues Passwort eingeben.");
             setMessageType("info");
             
-            try {
-              const { data, error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
-              });
-              
-              if (error) throw error;
-              
-              if (data.session) {
-                console.log('Session established via legacy tokens');
-                setSessionEstablished(true);
-                setView("update_password");
-                setMessage("Sie können jetzt Ihr neues Passwort eingeben.");
-                setMessageType("info");
-                
-                // Clear the URL hash for security
-                window.history.replaceState({}, document.title, window.location.pathname);
-              } else {
-                throw new Error('No session created from legacy tokens');
-              }
-            } catch (error: any) {
-              console.error('Legacy token processing failed:', error);
-              setMessage("Auth session missing! Der Reset-Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.");
-              setMessageType("error");
-              setView("request_link");
-            } finally {
-              setLoading(false);
-            }
+            // Clear the URL for security
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } else {
+            throw new Error('No session created from legacy tokens');
           }
+        } catch (error: any) {
+          console.error('Legacy token processing failed:', error);
+          setMessage(
+            <>
+              <strong>Legacy Reset-Link ungültig.</strong>
+              <br />
+              Fehler: {error.message}
+              <br />
+              Bitte fordern Sie einen neuen Reset-Link an.
+            </>
+          );
+          setMessageType("error");
+          setView("request_link");
+        } finally {
+          setLoading(false);
         }
       }
     };
