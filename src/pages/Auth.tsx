@@ -54,10 +54,6 @@ const Auth = () => {
           }
         }
         
-        if (event === 'PASSWORD_RECOVERY') {
-          setMessage("Password reset successful! You can now sign in with your new password.");
-          setMessageType("success");
-        }
         
         if (event === 'SIGNED_OUT') {
           setMessage("");
@@ -248,80 +244,6 @@ const Auth = () => {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!email) {
-      setMessage("Bitte E-Mail eingeben, um den Reset-Link zu erhalten.");
-      setMessageType("error");
-      return;
-    }
-    setLoading(true);
-    setMessage("");
-
-    console.log("=== AUTH.TSX PASSWORD RESET DEBUG ===");
-
-    try {
-      // First try our custom edge function
-      console.log("Trying custom edge function...");
-      try {
-        const { data, error } = await supabase.functions.invoke('send-password-reset', {
-          body: { email }
-        });
-
-        console.log("Edge function response:", { data, error });
-
-        if (data?.success && data?.resetLink) {
-          console.log("SUCCESS:", data.message);
-          setMessage(
-            <div className="space-y-3">
-              <p>{data.message}</p>
-              <div className="p-3 bg-muted rounded-md">
-                <p className="text-sm font-medium mb-2">Reset-Link:</p>
-                <a 
-                  href={data.resetLink} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline break-all"
-                >
-                  {data.resetLink}
-                </a>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Klicke auf den Link, um ihn in einem neuen Tab zu öffnen.
-              </p>
-            </div>
-          );
-          setMessageType("success");
-          setLoading(false);
-          return;
-        }
-
-        if (error || data?.error) {
-          throw new Error(error?.message || data?.error || 'Edge function failed');
-      }
-    } catch (edgeError) {
-      console.warn("Edge function failed, using fallback:", edgeError);
-      
-      // Fallback to standard Supabase reset
-      console.log("Using Supabase fallback method...");
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset`
-      });
-
-      if (resetError) {
-        throw resetError;
-      }
-
-      setMessage("Reset-E-Mail wurde gesendet! Bitte überprüfe dein Postfach.");
-      setMessageType("success");
-    }
-  } catch (error: any) {
-    console.error("Request error:", error);
-    setMessage(`Fehler: ${error.message || 'Netzwerkfehler'}`);
-    setMessageType("error");
-  } finally {
-    setLoading(false);
-  }
-  };
 
   const getMessageIcon = () => {
     switch (messageType) {
@@ -421,17 +343,6 @@ const Auth = () => {
                      )}
                    </Button>
                    
-                   <div className="text-center">
-                     <Button 
-                       type="button" 
-                       variant="ghost" 
-                       className="text-primary hover:text-primary/80 underline" 
-                       onClick={handleResetPassword}
-                       disabled={loading}
-                     >
-                       Passwort vergessen?
-                     </Button>
-                   </div>
                 </form>
               </TabsContent>
 
