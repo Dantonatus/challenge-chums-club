@@ -117,21 +117,28 @@ const PasswordReset = () => {
     setLoading(true);
     setMessage("");
 
-    const redirectUrl = `https://habitbattle.lovable.app/auth/reset`;
-    
-    console.log("Sende Passwort-Reset mit redirectTo:", redirectUrl);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email }
+      });
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl,
-    });
-
-    if (error) {
-      setMessage(error.message || "Fehler beim Senden der E-Mail.");
+      if (error) {
+        console.error("Edge Function error:", error);
+        setMessage("Fehler beim Senden der E-Mail. Bitte versuche es erneut.");
+        setMessageType("error");
+      } else if (data?.error) {
+        setMessage(data.error);
+        setMessageType("error");
+      } else {
+        setMessage(data?.message || `Ein Reset-Link wurde an ${email} gesendet!`);
+        setMessageType("success");
+      }
+    } catch (error) {
+      console.error("Request error:", error);
+      setMessage("Fehler beim Senden der E-Mail. Bitte versuche es erneut.");
       setMessageType("error");
-    } else {
-      setMessage(`Ein Reset-Link wurde an ${email} gesendet!`);
-      setMessageType("success");
     }
+    
     setLoading(false);
   };
 
