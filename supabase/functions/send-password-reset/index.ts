@@ -15,6 +15,8 @@ interface PasswordResetRequest {
 
 const handler = async (req: Request): Promise<Response> => {
   console.log('Password reset request received');
+  console.log('Request method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -22,7 +24,10 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email }: PasswordResetRequest = await req.json();
+    const requestBody = await req.text();
+    console.log('Request body received:', requestBody);
+    
+    const { email }: PasswordResetRequest = JSON.parse(requestBody);
     console.log('Processing password reset for email:', email);
 
     if (!email) {
@@ -68,6 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log('Generated reset link data:', data);
+    console.log('Full action link:', data.properties.action_link);
 
     // Extract the URL and parse tokens
     const resetUrl = data.properties.action_link;
@@ -137,7 +143,9 @@ const handler = async (req: Request): Promise<Response> => {
       debug: {
         hasToken: !!token,
         hasTokenHash: !!tokenHash,
-        resetUrl: resetUrl
+        hasAccessToken: !!accessToken,
+        resetUrl: resetUrl,
+        emailId: emailResponse.data?.id
       }
     }), {
       status: 200,
