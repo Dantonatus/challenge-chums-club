@@ -258,64 +258,69 @@ const Auth = () => {
     setMessage("");
 
     console.log("=== AUTH.TSX PASSWORD RESET DEBUG ===");
-    console.log("Calling our custom send-password-reset edge function");
 
     try {
-      console.log("Invoking send-password-reset edge function...");
-      const { data, error } = await supabase.functions.invoke('send-password-reset', {
-        body: { email }
+      // First try our custom edge function
+      console.log("Trying custom edge function...");
+      try {
+        const { data, error } = await supabase.functions.invoke('send-password-reset', {
+          body: { email }
+        });
+
+        console.log("Edge function response:", { data, error });
+
+        if (data?.success && data?.resetLink) {
+          console.log("SUCCESS:", data.message);
+          setMessage(
+            <div className="space-y-3">
+              <p>{data.message}</p>
+              <div className="p-3 bg-muted rounded-md">
+                <p className="text-sm font-medium mb-2">Reset-Link:</p>
+                <a 
+                  href={data.resetLink} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline break-all"
+                >
+                  {data.resetLink}
+                </a>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Klicke auf den Link, um ihn in einem neuen Tab zu öffnen.
+              </p>
+            </div>
+          );
+          setMessageType("success");
+          setLoading(false);
+          return;
+        }
+
+        if (error || data?.error) {
+          throw new Error(error?.message || data?.error || 'Edge function failed');
+      }
+    } catch (edgeError) {
+      console.warn("Edge function failed, using fallback:", edgeError);
+      
+      // Fallback to standard Supabase reset
+      console.log("Using Supabase fallback method...");
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset`
       });
 
-      console.log("Edge function response:", { data, error });
-
-      if (error) {
-        console.error("Edge function error:", error);
-        setMessage("Fehler: " + (error.message || 'Unbekannter Fehler'));
-        setMessageType("error");
-        return;
+      if (resetError) {
+        throw resetError;
       }
 
-      if (data?.error) {
-        console.error("Business logic error:", data.error);
-        setMessage(data.error);
-        setMessageType("error");
-        return;
-      }
-
-      if (data?.success && data?.resetLink) {
-        console.log("SUCCESS:", data.message);
-        setMessage(
-          <div className="space-y-3">
-            <p>{data.message}</p>
-            <div className="p-3 bg-muted rounded-md">
-              <p className="text-sm font-medium mb-2">Reset-Link:</p>
-              <a 
-                href={data.resetLink} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline break-all"
-              >
-                {data.resetLink}
-              </a>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Tipp: Klicke auf den Link, um ihn in einem neuen Tab zu öffnen.
-            </p>
-          </div>
-        );
-        setMessageType("success");
-      } else {
-        console.warn("Unexpected response:", data);
-        setMessage("Unerwartete Antwort vom Server");
-        setMessageType("error");
-      }
-    } catch (error) {
-      console.error("Request error:", error);
-      setMessage("Fehler beim Senden der E-Mail. Bitte versuche es erneut.");
-      setMessageType("error");
-    } finally {
-      setLoading(false);
+      setMessage("Reset-E-Mail wurde gesendet! Bitte überprüfe dein Postfach.");
+      setMessageType("success");
     }
+  } catch (error: any) {
+    console.error("Request error:", error);
+    setMessage(`Fehler: ${error.message || 'Netzwerkfehler'}`);
+    setMessageType("error");
+  } finally {
+    setLoading(false);
+  }
   };
 
   const getMessageIcon = () => {
