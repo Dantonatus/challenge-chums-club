@@ -117,10 +117,14 @@ const PasswordReset = () => {
     setLoading(true);
     setMessage("");
 
+    console.log("Attempting to call send-password-reset function with email:", email);
+
     try {
       const { data, error } = await supabase.functions.invoke('send-password-reset', {
         body: { email }
       });
+
+      console.log("Function response:", { data, error });
 
       if (error) {
         console.error("Edge Function error:", error);
