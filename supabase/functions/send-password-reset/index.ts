@@ -19,28 +19,50 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    console.log("Password reset function called");
     const { email }: PasswordResetRequest = await req.json();
+    console.log("Email provided:", email);
 
     if (!email) {
+      console.error("No email provided");
       return new Response(
         JSON.stringify({ error: "E-Mail-Adresse ist erforderlich" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Generate password reset link using Supabase
-    const resetUrl = `https://habitbattle.lovable.app/auth/reset`;
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: resetUrl,
+    // Generate password reset link using Supabase Admin API
+    console.log("Generating reset link...");
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
+        redirectTo: 'https://habitbattle.lovable.app/auth/reset'
+      }
     });
 
-    if (resetError) {
-      console.error("Supabase reset error:", resetError);
+    if (linkError) {
+      console.error("Supabase link generation error:", linkError);
       return new Response(
-        JSON.stringify({ error: "Fehler beim Senden der Reset-E-Mail" }),
+        JSON.stringify({ error: "Fehler beim Generieren des Reset-Links" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("Reset link generated successfully");
+
+    // Extract the actual reset link from the response
+    const resetLink = linkData.properties?.action_link;
+    
+    if (!resetLink) {
+      console.error("No reset link generated");
+      return new Response(
+        JSON.stringify({ error: "Fehler beim Generieren des Reset-Links" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("Sending email with reset link:", resetLink);
 
     // Send custom email with Resend
     const emailResponse = await resend.emails.send({
@@ -82,12 +104,12 @@ const handler = async (req: Request): Promise<Response> => {
               <p>Klicke auf den folgenden Button, um dein Passwort zurückzusetzen:</p>
               
               <div style="text-align: center;">
-                <a href="${resetUrl}" class="button">Passwort zurücksetzen</a>
+                <a href="${resetLink}" class="button" style="color: white;">Passwort zurücksetzen</a>
               </div>
               
               <p>Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:</p>
-              <p style="word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 4px;">
-                ${resetUrl}
+              <p style="word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace;">
+                ${resetLink}
               </p>
               
               <p><strong>Wichtige Hinweise:</strong></p>
@@ -107,6 +129,14 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log("Custom email sent successfully:", emailResponse);
+
+    if (emailResponse.error) {
+      console.error("Resend email error:", emailResponse.error);
+      return new Response(
+        JSON.stringify({ error: "Fehler beim Senden der E-Mail" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ 
