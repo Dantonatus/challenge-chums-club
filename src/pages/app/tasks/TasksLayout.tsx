@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Inbox, CalendarCheck, CalendarDays, FolderKanban } from 'lucide-react';
+import { Inbox, CalendarCheck, CalendarDays, FolderKanban, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTasks } from '@/hooks/useTasks';
 
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: '/app/tasks/today', label: 'Today', icon: CalendarCheck },
   { to: '/app/tasks/upcoming', label: 'Upcoming', icon: CalendarDays },
   { to: '/app/tasks/projects', label: 'Projects', icon: FolderKanban },
+  { to: '/app/tasks/archive', label: 'Archiv', icon: Archive },
 ];
 
 export default function TasksLayout() {

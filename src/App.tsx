@@ -27,6 +27,7 @@ import TasksToday from "./pages/app/tasks/Today";
 import TasksUpcoming from "./pages/app/tasks/Upcoming";
 import TasksProjects from "./pages/app/tasks/Projects";
 import ProjectDetail from "./pages/app/tasks/ProjectDetail";
+import TasksArchive from "./pages/app/tasks/Archive";
 // Recipes
 import RecipesLayout from "./pages/app/recipes/RecipesLayout";
 import RecipesLibrary from "./pages/app/recipes/Library";
@@ -67,7 +68,7 @@ const App = () => (
               <Route path="approval" element={<ApprovalPage />} />
               <Route path="summary" element={<SummaryPage />} />
               <Route path="entry" element={<EntryPage />} />
-              {/* Task Planner */}
+{/* Task Planner */}
               <Route path="tasks" element={<TasksLayout />}>
                 <Route index element={<Navigate to="/app/tasks/inbox" replace />} />
                 <Route path="inbox" element={<TasksInbox />} />
@@ -75,6 +76,7 @@ const App = () => (
                 <Route path="upcoming" element={<TasksUpcoming />} />
                 <Route path="projects" element={<TasksProjects />} />
                 <Route path="projects/:projectId" element={<ProjectDetail />} />
+                <Route path="archive" element={<TasksArchive />} />
               </Route>
               {/* Recipes */}
               <Route path="recipes" element={<RecipesLayout />}>
