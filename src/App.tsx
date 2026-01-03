@@ -27,6 +27,14 @@ import TasksToday from "./pages/app/tasks/Today";
 import TasksUpcoming from "./pages/app/tasks/Upcoming";
 import TasksProjects from "./pages/app/tasks/Projects";
 import ProjectDetail from "./pages/app/tasks/ProjectDetail";
+// Recipes
+import RecipesLayout from "./pages/app/recipes/RecipesLayout";
+import RecipesLibrary from "./pages/app/recipes/Library";
+import RecipesCreate from "./pages/app/recipes/Create";
+import RecipesReview from "./pages/app/recipes/Review";
+import RecipeDetail from "./pages/app/recipes/Detail";
+import RecipesFavorites from "./pages/app/recipes/Favorites";
+import RecipesShoppingList from "./pages/app/recipes/ShoppingList";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +76,16 @@ const App = () => (
                 <Route path="projects" element={<TasksProjects />} />
                 <Route path="projects/:projectId" element={<ProjectDetail />} />
               </Route>
+              {/* Recipes */}
+              <Route path="recipes" element={<RecipesLayout />}>
+                <Route index element={<Navigate to="/app/recipes/library" replace />} />
+                <Route path="library" element={<RecipesLibrary />} />
+                <Route path="create" element={<RecipesCreate />} />
+                <Route path="review" element={<RecipesReview />} />
+                <Route path="favorites" element={<RecipesFavorites />} />
+                <Route path="shopping" element={<RecipesShoppingList />} />
+              </Route>
+              <Route path="recipes/:recipeId" element={<RecipeDetail />} />
             </Route>
             {/* Top-level protected routes */}
             <Route path="/challenges" element={

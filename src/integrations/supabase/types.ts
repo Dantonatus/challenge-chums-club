@@ -350,6 +350,47 @@ export type Database = {
           },
         ]
       }
+      ingredient_matches: {
+        Row: {
+          created_at: string
+          grams: number | null
+          id: string
+          ingredient_text: string
+          match_score: number | null
+          matched_food_name: string | null
+          nutrients_json: Json | null
+          recipe_id: string
+        }
+        Insert: {
+          created_at?: string
+          grams?: number | null
+          id?: string
+          ingredient_text: string
+          match_score?: number | null
+          matched_food_name?: string | null
+          nutrients_json?: Json | null
+          recipe_id: string
+        }
+        Update: {
+          created_at?: string
+          grams?: number | null
+          id?: string
+          ingredient_text?: string
+          match_score?: number | null
+          matched_food_name?: string | null
+          nutrients_json?: Json | null
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_matches_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_entries: {
         Row: {
           content: string
@@ -628,6 +669,118 @@ export type Database = {
           },
         ]
       }
+      recipe_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          recipe_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipe_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipe_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_favorites_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          calories_per_serving: number | null
+          calories_total: number | null
+          cook_time: number | null
+          created_at: string
+          cuisine: string | null
+          difficulty: Database["public"]["Enums"]["recipe_difficulty"] | null
+          group_id: string | null
+          id: string
+          ingredients_json: Json | null
+          is_public: boolean | null
+          macros_json: Json | null
+          micros_json: Json | null
+          nutrition_confidence: number | null
+          prep_time: number | null
+          servings: number
+          short_description: string | null
+          source: string | null
+          steps_json: Json | null
+          tags_json: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calories_per_serving?: number | null
+          calories_total?: number | null
+          cook_time?: number | null
+          created_at?: string
+          cuisine?: string | null
+          difficulty?: Database["public"]["Enums"]["recipe_difficulty"] | null
+          group_id?: string | null
+          id?: string
+          ingredients_json?: Json | null
+          is_public?: boolean | null
+          macros_json?: Json | null
+          micros_json?: Json | null
+          nutrition_confidence?: number | null
+          prep_time?: number | null
+          servings?: number
+          short_description?: string | null
+          source?: string | null
+          steps_json?: Json | null
+          tags_json?: Json | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calories_per_serving?: number | null
+          calories_total?: number | null
+          cook_time?: number | null
+          created_at?: string
+          cuisine?: string | null
+          difficulty?: Database["public"]["Enums"]["recipe_difficulty"] | null
+          group_id?: string | null
+          id?: string
+          ingredients_json?: Json | null
+          is_public?: boolean | null
+          macros_json?: Json | null
+          micros_json?: Json | null
+          nutrition_confidence?: number | null
+          prep_time?: number | null
+          servings?: number
+          short_description?: string | null
+          source?: string | null
+          steps_json?: Json | null
+          tags_json?: Json | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_views: {
         Row: {
           created_at: string | null
@@ -695,6 +848,50 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shopping_list_items: {
+        Row: {
+          amount: number | null
+          category: string | null
+          checked: boolean | null
+          created_at: string
+          id: string
+          item_name: string
+          recipe_id: string | null
+          unit: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          category?: string | null
+          checked?: boolean | null
+          created_at?: string
+          id?: string
+          item_name: string
+          recipe_id?: string | null
+          unit?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          category?: string | null
+          checked?: boolean | null
+          created_at?: string
+          id?: string
+          item_name?: string
+          recipe_id?: string | null
+          unit?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_items_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
         ]
@@ -1054,6 +1251,7 @@ export type Database = {
       idea_status: "proposed" | "approved" | "rejected"
       payment_type: "owed" | "paid" | "adjustment"
       project_status: "active" | "completed" | "archived"
+      recipe_difficulty: "easy" | "medium" | "hard"
       recurring_frequency: "none" | "daily" | "weekly" | "monthly"
       task_effort: "xs" | "s" | "m" | "l" | "xl"
       task_priority: "p1" | "p2" | "p3" | "p4"
@@ -1195,6 +1393,7 @@ export const Constants = {
       idea_status: ["proposed", "approved", "rejected"],
       payment_type: ["owed", "paid", "adjustment"],
       project_status: ["active", "completed", "archived"],
+      recipe_difficulty: ["easy", "medium", "hard"],
       recurring_frequency: ["none", "daily", "weekly", "monthly"],
       task_effort: ["xs", "s", "m", "l", "xl"],
       task_priority: ["p1", "p2", "p3", "p4"],
