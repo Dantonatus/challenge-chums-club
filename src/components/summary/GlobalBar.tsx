@@ -1,14 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDateRange } from "@/contexts/DateRangeContext";
 import { weekRangeLabel } from "@/lib/date";
-import { Download, Save, GitCompare, HelpCircle, ChevronDown, Trash2, Star } from "lucide-react";
+import { Download, Save, GitCompare, HelpCircle, ChevronDown, Trash2, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimelineSlider } from "@/components/charts/TimelineSlider";
 import { startOfISOWeek, endOfISOWeek } from "@/lib/date";
-import { format, eachWeekOfInterval } from "date-fns";
+import { format, eachWeekOfInterval, startOfYear, endOfYear } from "date-fns";
 import { SaveViewModal } from "./SaveViewModal";
 import { CompareBar } from "./CompareBar";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,6 +44,15 @@ export function GlobalBar({
   const [saveViewModalOpen, setSaveViewModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
+  
+  // Year selector state
+  const [selectedYear, setSelectedYear] = useState(start.getFullYear());
+  
+  // Generate available years
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 7 }, (_, i) => currentYear - 5 + i);
+  }, []);
   
   const t = {
     de: {
@@ -84,15 +94,39 @@ export function GlobalBar({
     staleTime: 30000 // 30 seconds
   });
 
-  // Generate weeks array for the slider
-  // Always show the full year in the slider, regardless of preset
-  const yearStart = startOfISOWeek(new Date(start.getFullYear(), 0, 1));
-  const yearEnd = endOfISOWeek(new Date(start.getFullYear(), 11, 31));
+  // Generate weeks array for the slider based on selected year
+  const weeks = useMemo(() => {
+    const yearStart = startOfISOWeek(new Date(selectedYear, 0, 1));
+    const yearEnd = endOfISOWeek(new Date(selectedYear, 11, 31));
+    return eachWeekOfInterval(
+      { start: yearStart, end: yearEnd },
+      { weekStartsOn: 1 }
+    );
+  }, [selectedYear]);
 
-  const weeks = eachWeekOfInterval(
-    { start: yearStart, end: yearEnd },
-    { weekStartsOn: 1 }
-  );
+  // Update selected year when date range changes externally
+  useEffect(() => {
+    if (start.getFullYear() !== selectedYear) {
+      setSelectedYear(start.getFullYear());
+    }
+  }, [start]);
+
+  // Handle year change
+  const handleYearChange = useCallback((year: number) => {
+    setSelectedYear(year);
+    // Set range to full year
+    const yearStartDate = startOfISOWeek(new Date(year, 0, 1));
+    const yearEndDate = endOfISOWeek(new Date(year, 11, 31));
+    setRange({ start: yearStartDate, end: yearEndDate });
+  }, [setRange]);
+
+  const goToPrevYear = useCallback(() => {
+    handleYearChange(selectedYear - 1);
+  }, [selectedYear, handleYearChange]);
+
+  const goToNextYear = useCallback(() => {
+    handleYearChange(selectedYear + 1);
+  }, [selectedYear, handleYearChange]);
 
   // Map current context range to slider indices robustly (handles out-of-domain dates)
   const getIndicesForRange = useCallback((weeksArr: Date[], s: Date, e: Date): [number, number] => {
@@ -245,18 +279,44 @@ export function GlobalBar({
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/40">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between gap-6">
-            {/* Left: Title + Range Badge */}
+            {/* Left: Title + Year Selector */}
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">
                 {t[lang].title}
               </h1>
+              
+              {/* Year Selector */}
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={goToPrevYear} className="h-7 w-7">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                
+                <Select 
+                  value={selectedYear.toString()} 
+                  onValueChange={(v) => handleYearChange(parseInt(v))}
+                >
+                  <SelectTrigger className="w-[80px] h-7 text-sm font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableYears.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Button variant="ghost" size="icon" onClick={goToNextYear} className="h-7 w-7">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
               <Badge variant="secondary" className="text-xs font-normal">
                 {rangeBadge}
               </Badge>
             </div>
 
             {/* Center: Date Range Slider */}
-            <div className="flex-1 max-w-md">
+            <div className="flex-1 max-w-lg">
               <TimelineSlider
                 weeks={weeks}
                 selectedRange={normalizedRange}
