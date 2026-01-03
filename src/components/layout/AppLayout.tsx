@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
-import { ArrowLeft, Home, ListTodo } from "lucide-react";
+import { ArrowLeft, Home, ListTodo, UtensilsCrossed } from "lucide-react";
 
 const AppLayout = () => {
   const navigate = useNavigate();
@@ -91,6 +91,10 @@ const AppLayout = () => {
               <NavLink to="/app/tasks" className={linkClass}>
                 <ListTodo className="mr-1 h-4 w-4 inline" />
                 Tasks
+              </NavLink>
+              <NavLink to="/app/recipes" className={linkClass}>
+                <UtensilsCrossed className="mr-1 h-4 w-4 inline" />
+                Recipes
               </NavLink>
             </nav>
           </div>
