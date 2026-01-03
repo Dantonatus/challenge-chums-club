@@ -57,11 +57,8 @@ export default function EntryPage() {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
   }, []);
 
-  // Generate years for selection (5 years back, 1 year forward)
-  const years = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 7 }, (_, i) => currentYear - 5 + i);
-  }, []);
+  // Only 2026 and 2027 available
+  const years = useMemo(() => [2026, 2027], []);
 
   // Calculate week dates based on year and offset
   const weekDates = useMemo(() => {

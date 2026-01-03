@@ -48,11 +48,8 @@ export function GlobalBar({
   // Year selector state
   const [selectedYear, setSelectedYear] = useState(start.getFullYear());
   
-  // Generate available years
-  const availableYears = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 7 }, (_, i) => currentYear - 5 + i);
-  }, []);
+  // Only 2026 and 2027 available
+  const availableYears = useMemo(() => [2026, 2027], []);
   
   const t = {
     de: {
