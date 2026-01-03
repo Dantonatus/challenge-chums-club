@@ -21,6 +21,7 @@ import ChallengeDetail from "./pages/ChallengeDetail";
 import ProfilePage from "./pages/app/Profile";
 import SummaryPage from "./pages/app/Summary";
 import ApprovalPage from "./pages/app/Approval";
+import EntryPage from "./pages/app/Entry";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="profile" element={<ProfilePage />} />
               <Route path="approval" element={<ApprovalPage />} />
               <Route path="summary" element={<SummaryPage />} />
+              <Route path="entry" element={<EntryPage />} />
             </Route>
             {/* Top-level protected routes */}
             <Route path="/challenges" element={
