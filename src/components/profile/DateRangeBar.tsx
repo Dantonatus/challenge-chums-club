@@ -2,38 +2,42 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useDateRange } from "@/contexts/DateRangeContext";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const dict = {
   de: {
     title: "Zeitraum",
     presets: "Voreinstellungen",
-    appliesNote: "Gilt für alle Kacheln und Charts, außer ‘Verletzungen (30 Tage)’.",
+    appliesNote: "Gilt für alle Kacheln und Charts.",
     startThumb: "Startdatum",
     endThumb: "Enddatum",
-    presetsList: ["7d", "30d", "90d", "6M", "YTD", "1Y", "All"],
+    presetsList: ["30d", "90d", "6M", "Jahr"],
   },
   en: {
     title: "Date Range",
     presets: "Presets",
-    appliesNote: "Applies to all cards and charts except ‘Violations (30 days)’.",
+    appliesNote: "Applies to all cards and charts.",
     startThumb: "Start date",
     endThumb: "End date",
-    presetsList: ["7d", "30d", "90d", "6M", "YTD", "1Y", "All"],
+    presetsList: ["30d", "90d", "6M", "Year"],
   }
 } as const;
 
+// Only 2026 and 2027 available
+const AVAILABLE_YEARS = [2026, 2027];
+
 const MS_DAY = 86400000;
 function daysSinceEpochLocal(d: Date) {
-  // normalize to local midnight to avoid TZ drift
   const localMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   return Math.floor(localMidnight.getTime() / MS_DAY);
 }
 function dateFromLocalDayNumber(n: number) {
   const base = new Date(1970, 0, 1);
   base.setDate(base.getDate() + n);
-  return base; // local midnight
+  return base;
 }
 function formatPPP(d: Date) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
@@ -56,6 +60,9 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
   const lang = (navigator.language?.startsWith("de") ? "de" : "en") as keyof typeof dict;
   const t = dict[lang];
 
+  // Year selector state
+  const [selectedYear, setSelectedYear] = useState(start.getFullYear());
+
   const minDays = useMemo(() => daysSinceEpochLocal(minDate), [minDate]);
   const maxDays = useMemo(() => daysSinceEpochLocal(maxDate), [maxDate]);
   const [local, setLocal] = useState<[number, number]>([daysSinceEpochLocal(start), daysSinceEpochLocal(end)]);
@@ -69,9 +76,9 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
     const startDays = daysSinceEpochLocal(start);
     const endDays = daysSinceEpochLocal(end);
     setLocal([startDays, endDays]);
+    setSelectedYear(start.getFullYear());
   }, [start, end]);
 
-  // Throttle updates during dragging to improve performance
   const updateTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Month ticks
@@ -88,37 +95,59 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
     return ticks;
   }, [minDate, maxDate, minDays, maxDays]);
 
+  // Handle year change - set full year
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
+    setRange({ start: yearStart, end: yearEnd });
+  };
+
+  const goToPrevYear = () => {
+    const idx = AVAILABLE_YEARS.indexOf(selectedYear);
+    if (idx > 0) {
+      handleYearChange(AVAILABLE_YEARS[idx - 1]);
+    }
+  };
+
+  const goToNextYear = () => {
+    const idx = AVAILABLE_YEARS.indexOf(selectedYear);
+    if (idx < AVAILABLE_YEARS.length - 1) {
+      handleYearChange(AVAILABLE_YEARS[idx + 1]);
+    }
+  };
+
   const applyPreset = (key: string) => {
     const ref = now ?? new Date();
-    const endDate = ref; // preserve current time-of-day for "today"
+    const endDate = ref;
     let startDate: Date;
+    
+    if (key === "Jahr" || key === "Year") {
+      // Full year preset
+      handleYearChange(selectedYear);
+      return;
+    }
+    
     switch (key) {
-      case "7d": startDate = new Date(ref.getTime() - 7 * MS_DAY); break;
       case "30d": startDate = new Date(ref.getTime() - 30 * MS_DAY); break;
       case "90d": startDate = new Date(ref.getTime() - 90 * MS_DAY); break;
       case "6M": startDate = new Date(ref); startDate.setMonth(ref.getMonth() - 6); break;
-      case "YTD": startDate = new Date(ref.getFullYear(), 0, 1); break;
-      case "1Y": startDate = new Date(ref); startDate.setFullYear(ref.getFullYear() - 1); break;
-      case "All": startDate = new Date(minDate); break;
       default: startDate = new Date(minDate);
     }
     const sVal = Math.max(daysSinceEpochLocal(startDate), minDays);
     const eVal = Math.min(daysSinceEpochLocal(endDate), maxDays);
 
-    // reflect on the slider (kept ordered by clamping logic elsewhere)
     setLocal([sVal, eVal]);
 
     const todayN = daysSinceEpochLocal(ref);
     const loN = Math.min(sVal, eVal);
     const hiN = Math.max(sVal, eVal);
 
-    const commitStart = dateFromLocalDayNumber(loN); // start of day
+    const commitStart = dateFromLocalDayNumber(loN);
     const commitEnd = hiN === todayN ? new Date(ref) : endOfLocalDayFromDayNumber(hiN);
 
     setRange({ start: commitStart, end: commitEnd });
   };
-
-// built-in keyboard support from Radix will handle arrow keys
 
   const [sDays, eDays] = local;
   const loDays = Math.min(sDays, eDays);
@@ -133,9 +162,48 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             📅 {t.title}
           </CardTitle>
+          
+          {/* Year Selector */}
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={goToPrevYear} 
+              disabled={AVAILABLE_YEARS.indexOf(selectedYear) === 0}
+              className="h-7 w-7"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <Select 
+              value={selectedYear.toString()} 
+              onValueChange={(v) => handleYearChange(parseInt(v))}
+            >
+              <SelectTrigger className="w-[80px] h-8 text-sm font-medium">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AVAILABLE_YEARS.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={goToNextYear}
+              disabled={AVAILABLE_YEARS.indexOf(selectedYear) === AVAILABLE_YEARS.length - 1}
+              className="h-7 w-7"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
           <div className="text-sm font-medium tabular-nums bg-muted/50 px-3 py-1 rounded-lg">
             {formatPPP(loDate)} — {formatPPP(hiDate)}
           </div>
+          
           <div className="flex items-center gap-2 flex-wrap">
             {t.presetsList.map((key) => (
               <Button 
@@ -154,12 +222,11 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
       <CardContent>
         <div className="relative pt-6 pb-3">
           <div className="absolute inset-x-0 top-0 h-5 pointer-events-none">
-            {/* month ticks */}
             <div className="relative h-full">
-              {monthTicks.map((t, i) => (
-                <div key={i} className="absolute top-0 -translate-x-1/2 text-[10px] text-muted-foreground" style={{ left: `${t.pos}%` }}>
+              {monthTicks.map((tick, i) => (
+                <div key={i} className="absolute top-0 -translate-x-1/2 text-[10px] text-muted-foreground" style={{ left: `${tick.pos}%` }}>
                   <div className="w-px h-2 bg-border mx-auto" />
-                  <div className="mt-1">{t.label}</div>
+                  <div className="mt-1">{tick.label}</div>
                 </div>
               ))}
             </div>
@@ -173,31 +240,24 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             minStepsBetweenThumbs={0}
             value={[sDays, eDays]}
             onValueChange={(v) => {
-              // Only update the active thumb to prevent coupling
               const [a, b] = v as [number, number];
               setLocal(([s, e]) => {
                 const clamp = (x: number) => Math.min(Math.max(x, minDays), maxDays);
-                // Only update the specific thumb that's being dragged
                 if (active === "s") return [clamp(a), e];
                 if (active === "e") return [s, clamp(b)];
-                // If no active thumb, don't update
                 return [s, e];
               });
             }}
             onValueCommit={(v) => {
-              // Clear any pending throttled updates
               if (updateTimeoutRef.current) {
                 clearTimeout(updateTimeoutRef.current);
                 updateTimeoutRef.current = undefined;
               }
 
               const [a, b] = v as [number, number];
-              
-              // Don't force ordering - use actual thumb positions
               const refNow = now ?? new Date();
               const todayN = daysSinceEpochLocal(refNow);
 
-              // Use actual start and end values from the thumbs
               const startDays = active === "s" ? a : (active === "e" ? local[0] : Math.min(a, b));
               const endDays = active === "e" ? b : (active === "s" ? local[1] : Math.max(a, b));
 
@@ -216,7 +276,6 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
               <SliderPrimitive.Range className="absolute h-full bg-gradient-to-r from-primary to-primary/80 shadow-sm" />
             </SliderPrimitive.Track>
 
-            {/* Start thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.startThumb}
               onPointerDown={() => setActive("s")}
@@ -227,7 +286,6 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
                 dragging && active === "s" && "scale-125"
               )}
             />
-            {/* End thumb */}
             <SliderPrimitive.Thumb
               aria-label={t.endThumb}
               onPointerDown={() => setActive("e")}
@@ -240,7 +298,6 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
             />
           </SliderPrimitive.Root>
 
-          {/* tooltips near thumbs */}
           {showTips && (
             <div className="mt-2 relative h-5 pointer-events-none">
               <div className="absolute top-0 -translate-x-1/2 text-xs px-2 py-1 rounded bg-popover text-popover-foreground shadow" style={{ left: `${((loDays - minDays) / (maxDays - minDays)) * 100}%` }}>
@@ -251,7 +308,6 @@ export function DateRangeBar({ className, sticky = true }: { className?: string;
               </div>
             </div>
           )}
-
         </div>
       </CardContent>
     </Card>
