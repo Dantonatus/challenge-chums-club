@@ -24,7 +24,7 @@ export type Database = {
           token: string
           used_at: string | null
           used_by: string | null
-          used_from_ip: unknown | null
+          used_from_ip: unknown
           user_id: string
         }
         Insert: {
@@ -36,7 +36,7 @@ export type Database = {
           token: string
           used_at?: string | null
           used_by?: string | null
-          used_from_ip?: unknown | null
+          used_from_ip?: unknown
           user_id: string
         }
         Update: {
@@ -48,7 +48,7 @@ export type Database = {
           token?: string
           used_at?: string | null
           used_by?: string | null
-          used_from_ip?: unknown | null
+          used_from_ip?: unknown
           user_id?: string
         }
         Relationships: []
@@ -711,16 +711,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_user: {
-        Args: { target_user_id: string }
-        Returns: boolean
-      }
-      cleanup_expired_approval_tokens: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      approve_user: { Args: { target_user_id: string }; Returns: boolean }
+      cleanup_expired_approval_tokens: { Args: never; Returns: number }
       cleanup_expired_approval_tokens_enhanced: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           deleted_count: number
           suspicious_tokens: number
@@ -730,10 +724,7 @@ export type Database = {
         Args: { consuming_user_id?: string; token_value: string }
         Returns: boolean
       }
-      encrypt_approval_token: {
-        Args: { token_value: string }
-        Returns: string
-      }
+      encrypt_approval_token: { Args: { token_value: string }; Returns: string }
       generate_secure_approval_token: {
         Args: { expiry_hours?: number; target_user_id: string }
         Returns: string
@@ -767,10 +758,7 @@ export type Database = {
           total_fails: number
         }[]
       }
-      get_server_time: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_server_time: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -786,14 +774,8 @@ export type Database = {
         Args: { _group_id: string; _user_id?: string }
         Returns: boolean
       }
-      is_user_approved: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      join_group: {
-        Args: { p_invite_code: string }
-        Returns: string
-      }
+      is_user_approved: { Args: { _user_id: string }; Returns: boolean }
+      join_group: { Args: { p_invite_code: string }; Returns: string }
       log_security_event: {
         Args: {
           event_type: string
@@ -803,7 +785,7 @@ export type Database = {
         Returns: undefined
       }
       monitor_failed_auth_attempts: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           attempt_count: number
           is_suspicious: boolean
@@ -812,7 +794,7 @@ export type Database = {
         }[]
       }
       monitor_token_security: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           expired_unused_tokens: number
           recent_failures: number
@@ -820,10 +802,7 @@ export type Database = {
           suspicious_activity_count: number
         }[]
       }
-      send_password_reset_email: {
-        Args: { user_email: string }
-        Returns: Json
-      }
+      send_password_reset_email: { Args: { user_email: string }; Returns: Json }
       validate_approval_token: {
         Args: { token_value: string; user_email?: string }
         Returns: boolean

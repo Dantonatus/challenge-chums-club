@@ -90,6 +90,7 @@ const AppLayout = () => {
               <NavLink to="/app/summary" className={linkClass}>
                 {navigator.language.startsWith('de') ? 'Übersicht' : 'Summary'}
               </NavLink>
+              <NavLink to="/app/entry" className={linkClass}>Entry</NavLink>
             </nav>
           </div>
           <Button variant="outline" onClick={handleLogout}>Log out</Button>
