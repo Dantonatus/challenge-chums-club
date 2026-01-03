@@ -78,9 +78,6 @@ const AppLayout = () => {
                 Challenges
               </NavLink>
               <NavLink to="/app/groups" className={linkClass}>Groups</NavLink>
-              <NavLink to="/app/ideas" className={linkClass}>Ideas</NavLink>
-              <NavLink to="/app/ledger" className={linkClass}>Ledger</NavLink>
-              <NavLink to="/app/journal" className={linkClass}>Journal</NavLink>
               <NavLink to="/app/profile" className={linkClass}>Profile</NavLink>
               {userRole === "admin" && (
                 <NavLink to="/app/approval" className={linkClass}>

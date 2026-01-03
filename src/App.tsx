@@ -12,9 +12,6 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import GroupsPage from "./pages/app/Groups";
 import ChallengesPage from "./pages/app/Challenges";
-import IdeasPage from "./pages/app/Ideas";
-import LedgerPage from "./pages/app/Ledger";
-import JournalPage from "./pages/app/Journal";
 import FeaturesRedirect from "./pages/FeaturesRedirect";
 import ChallengesList from "./pages/ChallengesList";
 import ChallengeDetail from "./pages/ChallengeDetail";
@@ -51,9 +48,6 @@ const App = () => (
               <Route index element={<Navigate to="/app/summary" replace />} />
               <Route path="challenges" element={<ChallengesPage />} />
               <Route path="groups" element={<GroupsPage />} />
-              <Route path="ideas" element={<IdeasPage />} />
-              <Route path="ledger" element={<LedgerPage />} />
-              <Route path="journal" element={<JournalPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="approval" element={<ApprovalPage />} />
               <Route path="summary" element={<SummaryPage />} />
