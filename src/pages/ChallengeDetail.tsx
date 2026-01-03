@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { format } from "date-fns";
-import { Plus, Calendar as CalendarIcon, UserPlus, Pencil, Trash2, ArrowLeft, MoreVertical, UserMinus } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, UserPlus, Pencil, Trash2, ArrowLeft, MoreVertical, UserMinus, FileText, Quote } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -437,6 +437,25 @@ export default function ChallengeDetail() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Description Section - Beautiful UI */}
+          {challenge.description && (
+            <div className="relative">
+              <div className="absolute -left-1 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/60 via-primary/30 to-transparent rounded-full" />
+              <div className="pl-5 py-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Beschreibung</span>
+                </div>
+                <div className="relative">
+                  <Quote className="absolute -left-1 -top-1 h-4 w-4 text-primary/20" />
+                  <p className="text-sm leading-relaxed text-foreground/90 pl-4 whitespace-pre-wrap">
+                    {challenge.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Participants Section */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-muted-foreground">{t[lang].participants}</h3>
