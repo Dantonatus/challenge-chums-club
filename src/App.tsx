@@ -20,6 +20,13 @@ import SummaryPage from "./pages/app/Summary";
 import ApprovalPage from "./pages/app/Approval";
 import EntryPage from "./pages/app/Entry";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
+// Task Planner
+import TasksLayout from "./pages/app/tasks/TasksLayout";
+import TasksInbox from "./pages/app/tasks/Inbox";
+import TasksToday from "./pages/app/tasks/Today";
+import TasksUpcoming from "./pages/app/tasks/Upcoming";
+import TasksProjects from "./pages/app/tasks/Projects";
+import ProjectDetail from "./pages/app/tasks/ProjectDetail";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +59,15 @@ const App = () => (
               <Route path="approval" element={<ApprovalPage />} />
               <Route path="summary" element={<SummaryPage />} />
               <Route path="entry" element={<EntryPage />} />
+              {/* Task Planner */}
+              <Route path="tasks" element={<TasksLayout />}>
+                <Route index element={<Navigate to="/app/tasks/inbox" replace />} />
+                <Route path="inbox" element={<TasksInbox />} />
+                <Route path="today" element={<TasksToday />} />
+                <Route path="upcoming" element={<TasksUpcoming />} />
+                <Route path="projects" element={<TasksProjects />} />
+                <Route path="projects/:projectId" element={<ProjectDetail />} />
+              </Route>
             </Route>
             {/* Top-level protected routes */}
             <Route path="/challenges" element={

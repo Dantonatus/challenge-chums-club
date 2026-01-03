@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
-import { ArrowLeft, Home } from "lucide-react";
+import { ArrowLeft, Home, ListTodo } from "lucide-react";
 
 const AppLayout = () => {
   const navigate = useNavigate();
@@ -88,6 +88,10 @@ const AppLayout = () => {
                 {navigator.language.startsWith('de') ? 'Übersicht' : 'Summary'}
               </NavLink>
               <NavLink to="/app/entry" className={linkClass}>Entry</NavLink>
+              <NavLink to="/app/tasks" className={linkClass}>
+                <ListTodo className="mr-1 h-4 w-4 inline" />
+                Tasks
+              </NavLink>
             </nav>
           </div>
           <Button variant="outline" onClick={handleLogout}>Log out</Button>
