@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
-import { format, addDays, startOfWeek, endOfWeek, isSameDay, isWithinInterval, parseISO } from "date-fns";
+import { format, addDays, startOfWeek, isSameDay, isWithinInterval, parseISO, differenceInWeeks } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Check, X, Minus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -164,7 +164,7 @@ export default function EntryPage() {
 
     challenges.forEach((challenge) => {
       weekDates.forEach((date) => {
-        if (isChallengeActiveOnDate(challenge, date) && date <= new Date()) {
+        if (isChallengeActiveOnDate(challenge, date)) {
           total++;
           const log = getLog(challenge.id, date);
           if (log?.success) done++;
@@ -185,26 +185,47 @@ export default function EntryPage() {
         <meta name="description" content="Tägliche Habit-Übersicht - Abhaken und Fortschritt tracken" />
       </Helmet>
 
-      {/* Week Navigation */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Tägliche Einträge</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setWeekOffset((w) => w - 1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium min-w-[180px] text-center">
-            {format(weekStart, "d. MMM", { locale: de })} - {format(weekEnd, "d. MMM yyyy", { locale: de })}
-          </span>
-          <Button variant="outline" size="icon" onClick={() => setWeekOffset((w) => w + 1)} disabled={weekOffset >= 0}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          {weekOffset !== 0 && (
-            <Button variant="ghost" size="sm" onClick={() => setWeekOffset(0)}>
-              Heute
-            </Button>
-          )}
-        </div>
-      </div>
+      {/* Week Navigation with Slider */}
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Tägliche Einträge</h1>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={() => setWeekOffset((w) => w - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium min-w-[180px] text-center">
+                {format(weekStart, "d. MMM", { locale: de })} - {format(weekEnd, "d. MMM yyyy", { locale: de })}
+              </span>
+              <Button variant="outline" size="icon" onClick={() => setWeekOffset((w) => w + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          
+          {/* Timeline Slider */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>-12 Wochen</span>
+              <span>Heute</span>
+              <span>+4 Wochen</span>
+            </div>
+            <Slider
+              value={[weekOffset]}
+              onValueChange={([val]) => setWeekOffset(val)}
+              min={-12}
+              max={4}
+              step={1}
+              className="cursor-pointer"
+            />
+            {weekOffset !== 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setWeekOffset(0)} className="mt-1">
+                Zur aktuellen Woche
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Progress Summary */}
       <Card>
@@ -282,8 +303,8 @@ export default function EntryPage() {
                       </td>
                       {weekDates.map((date) => {
                         const isActive = isChallengeActiveOnDate(challenge, date);
-                        const isFuture = date > new Date();
                         const log = getLog(challenge.id, date);
+                        const isFuture = date > new Date();
                         
                         return (
                           <td 
@@ -295,8 +316,6 @@ export default function EntryPage() {
                           >
                             {!isActive ? (
                               <span className="text-muted-foreground/30">—</span>
-                            ) : isFuture ? (
-                              <div className="w-7 h-7 mx-auto rounded border border-dashed border-muted-foreground/30" />
                             ) : (
                               <button
                                 onClick={() => toggleLog(challenge.id, date, log)}
@@ -304,7 +323,8 @@ export default function EntryPage() {
                                   "w-7 h-7 mx-auto rounded border-2 flex items-center justify-center transition-all",
                                   log?.success && "bg-green-500 border-green-500 text-white",
                                   log && !log.success && "bg-red-500/20 border-red-500 text-red-500",
-                                  !log && "border-muted-foreground/30 hover:border-primary hover:bg-primary/10"
+                                  !log && isFuture && "border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/10",
+                                  !log && !isFuture && "border-muted-foreground/30 hover:border-primary hover:bg-primary/10"
                                 )}
                               >
                                 {log?.success && <Check className="h-4 w-4" />}
