@@ -87,12 +87,12 @@ export default function RecipesCreate() {
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Dietary Goal (optional)</Label>
-          <Select value={goal || ''} onValueChange={(v) => setGoal(v as any || undefined)}>
+          <Select value={goal || 'none'} onValueChange={(v) => setGoal(v === 'none' ? undefined : v as any)}>
             <SelectTrigger>
               <SelectValue placeholder="Select goal" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No specific goal</SelectItem>
+              <SelectItem value="none">No specific goal</SelectItem>
               {Object.entries(GOAL_LABELS).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
@@ -102,12 +102,12 @@ export default function RecipesCreate() {
 
         <div className="space-y-2">
           <Label>Cuisine Style (optional)</Label>
-          <Select value={cuisine || ''} onValueChange={(v) => setCuisine(v || undefined)}>
+          <Select value={cuisine || 'any'} onValueChange={(v) => setCuisine(v === 'any' ? undefined : v)}>
             <SelectTrigger>
               <SelectValue placeholder="Any cuisine" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Any cuisine</SelectItem>
+              <SelectItem value="any">Any cuisine</SelectItem>
               {CUISINE_OPTIONS.map((c) => (
                 <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
@@ -118,14 +118,14 @@ export default function RecipesCreate() {
         <div className="space-y-2">
           <Label>Time Limit (optional)</Label>
           <Select 
-            value={timeLimit?.toString() || ''} 
-            onValueChange={(v) => setTimeLimit(v ? parseInt(v) : undefined)}
+            value={timeLimit?.toString() || 'none'} 
+            onValueChange={(v) => setTimeLimit(v === 'none' ? undefined : parseInt(v))}
           >
             <SelectTrigger>
               <SelectValue placeholder="No limit" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No limit</SelectItem>
+              <SelectItem value="none">No limit</SelectItem>
               <SelectItem value="15">15 minutes</SelectItem>
               <SelectItem value="30">30 minutes</SelectItem>
               <SelectItem value="45">45 minutes</SelectItem>
