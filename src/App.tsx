@@ -20,15 +20,12 @@ import SummaryPage from "./pages/app/Summary";
 import ApprovalPage from "./pages/app/Approval";
 import EntryPage from "./pages/app/Entry";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
-// Task Planner
-import TasksLayout from "./pages/app/tasks/TasksLayout";
-import TasksInbox from "./pages/app/tasks/Inbox";
-import TasksToday from "./pages/app/tasks/Today";
-import TasksUpcoming from "./pages/app/tasks/Upcoming";
+// Task Planner - Zen Redesign
+import TasksLayoutZen from "./pages/app/tasks/TasksLayoutZen";
+import TodayZen from "./pages/app/tasks/TodayZen";
+import AllTasksZen from "./pages/app/tasks/AllTasksZen";
 import TasksProjects from "./pages/app/tasks/Projects";
 import ProjectDetail from "./pages/app/tasks/ProjectDetail";
-import TasksSomeday from "./pages/app/tasks/Someday";
-import TasksArchive from "./pages/app/tasks/Archive";
 // Recipes
 import RecipesLayout from "./pages/app/recipes/RecipesLayout";
 import RecipesLibrary from "./pages/app/recipes/Library";
@@ -69,16 +66,13 @@ const App = () => (
               <Route path="approval" element={<ApprovalPage />} />
               <Route path="summary" element={<SummaryPage />} />
               <Route path="entry" element={<EntryPage />} />
-{/* Task Planner */}
-              <Route path="tasks" element={<TasksLayout />}>
-                <Route index element={<Navigate to="/app/tasks/inbox" replace />} />
-                <Route path="inbox" element={<TasksInbox />} />
-                <Route path="today" element={<TasksToday />} />
-                <Route path="upcoming" element={<TasksUpcoming />} />
+{/* Task Planner - Zen */}
+              <Route path="tasks" element={<TasksLayoutZen />}>
+                <Route index element={<Navigate to="/app/tasks/today" replace />} />
+                <Route path="today" element={<TodayZen />} />
+                <Route path="all" element={<AllTasksZen />} />
                 <Route path="projects" element={<TasksProjects />} />
                 <Route path="projects/:projectId" element={<ProjectDetail />} />
-                <Route path="someday" element={<TasksSomeday />} />
-                <Route path="archive" element={<TasksArchive />} />
               </Route>
               {/* Recipes */}
               <Route path="recipes" element={<RecipesLayout />}>
