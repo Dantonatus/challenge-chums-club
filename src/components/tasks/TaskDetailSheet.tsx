@@ -24,7 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Task } from '@/lib/tasks/types';
+import { PrioritySelect } from './PrioritySelect';
+import type { Task, TaskPriority } from '@/lib/tasks/types';
 import { useUpdateTask, useDeleteTask, useCompleteTask } from '@/hooks/useTasks';
 import { useProjects } from '@/hooks/useProjects';
 import { cn } from '@/lib/utils';
@@ -37,7 +38,7 @@ interface TaskDetailSheetProps {
 
 /**
  * Task Detail Sheet - Slides up from bottom
- * - Full edit capabilities
+ * - Full edit capabilities including Priority
  * - Progressive disclosure (starts minimal)
  * - Touch-friendly controls
  */
@@ -46,6 +47,7 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [projectId, setProjectId] = useState<string>('none');
+  const [priority, setPriority] = useState<TaskPriority>('p3');
   
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
@@ -59,6 +61,7 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
       setNotes(task.notes || '');
       setDueDate(task.due_date ? parseISO(task.due_date) : undefined);
       setProjectId(task.project_id || 'none');
+      setPriority(task.priority);
     }
   }, [task]);
 
@@ -71,6 +74,7 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
       notes: notes.trim() || null,
       due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
       project_id: projectId === 'none' ? null : projectId,
+      priority,
     });
 
     onOpenChange(false);
@@ -117,6 +121,18 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Aufgabentitel"
               className="text-lg font-medium h-14 border-2"
+              disabled={isDone}
+            />
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-2 block">
+              Priorität
+            </label>
+            <PrioritySelect 
+              value={priority} 
+              onChange={setPriority} 
               disabled={isDone}
             />
           </div>
