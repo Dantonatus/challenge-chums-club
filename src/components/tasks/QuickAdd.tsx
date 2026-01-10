@@ -5,14 +5,16 @@ import { Button } from '@/components/ui/button';
 import { useCreateTask } from '@/hooks/useTasks';
 import { parseQuickAdd } from '@/lib/tasks/parser';
 import { cn } from '@/lib/utils';
+import type { TaskPriority } from '@/lib/tasks/types';
 
 interface QuickAddProps {
   defaultProjectId?: string;
+  defaultPriority?: TaskPriority;
   className?: string;
   placeholder?: string;
 }
 
-export function QuickAdd({ defaultProjectId, className, placeholder }: QuickAddProps) {
+export function QuickAdd({ defaultProjectId, defaultPriority, className, placeholder }: QuickAddProps) {
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +28,7 @@ export function QuickAdd({ defaultProjectId, className, placeholder }: QuickAddP
     
     await createTask.mutateAsync({
       title: parsed.title,
-      priority: parsed.priority,
+      priority: parsed.priority || defaultPriority,
       due_date: parsed.due_date,
       due_time: parsed.due_time,
       project_id: defaultProjectId,

@@ -1,13 +1,14 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Inbox, CalendarCheck, CalendarDays, FolderKanban, Archive } from 'lucide-react';
+import { Inbox, CalendarCheck, CalendarDays, FolderKanban, Archive, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTasks } from '@/hooks/useTasks';
 
 const NAV_ITEMS = [
   { to: '/app/tasks/inbox', label: 'Inbox', icon: Inbox },
-  { to: '/app/tasks/today', label: 'Today', icon: CalendarCheck },
-  { to: '/app/tasks/upcoming', label: 'Upcoming', icon: CalendarDays },
-  { to: '/app/tasks/projects', label: 'Projects', icon: FolderKanban },
+  { to: '/app/tasks/today', label: 'Heute', icon: CalendarCheck },
+  { to: '/app/tasks/upcoming', label: 'Geplant', icon: CalendarDays },
+  { to: '/app/tasks/projects', label: 'Projekte', icon: FolderKanban },
+  { to: '/app/tasks/someday', label: 'Irgendwann', icon: Lightbulb },
   { to: '/app/tasks/archive', label: 'Archiv', icon: Archive },
 ];
 
@@ -18,12 +19,16 @@ export default function TasksLayout() {
   const { data: allTasks } = useTasks({ status: ['open', 'in_progress'] });
   const today = new Date().toISOString().split('T')[0];
   
-  const inboxCount = allTasks?.filter(t => !t.due_date).length || 0;
+  // Inbox: P1-P3 without date (not P4)
+  const inboxCount = allTasks?.filter(t => !t.due_date && t.priority !== 'p4').length || 0;
   const todayCount = allTasks?.filter(t => t.due_date === today).length || 0;
+  // Someday: P4 without date
+  const somedayCount = allTasks?.filter(t => !t.due_date && t.priority === 'p4').length || 0;
 
   const getBadge = (path: string) => {
     if (path === '/app/tasks/inbox' && inboxCount > 0) return inboxCount;
     if (path === '/app/tasks/today' && todayCount > 0) return todayCount;
+    if (path === '/app/tasks/someday' && somedayCount > 0) return somedayCount;
     return null;
   };
 
