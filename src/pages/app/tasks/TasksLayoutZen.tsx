@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { CalendarCheck, List, FolderKanban, Archive } from 'lucide-react';
+import { Inbox, CalendarCheck, CalendarDays, List, FolderKanban, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTasks } from '@/hooks/useTasks';
 import { AddTaskFAB } from '@/components/tasks/AddTaskFAB';
@@ -12,7 +12,9 @@ import { AddTaskFAB } from '@/components/tasks/AddTaskFAB';
  */
 
 const NAV_ITEMS = [
+  { to: '/app/tasks/inbox', label: 'Inbox', icon: Inbox },
   { to: '/app/tasks/today', label: 'Heute', icon: CalendarCheck },
+  { to: '/app/tasks/upcoming', label: 'Demnächst', icon: CalendarDays },
   { to: '/app/tasks/all', label: 'Alle', icon: List },
   { to: '/app/tasks/projects', label: 'Projekte', icon: FolderKanban },
   { to: '/app/tasks/archive', label: 'Archiv', icon: Archive },
@@ -25,11 +27,14 @@ export default function TasksLayoutZen() {
   const { data: allTasks } = useTasks({ status: ['open', 'in_progress'] });
   const today = new Date().toISOString().split('T')[0];
   
+  const inboxCount = allTasks?.filter(t => !t.due_date && !t.project_id).length || 0;
   const todayCount = allTasks?.filter(t => t.due_date === today).length || 0;
+  const overdueCount = allTasks?.filter(t => t.due_date && t.due_date < today).length || 0;
   const allCount = allTasks?.length || 0;
 
   const getBadge = (path: string) => {
-    if (path === '/app/tasks/today' && todayCount > 0) return todayCount;
+    if (path === '/app/tasks/inbox' && inboxCount > 0) return inboxCount;
+    if (path === '/app/tasks/today' && (todayCount + overdueCount) > 0) return todayCount + overdueCount;
     if (path === '/app/tasks/all' && allCount > 0) return allCount;
     return null;
   };

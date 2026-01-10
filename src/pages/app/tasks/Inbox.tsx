@@ -1,74 +1,80 @@
-import { QuickAdd } from '@/components/tasks/QuickAdd';
-import { TaskList } from '@/components/tasks/TaskList';
-import { useTasks } from '@/hooks/useTasks';
+import { useState } from 'react';
+import { Inbox as InboxIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Lightbulb } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { TaskListZen } from '@/components/tasks/TaskListZen';
+import { TaskDetailSheet } from '@/components/tasks/TaskDetailSheet';
+import { useTasks } from '@/hooks/useTasks';
+import type { Task } from '@/lib/tasks/types';
 
-export default function TasksInbox() {
-  const { data: tasks, isLoading } = useTasks({ 
-    status: ['open', 'in_progress'] 
-  });
+/**
+ * Inbox View - Tasks without a date or project
+ * Like "Someday/Maybe" in GTD or Todoist Inbox
+ */
+export default function InboxZen() {
+  const { data: allTasks, isLoading } = useTasks({ status: ['open', 'in_progress'] });
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  // Inbox: Tasks without due date AND priority P1-P3 (not P4)
-  // P4 without date goes to Someday
-  const inboxTasks = tasks?.filter(t => 
-    !t.due_date && t.priority !== 'p4'
+  // Filter: no due_date AND no project_id
+  const inboxTasks = allTasks?.filter(
+    (task) => !task.due_date && !task.project_id
   ) || [];
 
-  // Count of P4 tasks without date (they're in Someday)
-  const somedayCount = tasks?.filter(t => 
-    !t.due_date && t.priority === 'p4'
-  ).length || 0;
+  // Sort by priority, then by creation date (newest first)
+  const sortedTasks = [...inboxTasks].sort((a, b) => {
+    const priorityOrder = { p1: 0, p2: 1, p3: 2, p4: 3 };
+    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-9 w-32" />
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Inbox</h1>
-        <p className="text-muted-foreground">
-          Neue Aufgaben erfassen und später organisieren
-        </p>
-      </div>
-
-      {/* Quick Add */}
-      <QuickAdd placeholder="Was steht an?" />
-
-      {/* Someday hint */}
-      {somedayCount > 0 && (
-        <Link to="/app/tasks/someday">
-          <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 transition-colors hover:bg-amber-500/10">
-            <Lightbulb className="h-5 w-5 text-amber-500" />
-            <span className="text-sm">
-              {somedayCount} {somedayCount === 1 ? 'Aufgabe wartet' : 'Aufgaben warten'} in "Irgendwann"
-            </span>
+      <header>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <InboxIcon className="h-5 w-5 text-primary" />
           </div>
-        </Link>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Inbox</h1>
+            <p className="text-muted-foreground">Ungeplante Aufgaben</p>
+          </div>
+        </div>
+      </header>
+
+      {/* Task count */}
+      {sortedTasks.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {sortedTasks.length} {sortedTasks.length === 1 ? 'Aufgabe' : 'Aufgaben'} ohne Datum & Projekt
+        </p>
       )}
 
-      {/* Task List */}
-      {isLoading ? (
-        <div className="space-y-2">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : (
-        <>
-          <TaskList 
-            tasks={inboxTasks} 
-            emptyType="inbox"
-            showDueDate={false}
-          />
-          
-          {inboxTasks.length > 0 && (
-            <p className="text-center text-xs text-muted-foreground">
-              Tipp: Aufgaben mit Priorität "Low" und ohne Datum erscheinen unter "Irgendwann"
-            </p>
-          )}
-        </>
-      )}
+      {/* Task list */}
+      <TaskListZen
+        tasks={sortedTasks}
+        onEdit={setEditingTask}
+        emptyMessage="Keine ungeplanten Aufgaben"
+      />
+
+      {/* Detail Sheet */}
+      <TaskDetailSheet
+        task={editingTask}
+        open={!!editingTask}
+        onOpenChange={(open) => !open && setEditingTask(null)}
+      />
     </div>
   );
 }
