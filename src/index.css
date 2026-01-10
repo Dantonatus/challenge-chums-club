@@ -7,146 +7,166 @@ All colors MUST be HSL. */
 
 @layer base {
   :root {
-    /* Surfaces & text */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* ========================================
+       ZEN PRODUCTIVITY - Minimalist Palette
+       Mono + Single Accent (Mint)
+       ======================================== */
+    
+    /* Surfaces */
+    --background: 0 0% 99%;
+    --foreground: 0 0% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 12%;
 
-    /* Brand */
-    --primary: 212 100% 50%; /* Apple-like blue */
-    --primary-foreground: 210 40% 98%;
+    /* Primary = Accent (Mint/Green) - single color for focus */
+    --primary: 160 55% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 160 30% 96%; /* soft mint surface */
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Neutral surfaces */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 20%;
 
-    --muted: 210 20% 97%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 160 60% 45%; /* mint accent */
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 160 55% 45%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive stays subtle */
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 212 100% 50%;
+    /* Borders - very subtle */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 160 55% 45%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    /* Sidebar */
+    /* Task-specific tokens */
+    --task-done: 160 55% 45%;
+    --task-overdue: 0 0% 50%;
+    --task-today: 160 55% 45%;
+
+    /* Sidebar - clean mono */
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 252 94% 36%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-foreground: 0 0% 30%;
+    --sidebar-primary: 160 55% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 20%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: 160 55% 45%;
 
-    /* Design flourishes */
-    --primary-glow: 252 94% 48%;
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)) 80%);
-    /* CTA gradient (reference image, soft L→R) */
-    --cta-start: 156 40% 74%; /* #A3D8C3 */
-    --cta-end: 43 86% 73%;   /* #F5D37D */
-    --cta-foreground: 0 0% 10%;
-    --gradient-cta: linear-gradient(90deg, hsl(var(--cta-start)) 0%, hsl(var(--cta-end)) 100%);
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(240 10% 97%));
-    --shadow-elegant: 0 12px 30px -12px hsl(var(--primary) / 0.35);
-    --shadow-glow: 0 0 40px hsl(var(--accent) / 0.35);
-    --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Minimal design effects */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(160 60% 55%));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(0 0% 97%));
+    --shadow-elegant: 0 4px 20px -4px hsl(0 0% 0% / 0.08);
+    --shadow-glow: 0 0 30px hsl(var(--primary) / 0.2);
+    --transition-smooth: all 0.2s ease-out;
 
-    /* Premium Chart Colors - Modern Aqua-Teal Palette */
-    --chart-pastel-1: 186 71% 51%; /* Helles Türkis */
-    --chart-pastel-2: 207 90% 57%; /* Sanftes Himmelblau */
-    --chart-pastel-3: 123 38% 57%; /* Frisches Smaragdgrün */
-    --chart-pastel-4: 187 100% 42%; /* Lebendiges Cyan */
-    --chart-pastel-5: 199 92% 64%; /* Warmes Seeblau */
-    --chart-pastel-6: 122 39% 49%; /* Natürliches Grün */
-    --chart-pastel-7: 207 98% 41%; /* Tiefes Ozeanblau */
-    --chart-pastel-8: 174 43% 51%; /* Minze Grün */
-    --chart-pastel-9: 165 84% 51%; /* Aqua Türkis */
-    --chart-pastel-10: 174 100% 29%; /* Sanftes Teal */
+    /* CTA - subtle */
+    --cta-start: 160 45% 55%;
+    --cta-end: 160 55% 45%;
+    --cta-foreground: 0 0% 100%;
+    --gradient-cta: linear-gradient(90deg, hsl(var(--cta-start)), hsl(var(--cta-end)));
 
-    /* Chart Milestone Colors */
-    --milestone-warning: 35 85% 70%;   /* Soft orange */
-    --milestone-danger: 0 75% 75%;     /* Soft red */
-    --milestone-success: 140 50% 70%;  /* Soft green */
+    /* Chart Colors - Mono + Accent */
+    --chart-pastel-1: 160 55% 50%;
+    --chart-pastel-2: 160 40% 60%;
+    --chart-pastel-3: 160 30% 70%;
+    --chart-pastel-4: 0 0% 55%;
+    --chart-pastel-5: 0 0% 65%;
+    --chart-pastel-6: 0 0% 75%;
+    --chart-pastel-7: 160 50% 45%;
+    --chart-pastel-8: 160 45% 55%;
+    --chart-pastel-9: 160 40% 65%;
+    --chart-pastel-10: 0 0% 85%;
 
-    /* Interactive Chart Effects */
-    --chart-hover-glow: 0 0 20px;
-    --chart-grid: 220 15% 85%;
-    --chart-axis: 220 15% 60%;
+    /* Milestone colors - subtle grays + accent */
+    --milestone-warning: 40 70% 60%;
+    --milestone-danger: 0 55% 55%;
+    --milestone-success: 160 55% 45%;
 
-    /* Hero and Landing Page Effects */
-    --hero-glow: 0 0 100px hsl(var(--primary) / 0.1);
-    --hero-secondary-glow: 0 0 60px hsl(var(--accent) / 0.15);
-    --glass-bg: hsla(var(--background) / 0.8);
-    --glass-border: hsla(var(--border) / 0.2);
+    /* Chart effects */
+    --chart-hover-glow: 0 0 15px;
+    --chart-grid: 0 0% 92%;
+    --chart-axis: 0 0% 60%;
+
+    /* Glass effects - minimal */
+    --hero-glow: 0 0 80px hsl(var(--primary) / 0.08);
+    --hero-secondary-glow: 0 0 40px hsl(var(--primary) / 0.1);
+    --glass-bg: hsla(0 0% 100% / 0.9);
+    --glass-border: hsla(0 0% 0% / 0.05);
   }
 
   .dark {
-    --background: 232 21% 10%;
-    --foreground: 210 40% 98%;
+    /* Dark mode - Mono + Mint accent */
+    --background: 0 0% 8%;
+    --foreground: 0 0% 92%;
 
-    --card: 232 21% 12%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 92%;
 
-    --popover: 232 21% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 92%;
 
-    --primary: 212 100% 70%;
-    --primary-foreground: 232 21% 10%;
+    --primary: 160 55% 55%;
+    --primary-foreground: 0 0% 8%;
 
-    --secondary: 160 15% 16%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 85%;
 
-    --muted: 224 25% 15%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 160 60% 55%;
-    --accent-foreground: 232 21% 10%;
+    --accent: 160 55% 55%;
+    --accent-foreground: 0 0% 8%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 224 25% 18%;
-    --input: 224 25% 18%;
-    --ring: 212 100% 70%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 160 55% 55%;
 
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 212 100% 70%;
-    --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-accent: 160 15% 16%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Task tokens */
+    --task-done: 160 55% 55%;
+    --task-overdue: 0 0% 60%;
+    --task-today: 160 55% 55%;
 
-    /* CTA hues tuned for dark mode */
-    --cta-start: 168 60% 45%;
-    --cta-end: 45 90% 55%;
+    /* Sidebar */
+    --sidebar-background: 0 0% 9%;
+    --sidebar-foreground: 0 0% 80%;
+    --sidebar-primary: 160 55% 55%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 14%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 160 55% 55%;
 
-    /* Dark mode chart colors - matching aqua-teal theme with better contrast */
-    --chart-pastel-1: 186 65% 60%; /* Helles Türkis - darker */
-    --chart-pastel-2: 207 80% 65%; /* Sanftes Himmelblau - darker */
-    --chart-pastel-3: 123 45% 65%; /* Frisches Smaragdgrün - darker */
-    --chart-pastel-4: 187 90% 50%; /* Lebendiges Cyan - darker */
-    --chart-pastel-5: 199 85% 70%; /* Warmes Seeblau - adjusted */
-    --chart-pastel-6: 122 45% 55%; /* Natürliches Grün - darker */
-    --chart-pastel-7: 207 90% 50%; /* Tiefes Ozeanblau - darker */
-    --chart-pastel-8: 174 50% 60%; /* Minze Grün - darker */
-    --chart-pastel-9: 165 75% 60%; /* Aqua Türkis - darker */
-    --chart-pastel-10: 174 90% 35%; /* Sanftes Teal - darker */
+    /* CTA */
+    --cta-start: 160 50% 50%;
+    --cta-end: 160 55% 55%;
 
-    --chart-grid: 220 15% 25%;
-    --chart-axis: 220 15% 50%;
+    /* Chart colors */
+    --chart-pastel-1: 160 50% 55%;
+    --chart-pastel-2: 160 40% 65%;
+    --chart-pastel-3: 160 30% 75%;
+    --chart-pastel-4: 0 0% 60%;
+    --chart-pastel-5: 0 0% 70%;
+    --chart-pastel-6: 0 0% 80%;
+    --chart-pastel-7: 160 45% 50%;
+    --chart-pastel-8: 160 40% 60%;
+    --chart-pastel-9: 160 35% 70%;
+    --chart-pastel-10: 0 0% 85%;
+
+    --chart-grid: 0 0% 20%;
+    --chart-axis: 0 0% 45%;
   }
 }
 
