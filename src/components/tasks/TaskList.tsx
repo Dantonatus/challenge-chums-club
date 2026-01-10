@@ -8,6 +8,7 @@ interface TaskListProps {
   emptyType?: 'inbox' | 'today' | 'upcoming' | 'project';
   showProject?: boolean;
   showDueDate?: boolean;
+  showRestoreAction?: boolean;
   onEditTask?: (task: Task) => void;
   className?: string;
 }
@@ -17,6 +18,7 @@ export function TaskList({
   emptyType = 'inbox',
   showProject = true,
   showDueDate = true,
+  showRestoreAction = false,
   onEditTask,
   className,
 }: TaskListProps) {
@@ -33,6 +35,7 @@ export function TaskList({
           onEdit={onEditTask}
           showProject={showProject}
           showDueDate={showDueDate}
+          showRestoreAction={showRestoreAction}
         />
       ))}
     </div>

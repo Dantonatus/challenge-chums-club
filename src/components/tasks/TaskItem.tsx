@@ -9,7 +9,10 @@ import {
   FolderKanban,
   Trash2,
   Edit2,
-  Timer
+  Timer,
+  RotateCcw,
+  FolderArchive,
+  Lightbulb
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -23,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PriorityChip } from './PriorityChip';
 import type { Task } from '@/lib/tasks/types';
-import { useCompleteTask, useDeleteTask, useSnoozeTask } from '@/hooks/useTasks';
+import { useCompleteTask, useDeleteTask, useSnoozeTask, useRestoreTask, useArchiveTask, useMoveToSomeday } from '@/hooks/useTasks';
 import { getSnoozeDate } from '@/lib/tasks/parser';
 
 interface TaskItemProps {
@@ -31,6 +34,7 @@ interface TaskItemProps {
   onEdit?: (task: Task) => void;
   showProject?: boolean;
   showDueDate?: boolean;
+  showRestoreAction?: boolean;
   className?: string;
 }
 
@@ -39,19 +43,24 @@ export function TaskItem({
   onEdit, 
   showProject = true, 
   showDueDate = true,
+  showRestoreAction = false,
   className 
 }: TaskItemProps) {
   const [isHovered, setIsHovered] = useState(false);
   const completeTask = useCompleteTask();
   const deleteTask = useDeleteTask();
   const snoozeTask = useSnoozeTask();
+  const restoreTask = useRestoreTask();
+  const archiveTask = useArchiveTask();
+  const moveToSomeday = useMoveToSomeday();
 
   const isDone = task.status === 'done';
+  const isArchived = task.status === 'archived';
   const dueDate = task.due_date ? parseISO(task.due_date) : null;
   const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate) && !isDone;
 
   const handleComplete = () => {
-    if (!isDone) {
+    if (!isDone && !isArchived) {
       completeTask.mutate(task.id);
     }
   };
@@ -123,32 +132,62 @@ export function TaskItem({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                {onEdit && (
-                  <DropdownMenuItem onClick={() => onEdit(task)}>
-                    <Edit2 className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
+                {/* Restore action for done/archived tasks */}
+                {showRestoreAction && (isDone || isArchived) && (
+                  <>
+                    <DropdownMenuItem 
+                      onClick={() => restoreTask.mutate(task.id)}
+                      className="text-green-600 focus:text-green-600"
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Wiederherstellen
+                    </DropdownMenuItem>
+                    {isDone && (
+                      <DropdownMenuItem onClick={() => archiveTask.mutate(task.id)}>
+                        <FolderArchive className="mr-2 h-4 w-4" />
+                        Archivieren
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                  </>
                 )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleSnooze('later')}>
-                  <Timer className="mr-2 h-4 w-4" />
-                  Snooze 2 hours
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSnooze('tomorrow')}>
-                  <Clock className="mr-2 h-4 w-4" />
-                  Snooze to tomorrow
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSnooze('next_week')}>
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Snooze to next week
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+
+                {/* Regular actions for active tasks */}
+                {!isDone && !isArchived && (
+                  <>
+                    {onEdit && (
+                      <DropdownMenuItem onClick={() => onEdit(task)}>
+                        <Edit2 className="mr-2 h-4 w-4" />
+                        Bearbeiten
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleSnooze('later')}>
+                      <Timer className="mr-2 h-4 w-4" />
+                      In 2 Stunden
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSnooze('tomorrow')}>
+                      <Clock className="mr-2 h-4 w-4" />
+                      Morgen früh
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSnooze('next_week')}>
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Nächste Woche
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => moveToSomeday.mutate(task.id)}>
+                      <Lightbulb className="mr-2 h-4 w-4" />
+                      Irgendwann
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+
                 <DropdownMenuItem 
                   onClick={() => deleteTask.mutate(task.id)}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                  Löschen
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

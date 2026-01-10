@@ -27,6 +27,7 @@ import TasksToday from "./pages/app/tasks/Today";
 import TasksUpcoming from "./pages/app/tasks/Upcoming";
 import TasksProjects from "./pages/app/tasks/Projects";
 import ProjectDetail from "./pages/app/tasks/ProjectDetail";
+import TasksSomeday from "./pages/app/tasks/Someday";
 import TasksArchive from "./pages/app/tasks/Archive";
 // Recipes
 import RecipesLayout from "./pages/app/recipes/RecipesLayout";
@@ -76,6 +77,7 @@ const App = () => (
                 <Route path="upcoming" element={<TasksUpcoming />} />
                 <Route path="projects" element={<TasksProjects />} />
                 <Route path="projects/:projectId" element={<ProjectDetail />} />
+                <Route path="someday" element={<TasksSomeday />} />
                 <Route path="archive" element={<TasksArchive />} />
               </Route>
               {/* Recipes */}

@@ -284,3 +284,118 @@ export function useSnoozeTask() {
     },
   });
 }
+
+// Restore task from done/archived to open
+export function useRestoreTask() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'open',
+          completed_at: null 
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Audit log
+      await supabase.from('task_audit_log').insert({
+        entity_type: 'task',
+        entity_id: id,
+        action: 'restored',
+        payload_json: { previous_status: 'done' },
+        user_id: user.user.id,
+      });
+
+      return data as Task;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+      toast.success('Task wiederhergestellt');
+    },
+    onError: (error) => {
+      toast.error('Fehler beim Wiederherstellen: ' + error.message);
+    },
+  });
+}
+
+// Archive task
+export function useArchiveTask() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ status: 'archived' })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Audit log
+      await supabase.from('task_audit_log').insert({
+        entity_type: 'task',
+        entity_id: id,
+        action: 'archived',
+        payload_json: {},
+        user_id: user.user.id,
+      });
+
+      return data as Task;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+      toast.success('Task archiviert');
+    },
+    onError: (error) => {
+      toast.error('Fehler beim Archivieren: ' + error.message);
+    },
+  });
+}
+
+// Move task to Someday (set P4 and remove date)
+export function useMoveToSomeday() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ 
+          priority: 'p4',
+          due_date: null,
+          due_time: null
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return data as Task;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+      toast.success('Task nach "Irgendwann" verschoben');
+    },
+    onError: (error) => {
+      toast.error('Fehler: ' + error.message);
+    },
+  });
+}
