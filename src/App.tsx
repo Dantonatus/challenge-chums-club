@@ -26,6 +26,7 @@ import TodayZen from "./pages/app/tasks/TodayZen";
 import AllTasksZen from "./pages/app/tasks/AllTasksZen";
 import TasksProjects from "./pages/app/tasks/Projects";
 import ProjectDetail from "./pages/app/tasks/ProjectDetail";
+import TasksArchive from "./pages/app/tasks/Archive";
 // Recipes
 import RecipesLayout from "./pages/app/recipes/RecipesLayout";
 import RecipesLibrary from "./pages/app/recipes/Library";
@@ -66,13 +67,13 @@ const App = () => (
               <Route path="approval" element={<ApprovalPage />} />
               <Route path="summary" element={<SummaryPage />} />
               <Route path="entry" element={<EntryPage />} />
-{/* Task Planner - Zen */}
               <Route path="tasks" element={<TasksLayoutZen />}>
                 <Route index element={<Navigate to="/app/tasks/today" replace />} />
                 <Route path="today" element={<TodayZen />} />
                 <Route path="all" element={<AllTasksZen />} />
                 <Route path="projects" element={<TasksProjects />} />
                 <Route path="projects/:projectId" element={<ProjectDetail />} />
+                <Route path="archive" element={<TasksArchive />} />
               </Route>
               {/* Recipes */}
               <Route path="recipes" element={<RecipesLayout />}>

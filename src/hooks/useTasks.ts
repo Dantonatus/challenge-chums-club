@@ -76,7 +76,7 @@ export function useTasks(filters?: {
   });
 }
 
-// Fetch tasks for today
+// Fetch tasks for today - ONLY tasks with today's due date
 export function useTodayTasks() {
   const today = new Date().toISOString().split('T')[0];
   
@@ -91,7 +91,7 @@ export function useTodayTasks() {
           subtasks(*)
         `)
         .in('status', ['open', 'in_progress'])
-        .or(`due_date.eq.${today},due_date.is.null`)
+        .eq('due_date', today)
         .order('priority', { ascending: true })
         .order('created_at', { ascending: false });
 

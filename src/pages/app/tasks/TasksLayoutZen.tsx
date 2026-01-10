@@ -1,12 +1,12 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { CalendarCheck, List, FolderKanban } from 'lucide-react';
+import { CalendarCheck, List, FolderKanban, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTasks } from '@/hooks/useTasks';
 import { AddTaskFAB } from '@/components/tasks/AddTaskFAB';
 
 /**
  * Zen Tasks Layout - Simplified Navigation
- * - Only 3 main views: Heute, Alle, Projekte
+ * - 4 main views: Heute, Alle, Projekte, Archiv
  * - Clean sidebar on desktop, bottom nav on mobile
  * - FAB always visible
  */
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { to: '/app/tasks/today', label: 'Heute', icon: CalendarCheck },
   { to: '/app/tasks/all', label: 'Alle', icon: List },
   { to: '/app/tasks/projects', label: 'Projekte', icon: FolderKanban },
+  { to: '/app/tasks/archive', label: 'Archiv', icon: Archive },
 ];
 
 export default function TasksLayoutZen() {
