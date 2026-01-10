@@ -22,7 +22,9 @@ import EntryPage from "./pages/app/Entry";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
 // Task Planner - Zen Redesign
 import TasksLayoutZen from "./pages/app/tasks/TasksLayoutZen";
+import TasksInbox from "./pages/app/tasks/Inbox";
 import TodayZen from "./pages/app/tasks/TodayZen";
+import TasksUpcoming from "./pages/app/tasks/Upcoming";
 import AllTasksZen from "./pages/app/tasks/AllTasksZen";
 import TasksProjects from "./pages/app/tasks/Projects";
 import ProjectDetail from "./pages/app/tasks/ProjectDetail";
@@ -68,8 +70,10 @@ const App = () => (
               <Route path="summary" element={<SummaryPage />} />
               <Route path="entry" element={<EntryPage />} />
               <Route path="tasks" element={<TasksLayoutZen />}>
-                <Route index element={<Navigate to="/app/tasks/today" replace />} />
+                <Route index element={<Navigate to="/app/tasks/inbox" replace />} />
+                <Route path="inbox" element={<TasksInbox />} />
                 <Route path="today" element={<TodayZen />} />
+                <Route path="upcoming" element={<TasksUpcoming />} />
                 <Route path="all" element={<AllTasksZen />} />
                 <Route path="projects" element={<TasksProjects />} />
                 <Route path="projects/:projectId" element={<ProjectDetail />} />
