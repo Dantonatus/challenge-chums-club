@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { addDays, addWeeks, addMonths, format } from 'date-fns';
 import type { 
   Task, 
   Subtask, 
   CreateTaskInput, 
   UpdateTaskInput, 
   TaskStatus,
-  TaskPriority
+  TaskPriority,
+  RecurringFrequency
 } from '@/lib/tasks/types';
 
 const TASKS_KEY = ['tasks'];
@@ -257,7 +259,25 @@ export function useDeleteTask() {
   });
 }
 
-// Mark task as done with undo option
+/**
+ * Calculate next due date based on recurrence frequency
+ */
+function getNextDueDate(currentDueDate: string | null, frequency: RecurringFrequency): string {
+  const baseDate = currentDueDate ? new Date(currentDueDate) : new Date();
+  
+  switch (frequency) {
+    case 'daily':
+      return format(addDays(baseDate, 1), 'yyyy-MM-dd');
+    case 'weekly':
+      return format(addWeeks(baseDate, 1), 'yyyy-MM-dd');
+    case 'monthly':
+      return format(addMonths(baseDate, 1), 'yyyy-MM-dd');
+    default:
+      return format(baseDate, 'yyyy-MM-dd');
+  }
+}
+
+// Mark task as done with undo option + auto-create next for recurring
 export function useCompleteTask() {
   const queryClient = useQueryClient();
   
@@ -266,6 +286,16 @@ export function useCompleteTask() {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error('Not authenticated');
       
+      // First, get the full task data to check for recurrence
+      const { data: existingTask, error: fetchError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Mark current task as done
       const { data, error } = await supabase
         .from('tasks')
         .update({ 
@@ -278,7 +308,61 @@ export function useCompleteTask() {
 
       if (error) throw error;
       
-      // Audit log
+      let nextTaskId: string | null = null;
+      
+      // If recurring, create next occurrence
+      if (existingTask.recurring_frequency && existingTask.recurring_frequency !== 'none') {
+        const nextDueDate = getNextDueDate(existingTask.due_date, existingTask.recurring_frequency as RecurringFrequency);
+        
+        const { data: nextTask, error: nextError } = await supabase
+          .from('tasks')
+          .insert({
+            title: existingTask.title,
+            notes: existingTask.notes,
+            priority: existingTask.priority,
+            effort: existingTask.effort,
+            project_id: existingTask.project_id,
+            group_id: existingTask.group_id,
+            recurring_frequency: existingTask.recurring_frequency,
+            due_date: nextDueDate,
+            due_time: existingTask.due_time,
+            user_id: user.user.id,
+            status: 'open',
+          })
+          .select()
+          .single();
+        
+        if (!nextError && nextTask) {
+          nextTaskId = nextTask.id;
+          
+          // Copy tags to new task
+          const { data: taskTags } = await supabase
+            .from('task_tags')
+            .select('tag_id')
+            .eq('task_id', id);
+          
+          if (taskTags && taskTags.length > 0) {
+            await supabase.from('task_tags').insert(
+              taskTags.map(tt => ({ task_id: nextTask.id, tag_id: tt.tag_id }))
+            );
+          }
+          
+          // Audit log for new task
+          await supabase.from('task_audit_log').insert({
+            entity_type: 'task',
+            entity_id: nextTask.id,
+            action: 'created_from_recurring',
+            payload_json: { 
+              original_task_id: id,
+              next_due_date: nextDueDate,
+              frequency: existingTask.recurring_frequency 
+            },
+            user_id: user.user.id,
+          });
+        }
+      }
+      
+      // Audit log for completion
       await supabase.from('task_audit_log').insert({
         entity_type: 'task',
         entity_id: id,
@@ -287,27 +371,51 @@ export function useCompleteTask() {
         user_id: user.user.id,
       });
 
-      return { task: data as Task, taskId: id };
+      return { 
+        task: data as Task, 
+        taskId: id, 
+        nextTaskId,
+        isRecurring: existingTask.recurring_frequency !== 'none' && existingTask.recurring_frequency !== null
+      };
     },
-    onSuccess: ({ task, taskId }) => {
+    onSuccess: ({ task, taskId, nextTaskId, isRecurring }) => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
       
-      // Toast with undo action
-      toast.success('Aufgabe erledigt!', {
-        action: {
-          label: 'Rückgängig',
-          onClick: async () => {
-            // Restore task
-            await supabase
-              .from('tasks')
-              .update({ status: 'open', completed_at: null })
-              .eq('id', taskId);
-            queryClient.invalidateQueries({ queryKey: TASKS_KEY });
-            toast.success('Aufgabe wiederhergestellt');
+      if (isRecurring && nextTaskId) {
+        // Special toast for recurring tasks
+        toast.success('Erledigt! Nächste Wiederholung erstellt 🔄', {
+          action: {
+            label: 'Rückgängig',
+            onClick: async () => {
+              // Delete the new recurring task and restore original
+              await supabase.from('tasks').delete().eq('id', nextTaskId);
+              await supabase
+                .from('tasks')
+                .update({ status: 'open', completed_at: null })
+                .eq('id', taskId);
+              queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+              toast.success('Aufgabe wiederhergestellt');
+            },
           },
-        },
-        duration: 5000,
-      });
+          duration: 5000,
+        });
+      } else {
+        // Regular toast with undo action
+        toast.success('Aufgabe erledigt!', {
+          action: {
+            label: 'Rückgängig',
+            onClick: async () => {
+              await supabase
+                .from('tasks')
+                .update({ status: 'open', completed_at: null })
+                .eq('id', taskId);
+              queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+              toast.success('Aufgabe wiederhergestellt');
+            },
+          },
+          duration: 5000,
+        });
+      }
     },
     onError: (error) => {
       toast.error('Fehler: ' + error.message);
