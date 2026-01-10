@@ -257,16 +257,60 @@ export function useDeleteTask() {
   });
 }
 
-// Mark task as done
+// Mark task as done with undo option
 export function useCompleteTask() {
-  const updateTask = useUpdateTask();
+  const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (id: string) => {
-      return updateTask.mutateAsync({ id, status: 'done' });
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'done',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Audit log
+      await supabase.from('task_audit_log').insert({
+        entity_type: 'task',
+        entity_id: id,
+        action: 'completed',
+        payload_json: { title: data.title },
+        user_id: user.user.id,
+      });
+
+      return { task: data as Task, taskId: id };
     },
-    onSuccess: () => {
-      toast.success('Task completed!');
+    onSuccess: ({ task, taskId }) => {
+      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+      
+      // Toast with undo action
+      toast.success('Aufgabe erledigt!', {
+        action: {
+          label: 'Rückgängig',
+          onClick: async () => {
+            // Restore task
+            await supabase
+              .from('tasks')
+              .update({ status: 'open', completed_at: null })
+              .eq('id', taskId);
+            queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+            toast.success('Aufgabe wiederhergestellt');
+          },
+        },
+        duration: 5000,
+      });
+    },
+    onError: (error) => {
+      toast.error('Fehler: ' + error.message);
     },
   });
 }

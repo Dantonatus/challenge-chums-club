@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Check, MoreHorizontal, Trash2, RotateCcw } from 'lucide-react';
+import { Check, MoreHorizontal, Trash2, RotateCcw, Folder } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { PriorityBadge } from './PrioritySelect';
 import type { Task } from '@/lib/tasks/types';
 import { useCompleteTask, useDeleteTask, useRestoreTask } from '@/hooks/useTasks';
 
@@ -22,9 +23,9 @@ interface TaskItemZenProps {
 }
 
 /**
- * Zen TaskItem - Radically simplified for clarity
- * - Only shows ONE meta info (date OR project, never both)
- * - No priority chips (priority = position in list)
+ * Improved TaskItem - Shows priority badge + both date AND project
+ * - Priority badge visible for P1-P3
+ * - Shows date AND project (if available)
  * - Larger touch targets (56px row, 44px tap zones)
  * - Menu only on hover/tap
  */
@@ -67,13 +68,13 @@ export function TaskItemZen({
     return format(dueDate, 'd. MMM', { locale: de });
   };
 
-  // Show only ONE meta info: prioritize date over project
-  const metaInfo = formatDueDate() || (task.project?.name ?? null);
+  const dueDateText = formatDueDate();
+  const projectName = task.project?.name;
 
   return (
     <div
       className={cn(
-        'group flex items-center gap-4 rounded-2xl px-4 transition-all duration-200',
+        'group flex items-center gap-3 rounded-2xl px-4 transition-all duration-200',
         'min-h-[56px] cursor-pointer',
         'hover:bg-secondary/50',
         isDone && 'opacity-50',
@@ -110,26 +111,49 @@ export function TaskItemZen({
       </button>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 py-3">
-        <p
-          className={cn(
-            'text-base font-medium leading-snug truncate',
-            isDone && 'line-through text-muted-foreground'
-          )}
-        >
-          {task.title}
-        </p>
-        
-        {/* Single meta info - date or project */}
-        {metaInfo && (
+      <div className="flex-1 min-w-0 py-2">
+        <div className="flex items-center gap-2">
+          {/* Priority badge (only P1-P3) */}
+          <PriorityBadge priority={task.priority} />
+          
           <p
             className={cn(
-              'text-sm mt-0.5 truncate',
-              isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
+              'text-base font-medium leading-snug truncate',
+              isDone && 'line-through text-muted-foreground'
             )}
           >
-            {metaInfo}
+            {task.title}
           </p>
+        </div>
+        
+        {/* Meta info: date AND project */}
+        {(dueDateText || projectName) && (
+          <div className="flex items-center gap-3 mt-0.5">
+            {/* Due date */}
+            {dueDateText && (
+              <span
+                className={cn(
+                  'text-sm',
+                  isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
+                )}
+              >
+                {dueDateText}
+              </span>
+            )}
+            
+            {/* Separator */}
+            {dueDateText && projectName && (
+              <span className="text-muted-foreground/40">•</span>
+            )}
+            
+            {/* Project */}
+            {projectName && (
+              <span className="flex items-center gap-1 text-sm text-muted-foreground truncate">
+                <Folder className="h-3 w-3 shrink-0" />
+                {projectName}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -137,7 +161,9 @@ export function TaskItemZen({
       <div
         className={cn(
           'shrink-0 transition-opacity duration-150',
-          isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none',
+          // Always show on touch devices via group-focus-within
+          'group-focus-within:opacity-100 group-focus-within:pointer-events-auto'
         )}
       >
         <DropdownMenu>
