@@ -5,19 +5,16 @@ import { AlertCircle, Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TaskListZen } from '@/components/tasks/TaskListZen';
 import { TaskDetailSheet } from '@/components/tasks/TaskDetailSheet';
+import { TaskFilterBar, TaskFilters, TaskSort } from '@/components/tasks/TaskFilterBar';
 import { useTasks } from '@/hooks/useTasks';
 import type { Task } from '@/lib/tasks/types';
 import { cn } from '@/lib/utils';
 
 /**
- * Zen All Tasks View - Smart date-based grouping
- * - Überfällig (if any)
- * - Heute
- * - Morgen
- * - Individual days for next 7 days
- * - Später (beyond 7 days)
- * - Ohne Datum (no date)
- * Each section shows completed toggle
+ * Zen All Tasks View with FilterBar
+ * - Filter by Priority, Tags, Projects
+ * - Sort by priority/date/title
+ * - Smart date-based grouping
  */
 
 interface TaskSection {
@@ -29,7 +26,22 @@ interface TaskSection {
   icon?: React.ReactNode;
 }
 
+const DEFAULT_FILTERS: TaskFilters = {
+  priorities: [],
+  tagIds: [],
+  projectIds: [],
+  hasDate: 'all',
+};
+
+const DEFAULT_SORT: TaskSort = {
+  by: 'priority',
+  direction: 'asc',
+};
+
 export default function AllTasksZen() {
+  const [filters, setFilters] = useState<TaskFilters>(DEFAULT_FILTERS);
+  const [sort, setSort] = useState<TaskSort>(DEFAULT_SORT);
+  
   const { data: openTasks, isLoading: loadingOpen } = useTasks({ 
     status: ['open', 'in_progress'] 
   });
@@ -38,9 +50,106 @@ export default function AllTasksZen() {
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  const sections = useMemo<TaskSection[]>(() => {
+  // Apply filters to tasks
+  const filteredOpenTasks = useMemo(() => {
     if (!openTasks) return [];
+    
+    return openTasks.filter((task) => {
+      // Priority filter
+      if (filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
+        return false;
+      }
+      
+      // Tags filter (task must have at least one of the selected tags)
+      if (filters.tagIds.length > 0) {
+        const taskTagIds = task.tags?.map((t) => t.id) || [];
+        if (!filters.tagIds.some((id) => taskTagIds.includes(id))) {
+          return false;
+        }
+      }
+      
+      // Projects filter
+      if (filters.projectIds.length > 0) {
+        if (!task.project_id || !filters.projectIds.includes(task.project_id)) {
+          return false;
+        }
+      }
+      
+      // Has date filter
+      if (filters.hasDate === 'with' && !task.due_date) {
+        return false;
+      }
+      if (filters.hasDate === 'without' && task.due_date) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [openTasks, filters]);
 
+  // Apply filters to done tasks
+  const filteredDoneTasks = useMemo(() => {
+    if (!doneTasks) return [];
+    
+    return doneTasks.filter((task) => {
+      if (filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
+        return false;
+      }
+      if (filters.tagIds.length > 0) {
+        const taskTagIds = task.tags?.map((t) => t.id) || [];
+        if (!filters.tagIds.some((id) => taskTagIds.includes(id))) {
+          return false;
+        }
+      }
+      if (filters.projectIds.length > 0) {
+        if (!task.project_id || !filters.projectIds.includes(task.project_id)) {
+          return false;
+        }
+      }
+      if (filters.hasDate === 'with' && !task.due_date) {
+        return false;
+      }
+      if (filters.hasDate === 'without' && task.due_date) {
+        return false;
+      }
+      return true;
+    });
+  }, [doneTasks, filters]);
+
+  // Sort function
+  const sortTasks = (tasks: Task[]): Task[] => {
+    return [...tasks].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sort.by) {
+        case 'priority': {
+          const priorityOrder = { p1: 0, p2: 1, p3: 2, p4: 3 };
+          comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
+          break;
+        }
+        case 'due_date': {
+          if (!a.due_date && !b.due_date) comparison = 0;
+          else if (!a.due_date) comparison = 1;
+          else if (!b.due_date) comparison = -1;
+          else comparison = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+          break;
+        }
+        case 'created_at': {
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        }
+        case 'title': {
+          comparison = a.title.localeCompare(b.title, 'de');
+          break;
+        }
+      }
+      
+      return sort.direction === 'asc' ? comparison : -comparison;
+    });
+  };
+
+  // Build sections
+  const sections = useMemo<TaskSection[]>(() => {
     const now = new Date();
     const groups: Record<string, { tasks: Task[]; doneTasks: Task[] }> = {
       overdue: { tasks: [], doneTasks: [] },
@@ -55,8 +164,8 @@ export default function AllTasksZen() {
       noDate: { tasks: [], doneTasks: [] },
     };
 
-    // Categorize open tasks
-    openTasks.forEach((task) => {
+    // Categorize filtered open tasks
+    filteredOpenTasks.forEach((task) => {
       if (!task.due_date) {
         groups.noDate.tasks.push(task);
         return;
@@ -71,7 +180,6 @@ export default function AllTasksZen() {
       } else if (isTomorrow(dueDate)) {
         groups.tomorrow.tasks.push(task);
       } else {
-        // Check days 2-6
         for (let i = 2; i <= 6; i++) {
           const targetDate = addDays(now, i);
           if (format(dueDate, 'yyyy-MM-dd') === format(targetDate, 'yyyy-MM-dd')) {
@@ -83,8 +191,8 @@ export default function AllTasksZen() {
       }
     });
 
-    // Categorize done tasks by their due_date
-    (doneTasks || []).forEach((task) => {
+    // Categorize filtered done tasks
+    filteredDoneTasks.forEach((task) => {
       if (!task.due_date) {
         groups.noDate.doneTasks.push(task);
         return;
@@ -110,20 +218,7 @@ export default function AllTasksZen() {
       }
     });
 
-    // Sort by priority then date within each group
-    const sortTasks = (tasks: Task[]) => {
-      return [...tasks].sort((a, b) => {
-        const priorityOrder = { p1: 0, p2: 1, p3: 2, p4: 3 };
-        const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-        if (priorityDiff !== 0) return priorityDiff;
-        if (a.due_date && b.due_date) {
-          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-        }
-        return 0;
-      });
-    };
-
-    // Build sections
+    // Build sections with sorting
     const result: TaskSection[] = [];
 
     if (groups.overdue.tasks.length > 0 || groups.overdue.doneTasks.length > 0) {
@@ -189,14 +284,20 @@ export default function AllTasksZen() {
     }
 
     return result;
-  }, [openTasks, doneTasks]);
+  }, [filteredOpenTasks, filteredDoneTasks, sort]);
 
   const isLoading = loadingOpen || loadingDone;
+  const hasActiveFilters = 
+    filters.priorities.length > 0 || 
+    filters.tagIds.length > 0 || 
+    filters.projectIds.length > 0 ||
+    filters.hasDate !== 'all';
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-9 w-40" />
+        <Skeleton className="h-9 w-full" />
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-16 rounded-2xl" />
@@ -206,30 +307,48 @@ export default function AllTasksZen() {
     );
   }
 
-  const totalOpen = openTasks?.length || 0;
-  const totalDone = doneTasks?.length || 0;
+  const totalOpen = filteredOpenTasks.length;
+  const totalAll = openTasks?.length || 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Alle Aufgaben</h1>
-        {totalOpen > 0 && (
-          <p className="text-lg text-muted-foreground mt-1">
-            {totalOpen} offen{totalDone > 0 ? ` · ${totalDone} erledigt` : ''}
-          </p>
-        )}
+        <p className="text-lg text-muted-foreground mt-1">
+          {hasActiveFilters ? (
+            <>
+              {totalOpen} von {totalAll} angezeigt
+            </>
+          ) : (
+            <>
+              {totalOpen} offen
+            </>
+          )}
+        </p>
       </header>
+
+      {/* Filter Bar */}
+      <TaskFilterBar
+        filters={filters}
+        sort={sort}
+        onFiltersChange={setFilters}
+        onSortChange={setSort}
+      />
 
       {/* Sections */}
       {sections.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <span className="text-2xl">🎉</span>
+            <span className="text-2xl">{hasActiveFilters ? '🔍' : '🎉'}</span>
           </div>
-          <p className="text-lg text-muted-foreground">Alles erledigt!</p>
+          <p className="text-lg text-muted-foreground">
+            {hasActiveFilters ? 'Keine Aufgaben gefunden' : 'Alles erledigt!'}
+          </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Tippe auf + um eine neue Aufgabe hinzuzufügen
+            {hasActiveFilters
+              ? 'Versuche andere Filter'
+              : 'Tippe auf + um eine neue Aufgabe hinzuzufügen'}
           </p>
         </div>
       ) : (
