@@ -18,7 +18,6 @@ import { Link } from "react-router-dom";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -48,28 +47,22 @@ export default function EntryPage() {
   const qc = useQueryClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
-  // Week-based navigation with year selector
+  // Week-based navigation - always start from current week
   const today = new Date();
-  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week (based on today)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
   }, []);
 
-  // Only 2026 and 2027 available
-  const years = useMemo(() => [2026, 2027], []);
-
-  // Calculate week dates based on year and offset
+  // Calculate week dates based on today + offset
   const weekDates = useMemo(() => {
-    // Start from first Monday of selected year, then add offset
-    const jan1 = new Date(selectedYear, 0, 1);
-    const firstMonday = startOfWeek(jan1, { weekStartsOn: 1 });
-    const targetWeek = addWeeks(firstMonday, weekOffset);
+    // Start from current week (today's week), then add offset
+    const targetWeek = addWeeks(today, weekOffset);
     const weekStart = startOfWeek(targetWeek, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(targetWeek, { weekStartsOn: 1 });
     return eachDayOfInterval({ start: weekStart, end: weekEnd });
-  }, [selectedYear, weekOffset]);
+  }, [weekOffset]);
 
   const weekStart = weekDates[0];
   const weekEnd = weekDates[weekDates.length - 1];
@@ -176,10 +169,7 @@ export default function EntryPage() {
   // Navigation
   const goToPrevWeek = () => setWeekOffset(prev => prev - 1);
   const goToNextWeek = () => setWeekOffset(prev => prev + 1);
-  const goToToday = () => {
-    setSelectedYear(today.getFullYear());
-    setWeekOffset(0);
-  };
+  const goToToday = () => setWeekOffset(0);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -227,23 +217,6 @@ export default function EntryPage() {
               <Button variant="ghost" size="icon" onClick={goToPrevWeek} className="h-8 w-8">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              
-              <Select 
-                value={selectedYear.toString()} 
-                onValueChange={(v) => {
-                  setSelectedYear(parseInt(v));
-                  setWeekOffset(0);
-                }}
-              >
-                <SelectTrigger className="w-[80px] h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
               <span className="text-sm font-medium px-2">KW {weekNumber}</span>
 
