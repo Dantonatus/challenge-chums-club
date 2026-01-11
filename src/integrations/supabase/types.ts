@@ -1031,6 +1031,8 @@ export type Database = {
           priority: Database["public"]["Enums"]["task_priority"]
           project_id: string | null
           recurring_frequency: Database["public"]["Enums"]["recurring_frequency"]
+          reminder_enabled: boolean
+          reminder_offset_minutes: number | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -1048,6 +1050,8 @@ export type Database = {
           priority?: Database["public"]["Enums"]["task_priority"]
           project_id?: string | null
           recurring_frequency?: Database["public"]["Enums"]["recurring_frequency"]
+          reminder_enabled?: boolean
+          reminder_offset_minutes?: number | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -1065,6 +1069,8 @@ export type Database = {
           priority?: Database["public"]["Enums"]["task_priority"]
           project_id?: string | null
           recurring_frequency?: Database["public"]["Enums"]["recurring_frequency"]
+          reminder_enabled?: boolean
+          reminder_offset_minutes?: number | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string

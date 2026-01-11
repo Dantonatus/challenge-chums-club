@@ -1,20 +1,22 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Inbox, CalendarCheck, CalendarDays, List, FolderKanban, Archive } from 'lucide-react';
+import { Inbox, CalendarCheck, CalendarDays, Calendar, List, FolderKanban, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTasks } from '@/hooks/useTasks';
 import { AddTaskFAB } from '@/components/tasks/AddTaskFAB';
+import { useTaskReminders } from '@/hooks/useTaskReminders';
 
 /**
  * Zen Tasks Layout - Simplified Navigation
- * - 4 main views: Heute, Alle, Projekte, Archiv
+ * - 6 main views including Calendar
  * - Clean sidebar on desktop, bottom nav on mobile
- * - FAB always visible
+ * - FAB always visible, reminders active
  */
 
 const NAV_ITEMS = [
   { to: '/app/tasks/inbox', label: 'Inbox', icon: Inbox },
   { to: '/app/tasks/today', label: 'Heute', icon: CalendarCheck },
   { to: '/app/tasks/upcoming', label: 'Demnächst', icon: CalendarDays },
+  { to: '/app/tasks/calendar', label: 'Kalender', icon: Calendar },
   { to: '/app/tasks/all', label: 'Alle', icon: List },
   { to: '/app/tasks/projects', label: 'Projekte', icon: FolderKanban },
   { to: '/app/tasks/archive', label: 'Archiv', icon: Archive },
@@ -22,6 +24,9 @@ const NAV_ITEMS = [
 
 export default function TasksLayoutZen() {
   const location = useLocation();
+  
+  // Activate reminders system
+  useTaskReminders();
   
   // Get task counts for badges
   const { data: allTasks } = useTasks({ status: ['open', 'in_progress'] });
