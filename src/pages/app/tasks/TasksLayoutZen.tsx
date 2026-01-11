@@ -1,9 +1,12 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Inbox, CalendarCheck, CalendarDays, Calendar, List, FolderKanban, Archive } from 'lucide-react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Inbox, CalendarCheck, CalendarDays, Calendar, List, FolderKanban, Archive, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTasks } from '@/hooks/useTasks';
 import { AddTaskFAB } from '@/components/tasks/AddTaskFAB';
 import { useTaskReminders } from '@/hooks/useTaskReminders';
+import { TaskPreferencesDialog } from '@/components/tasks/TaskPreferencesDialog';
+import { useTaskPreferences } from '@/hooks/useTaskPreferences';
 
 /**
  * Zen Tasks Layout - Simplified Navigation
@@ -24,9 +27,19 @@ const NAV_ITEMS = [
 
 export default function TasksLayoutZen() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { preferences } = useTaskPreferences();
   
   // Activate reminders system
   useTaskReminders();
+  
+  // Redirect to default view on first load at /app/tasks
+  useEffect(() => {
+    if (location.pathname === '/app/tasks' || location.pathname === '/app/tasks/') {
+      const viewPath = `/app/tasks/${preferences.defaultView === 'calendar' ? 'calendar' : preferences.defaultView}`;
+      navigate(viewPath, { replace: true });
+    }
+  }, [location.pathname, preferences.defaultView, navigate]);
   
   // Get task counts for badges
   const { data: allTasks } = useTasks({ status: ['open', 'in_progress'] });
@@ -77,6 +90,18 @@ export default function TasksLayoutZen() {
               </NavLink>
             );
           })}
+          
+          {/* Settings button */}
+          <div className="pt-4 border-t border-border/50 mt-4">
+            <TaskPreferencesDialog 
+              trigger={
+                <button className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-base font-medium transition-all w-full text-muted-foreground hover:text-foreground hover:bg-secondary">
+                  <Settings className="h-5 w-5" />
+                  <span>Einstellungen</span>
+                </button>
+              }
+            />
+          </div>
         </nav>
       </aside>
 
@@ -87,8 +112,9 @@ export default function TasksLayoutZen() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t border-border bg-background/95 backdrop-blur-md">
-        <div className="flex justify-around items-center h-16 max-w-md mx-auto px-4">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
+        <div className="flex justify-around items-center h-16 max-w-md mx-auto px-2">
+          {/* Show first 5 nav items on mobile */}
+          {NAV_ITEMS.slice(0, 5).map(({ to, label, icon: Icon }) => {
             const badge = getBadge(to);
             const isActive = location.pathname.startsWith(to);
             
@@ -97,22 +123,32 @@ export default function TasksLayoutZen() {
                 key={to}
                 to={to}
                 className={cn(
-                  'flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-colors min-w-[64px]',
+                  'flex flex-col items-center gap-0.5 py-2 rounded-xl transition-colors min-w-[48px]',
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
                 <div className="relative">
-                  <Icon className="h-6 w-6" />
+                  <Icon className="h-5 w-5" />
                   {badge !== null && (
-                    <span className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1">
+                    <span className="absolute -top-1 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground px-0.5">
                       {badge > 99 ? '99+' : badge}
                     </span>
                   )}
                 </div>
-                <span className="text-xs font-medium">{label}</span>
+                <span className="text-[10px] font-medium">{label}</span>
               </NavLink>
             );
           })}
+          
+          {/* Settings button on mobile */}
+          <TaskPreferencesDialog
+            trigger={
+              <button className="flex flex-col items-center gap-0.5 py-2 rounded-xl transition-colors min-w-[48px] text-muted-foreground">
+                <Settings className="h-5 w-5" />
+                <span className="text-[10px] font-medium">Mehr</span>
+              </button>
+            }
+          />
         </div>
       </nav>
 
