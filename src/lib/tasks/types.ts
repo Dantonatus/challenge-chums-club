@@ -19,6 +19,8 @@ export interface Task {
   user_id: string;
   group_id: string | null;
   recurring_frequency: RecurringFrequency;
+  reminder_enabled: boolean;
+  reminder_offset_minutes: number | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -87,6 +89,8 @@ export interface CreateTaskInput {
   project_id?: string;
   group_id?: string;
   recurring_frequency?: RecurringFrequency;
+  reminder_enabled?: boolean;
+  reminder_offset_minutes?: number | null;
   tags?: string[];
 }
 
@@ -128,3 +132,12 @@ export const EFFORT_LABELS: Record<TaskEffort, string> = {
   l: '2h',
   xl: '4h+',
 };
+
+// Reminder offset options
+export const REMINDER_OFFSETS: { value: number | null; label: string }[] = [
+  { value: null, label: 'Zur Fälligkeit' },
+  { value: 15, label: '15 Min vorher' },
+  { value: 30, label: '30 Min vorher' },
+  { value: 60, label: '1 Std vorher' },
+  { value: 1440, label: '1 Tag vorher' },
+];
