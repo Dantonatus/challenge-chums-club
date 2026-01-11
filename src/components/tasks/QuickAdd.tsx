@@ -19,6 +19,7 @@ import {
 import { useCreateTask } from '@/hooks/useTasks';
 import { useTags, useCreateTag } from '@/hooks/useTags';
 import { useProjects } from '@/hooks/useProjects';
+import { useTaskPreferences } from '@/hooks/useTaskPreferences';
 import { parseQuickAdd } from '@/lib/tasks/parser';
 import { cn } from '@/lib/utils';
 import type { TaskPriority, RecurringFrequency } from '@/lib/tasks/types';
@@ -49,19 +50,23 @@ type DateOption = 'none' | 'today' | 'tomorrow' | 'next_week';
 
 export function QuickAdd({ 
   defaultProjectId, 
-  defaultPriority = 'p3', 
+  defaultPriority, 
   defaultDueDate,
   className, 
   placeholder,
   autoFocus = false,
 }: QuickAddProps) {
+  // Get user preferences for defaults
+  const { preferences } = useTaskPreferences();
+  const effectivePriority = defaultPriority || preferences.defaultPriority;
+  
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
   
   // Always-visible options
   const [selectedDate, setSelectedDate] = useState<DateOption>(defaultDueDate ? 'none' : 'none');
-  const [priority, setPriority] = useState<TaskPriority>(defaultPriority);
+  const [priority, setPriority] = useState<TaskPriority>(effectivePriority);
   const [projectId, setProjectId] = useState<string>(defaultProjectId || 'none');
   
   // Extras
@@ -110,6 +115,13 @@ export function QuickAdd({
       due_date = defaultDueDate;
     }
 
+    // Use reminder defaults from preferences if task has a due date
+    const hasScheduledTime = due_date && parsed.due_time;
+    const reminderEnabled = hasScheduledTime ? preferences.reminderEnabled : false;
+    const reminderOffset = hasScheduledTime && preferences.reminderEnabled 
+      ? preferences.reminderOffsetMinutes 
+      : null;
+
     await createTask.mutateAsync({
       title: parsed.title,
       priority: parsed.priority || priority,
@@ -118,6 +130,8 @@ export function QuickAdd({
       project_id: projectId !== 'none' ? projectId : defaultProjectId,
       recurring_frequency: parsed.recurring_frequency || recurrence,
       tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+      reminder_enabled: reminderEnabled,
+      reminder_offset_minutes: reminderOffset,
     });
 
     // Reset form
@@ -125,7 +139,7 @@ export function QuickAdd({
     setSelectedTagIds([]);
     setRecurrence('none');
     setSelectedDate('none');
-    setPriority(defaultPriority);
+    setPriority(effectivePriority);
     setProjectId(defaultProjectId || 'none');
     setShowExtras(false);
   };
