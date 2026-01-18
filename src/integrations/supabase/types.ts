@@ -1162,6 +1162,15 @@ export type Database = {
         Args: { consuming_user_id?: string; token_value: string }
         Returns: boolean
       }
+      create_manual_kpi_violation: {
+        Args: {
+          p_amount_cents: number
+          p_challenge_id: string
+          p_user_id: string
+          p_violation_date?: string
+        }
+        Returns: string
+      }
       encrypt_approval_token: { Args: { token_value: string }; Returns: string }
       generate_secure_approval_token: {
         Args: { expiry_hours?: number; target_user_id: string }
