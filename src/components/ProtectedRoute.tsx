@@ -15,87 +15,85 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState<boolean>(false);
   const [resendingEmail, setResendingEmail] = useState(false);
 
+  // Helper to fetch user role
+  const fetchUserRole = async (userId: string) => {
+    setRoleLoading(true);
+    try {
+      const { data: roleData, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+      
+      if (!error && roleData) {
+        setUserRole(roleData.role);
+        setIsApproved(roleData.role === 'admin' || roleData.role === 'user');
+      } else {
+        console.error("Error fetching user role:", error);
+        setUserRole(null);
+        setIsApproved(false);
+      }
+    } catch (err) {
+      console.error("Error in role check:", err);
+      setUserRole(null);
+      setIsApproved(false);
+    } finally {
+      setRoleLoading(false);
+    }
+  };
+
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        if (!mounted) return;
+        
         console.log("Auth state changed:", event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
+        setLoading(false);
         
         if (session?.user) {
-          // Defer user role checking to prevent deadlocks
-          setTimeout(async () => {
-            try {
-              const { data: roleData, error } = await supabase
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', session.user.id)
-                .single();
-              
-              if (!error && roleData) {
-                setUserRole(roleData.role);
-                setIsApproved(roleData.role === 'admin' || roleData.role === 'user');
-              } else {
-                console.error("Error fetching user role:", error);
-                setUserRole(null);
-                setIsApproved(false);
-              }
-            } catch (err) {
-              console.error("Error in role check:", err);
-              setUserRole(null);
-              setIsApproved(false);
+          // Defer role fetch to prevent deadlocks
+          setTimeout(() => {
+            if (mounted) {
+              fetchUserRole(session.user.id);
             }
           }, 0);
         } else {
           setUserRole(null);
           setIsApproved(false);
+          setRoleLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
       
       if (session?.user) {
-        // Defer user role checking
-        setTimeout(async () => {
-          try {
-            const { data: roleData, error } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', session.user.id)
-              .single();
-            
-            if (!error && roleData) {
-              setUserRole(roleData.role);
-              setIsApproved(roleData.role === 'admin' || roleData.role === 'user');
-            } else {
-              console.error("Error fetching user role:", error);
-              setUserRole(null);
-              setIsApproved(false);
-            }
-          } catch (err) {
-            console.error("Error in role check:", err);
-            setUserRole(null);
-            setIsApproved(false);
-          }
-          setLoading(false);
-        }, 0);
+        fetchUserRole(session.user.id);
       } else {
-        setLoading(false);
+        setRoleLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -160,8 +158,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state - wait for BOTH auth and role to load
+  if (loading || roleLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
         <Card className="w-full max-w-md">
