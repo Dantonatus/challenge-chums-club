@@ -68,17 +68,29 @@ export const FriendsInvites = ({ userId, t }: FriendsInvitesProps) => {
     },
   });
 
-  // Groups owned or member of (for invite link/QR)
+  // Groups owned by the user (for invite link/QR) - uses secure RPC for invite codes
   const myGroupsOwned = useQuery({
     enabled: !!userId,
     queryKey: ["friends", "groups-owned", userId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get groups owned by user (without invite_code for security)
+      const { data: groups, error } = await supabase
         .from("groups")
-        .select("id,name,invite_code")
+        .select("id,name,owner_id")
         .eq("owner_id", userId);
       if (error) throw error;
-      return data || [];
+      
+      // Then fetch invite codes securely via RPC for each owned group
+      const groupsWithCodes = await Promise.all(
+        (groups || []).map(async (group) => {
+          const { data: inviteCode } = await supabase.rpc('get_group_invite_code', { 
+            p_group_id: group.id 
+          });
+          return { ...group, invite_code: inviteCode || '' };
+        })
+      );
+      
+      return groupsWithCodes;
     },
   });
 
@@ -97,15 +109,30 @@ export const FriendsInvites = ({ userId, t }: FriendsInvitesProps) => {
 
   const groupsFromMembership = useQuery({
     enabled: (myGroupMemberships.data || []).length > 0,
-    queryKey: ["friends", "groups-by-ids", (myGroupMemberships.data || []).map((m) => m.group_id).join(",")],
+    queryKey: ["friends", "groups-by-ids", userId, (myGroupMemberships.data || []).map((m) => m.group_id).join(",")],
     queryFn: async () => {
       const ids = (myGroupMemberships.data || []).map((m) => m.group_id);
-      const { data, error } = await supabase
+      // Get group info without invite_code (secure by default)
+      const { data: groups, error } = await supabase
         .from("groups")
-        .select("id,name,invite_code")
+        .select("id,name,owner_id")
         .in("id", ids);
       if (error) throw error;
-      return data || [];
+      
+      // For groups user owns, fetch invite codes securely
+      const groupsWithCodes = await Promise.all(
+        (groups || []).map(async (group) => {
+          if (group.owner_id === userId) {
+            const { data: inviteCode } = await supabase.rpc('get_group_invite_code', { 
+              p_group_id: group.id 
+            });
+            return { ...group, invite_code: inviteCode || '' };
+          }
+          return { ...group, invite_code: '' };
+        })
+      );
+      
+      return groupsWithCodes;
     },
   });
 
