@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Edit, Trash2, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-interface Group { id: string; name: string; description: string | null; invite_code: string; owner_id: string; }
+interface Group { id: string; name: string; description: string | null; invite_code?: string; owner_id: string; }
 
 const GroupsPage = () => {
   const { toast } = useToast();
@@ -28,8 +28,32 @@ const GroupsPage = () => {
   const [editDescription, setEditDescription] = useState('');
 
   const fetchGroups = async () => {
-    const { data } = await supabase.from('groups').select('*').order('created_at', { ascending: false });
-    setGroups(data || []);
+    // Fetch groups without invite_code (RLS prevents non-owner access to full table anyway)
+    const { data: groupsData } = await supabase
+      .from('groups')
+      .select('id,name,description,owner_id,created_at')
+      .order('created_at', { ascending: false });
+    
+    if (!groupsData) {
+      setGroups([]);
+      return;
+    }
+    
+    // For groups the user owns, fetch invite codes securely via RPC
+    const currentUserId = userId;
+    const groupsWithCodes = await Promise.all(
+      groupsData.map(async (group) => {
+        if (group.owner_id === currentUserId) {
+          const { data: inviteCode } = await supabase.rpc('get_group_invite_code', {
+            p_group_id: group.id
+          });
+          return { ...group, invite_code: inviteCode || '' };
+        }
+        return { ...group, invite_code: undefined };
+      })
+    );
+    
+    setGroups(groupsWithCodes);
   };
 
   useEffect(() => {
@@ -187,7 +211,7 @@ const GroupsPage = () => {
             </CardHeader>
             <CardContent>
               {/* Only show invite code to group owners for security */}
-              {g.owner_id === userId && (
+              {g.owner_id === userId && g.invite_code && (
                 <div className="text-sm text-muted-foreground mb-3">
                   Invite code: <code className="bg-muted px-2 py-1 rounded font-mono">{g.invite_code}</code>
                 </div>
@@ -198,9 +222,9 @@ const GroupsPage = () => {
                   setManageOpen({ open: true, groupId: g.id });
                 }}>Mitglieder verwalten</Button>
                 {/* Only show copy invite code button to group owners */}
-                {g.owner_id === userId && (
+                {g.owner_id === userId && g.invite_code && (
                   <Button size="sm" variant="secondary" onClick={() => {
-                    navigator.clipboard.writeText(g.invite_code);
+                    navigator.clipboard.writeText(g.invite_code!);
                     toast({ title: 'Invite code kopiert' });
                   }}>Code kopieren</Button>
                 )}
