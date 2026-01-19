@@ -23,46 +23,14 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log("=== ADMIN NOTIFICATION FUNCTION START ===");
-    
-    // First, let's see if the function runs at all
-    console.log("Function is executing...");
-    
-    // Debug: Log all available environment variables to see what's actually there
-    try {
-      const envKeys = Object.keys(Deno.env.toObject());
-      console.log("Available environment variables:", envKeys);
-    } catch (envError) {
-      console.error("Error accessing environment variables:", envError);
-    }
-    
-    // Debug: Check if secrets are available with detailed logging
-    let adminEmail, resendApiKey;
-    try {
-      adminEmail = Deno.env.get("ADMIN_EMAIL");
-      console.log("ADMIN_EMAIL check - exists:", !!adminEmail, "length:", adminEmail?.length || 0);
-    } catch (e) {
-      console.error("Error getting ADMIN_EMAIL:", e);
-    }
-    
-    try {
-      resendApiKey = Deno.env.get("RESEND_API_KEY");
-      console.log("RESEND_API_KEY check - exists:", !!resendApiKey, "length:", resendApiKey?.length || 0);
-    } catch (e) {
-      console.error("Error getting RESEND_API_KEY:", e);
-    }
-    
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
     const { userId, userEmail, userName }: AdminNotificationRequest = await req.json();
-    console.log("Processing approval request for:", { userId, userEmail, userName });
 
-    // Validate required inputs
     if (!userId || !userEmail) {
-      console.error("Missing required fields:", { userId, userEmail, userName });
       throw new Error("Missing required fields: userId and userEmail are required");
     }
 
@@ -71,7 +39,7 @@ const handler = async (req: Request): Promise<Response> => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // Token expires in 7 days
 
-    console.log("Creating approval token with expiry:", expiresAt.toISOString());
+    
 
     // Store the approval token
     const { error: tokenError } = await supabaseClient
@@ -87,7 +55,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Failed to create approval token: ${tokenError.message}`);
     }
 
-    console.log("Approval token created successfully");
+    
 
     // Create approval URL for admin
     const approvalUrl = `${Deno.env.get("SUPABASE_URL").replace('/rest/v1', '')}/functions/v1/approve-user?token=${approvalToken}`;
@@ -126,16 +94,13 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     `;
 
-    // Temporary fix: hardcode admin email while we debug secrets
-    adminEmail = Deno.env.get("ADMIN_EMAIL") || "danielantonatus@live.de";
-    console.log("Using admin email:", adminEmail);
+    const adminEmail = Deno.env.get("ADMIN_EMAIL");
+    if (!adminEmail) {
+      throw new Error("ADMIN_EMAIL environment variable not set");
+    }
 
-    console.log("Sending email to admin:", adminEmail);
-
-    // Initialize Resend with fallback while we debug secrets
-    resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
-      console.error("RESEND_API_KEY environment variable not set - this will cause email sending to fail");
       throw new Error("RESEND_API_KEY environment variable not set");
     }
     const resend = new Resend(resendApiKey);
@@ -146,8 +111,6 @@ const handler = async (req: Request): Promise<Response> => {
       subject: `🔐 New User Approval Required: ${userEmail}`,
       html: emailContent,
     });
-
-    console.log("Email sent successfully:", emailResponse);
 
     return new Response(JSON.stringify({ 
       success: true, 
