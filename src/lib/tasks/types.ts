@@ -45,6 +45,8 @@ export interface Project {
   description: string | null;
   status: ProjectStatus;
   color: string;
+  parent_id: string | null;
+  sort_order: number;
   user_id: string;
   group_id: string | null;
   created_at: string;
@@ -52,6 +54,7 @@ export interface Project {
   // Computed
   task_count?: number;
   completed_count?: number;
+  children?: Project[];
 }
 
 export interface Tag {
@@ -103,6 +106,8 @@ export interface CreateProjectInput {
   description?: string;
   color?: string;
   group_id?: string;
+  parent_id?: string;
+  sort_order?: number;
 }
 
 export interface CreateTagInput {

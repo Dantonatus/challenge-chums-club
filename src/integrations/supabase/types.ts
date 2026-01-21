@@ -633,6 +633,8 @@ export type Database = {
           group_id: string | null
           id: string
           name: string
+          parent_id: string | null
+          sort_order: number | null
           status: Database["public"]["Enums"]["project_status"]
           updated_at: string
           user_id: string
@@ -644,6 +646,8 @@ export type Database = {
           group_id?: string | null
           id?: string
           name: string
+          parent_id?: string | null
+          sort_order?: number | null
           status?: Database["public"]["Enums"]["project_status"]
           updated_at?: string
           user_id: string
@@ -655,6 +659,8 @@ export type Database = {
           group_id?: string | null
           id?: string
           name?: string
+          parent_id?: string | null
+          sort_order?: number | null
           status?: Database["public"]["Enums"]["project_status"]
           updated_at?: string
           user_id?: string
@@ -665,6 +671,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
