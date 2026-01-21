@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MoreHorizontal, Trash2 } from 'lucide-react';
+import { ArrowLeft, MoreHorizontal, Trash2, FolderPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,26 +9,37 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { QuickAdd } from '@/components/tasks/QuickAdd';
-import { TaskList } from '@/components/tasks/TaskList';
+import { TaskListZen } from '@/components/tasks/TaskListZen';
+import { TaskDetailSheet } from '@/components/tasks/TaskDetailSheet';
+import { CreateProjectDialog } from '@/components/tasks/CreateProjectDialog';
 import { useProject, useDeleteProject } from '@/hooks/useProjects';
 import { useTasks } from '@/hooks/useTasks';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Task } from '@/lib/tasks/types';
 
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showCreateSubproject, setShowCreateSubproject] = useState(false);
   
   const { data: project, isLoading: projectLoading } = useProject(projectId);
-  const { data: tasks, isLoading: tasksLoading } = useTasks({ 
+  const { data: tasks = [], isLoading: tasksLoading } = useTasks({ 
     project_id: projectId,
     status: ['open', 'in_progress']
+  });
+  const { data: doneTasks = [] } = useTasks({
+    project_id: projectId,
+    status: ['done']
   });
   const deleteProject = useDeleteProject();
 
   const handleDelete = async () => {
     if (!projectId) return;
-    await deleteProject.mutateAsync(projectId);
-    navigate('/app/tasks/projects');
+    if (confirm(`Projekt "${project?.name}" wirklich löschen?`)) {
+      await deleteProject.mutateAsync(projectId);
+      navigate('/app/tasks/projects');
+    }
   };
 
   if (projectLoading) {
@@ -47,9 +59,9 @@ export default function ProjectDetail() {
   if (!project) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-muted-foreground">Project not found</p>
+        <p className="text-muted-foreground">Projekt nicht gefunden</p>
         <Button variant="link" onClick={() => navigate('/app/tasks/projects')}>
-          Back to projects
+          Zurück zu Projekten
         </Button>
       </div>
     );
@@ -63,7 +75,7 @@ export default function ProjectDetail() {
           variant="ghost"
           size="icon"
           onClick={() => navigate('/app/tasks/projects')}
-          aria-label="Back to projects"
+          aria-label="Zurück zu Projekten"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -87,12 +99,16 @@ export default function ProjectDetail() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setShowCreateSubproject(true)}>
+              <FolderPlus className="mr-2 h-4 w-4" />
+              Unterprojekt erstellen
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleDelete}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete project
+              Projekt löschen
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -101,7 +117,7 @@ export default function ProjectDetail() {
       {/* Quick Add */}
       <QuickAdd 
         defaultProjectId={projectId} 
-        placeholder={`Add task to ${project.name}...`}
+        placeholder={`Aufgabe zu ${project.name} hinzufügen...`}
       />
 
       {/* Task List */}
@@ -112,12 +128,28 @@ export default function ProjectDetail() {
           ))}
         </div>
       ) : (
-        <TaskList
-          tasks={tasks || []}
-          emptyType="project"
-          showProject={false}
+        <TaskListZen
+          tasks={tasks}
+          doneTasks={doneTasks}
+          onEdit={setEditingTask}
+          emptyMessage="Noch keine Aufgaben in diesem Projekt"
+          showDoneToggle
         />
       )}
+
+      {/* Task Detail Sheet */}
+      <TaskDetailSheet
+        task={editingTask}
+        open={!!editingTask}
+        onOpenChange={(open) => !open && setEditingTask(null)}
+      />
+
+      {/* Create Subproject Dialog */}
+      <CreateProjectDialog
+        open={showCreateSubproject}
+        onOpenChange={setShowCreateSubproject}
+        parentId={projectId}
+      />
     </div>
   );
 }

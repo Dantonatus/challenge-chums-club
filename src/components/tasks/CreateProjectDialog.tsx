@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,15 +16,24 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useCreateProject } from '@/hooks/useProjects';
+import { useProjectsFlat } from '@/hooks/useProjectTree';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   description: z.string().optional(),
   color: z.string().default('#6366f1'),
+  parent_id: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -44,11 +53,16 @@ const PRESET_COLORS = [
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  parentId?: string;
 }
 
-export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogProps) {
+export function CreateProjectDialog({ open, onOpenChange, parentId }: CreateProjectDialogProps) {
   const createProject = useCreateProject();
+  const { data: allProjects } = useProjectsFlat();
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
+
+  // Filter to only show root-level projects as parent options (no deep nesting)
+  const parentOptions = allProjects?.filter(p => !p.parent_id) || [];
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -56,16 +70,24 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
       name: '',
       description: '',
       color: PRESET_COLORS[0],
+      parent_id: parentId || 'none',
     },
   });
+
+  // Update parent_id when parentId prop changes
+  useEffect(() => {
+    form.setValue('parent_id', parentId || 'none');
+  }, [parentId, form]);
 
   const onSubmit = async (data: FormData) => {
     await createProject.mutateAsync({
       name: data.name,
       description: data.description,
       color: selectedColor,
+      parent_id: data.parent_id === 'none' ? undefined : data.parent_id,
     });
     form.reset();
+    setSelectedColor(PRESET_COLORS[0]);
     onOpenChange(false);
   };
 
@@ -73,7 +95,9 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Project</DialogTitle>
+          <DialogTitle>
+            {parentId ? 'Unterprojekt erstellen' : 'Projekt erstellen'}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -85,7 +109,7 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="My Project" {...field} />
+                    <Input placeholder="Mein Projekt" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -97,10 +121,10 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description (optional)</FormLabel>
+                  <FormLabel>Beschreibung (optional)</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="What is this project about?"
+                      placeholder="Worum geht es in diesem Projekt?"
                       className="resize-none"
                       rows={3}
                       {...field} 
@@ -111,8 +135,41 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
               )}
             />
 
+            {/* Parent project selection */}
+            <FormField
+              control={form.control}
+              name="parent_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Übergeordnetes Projekt</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Kein übergeordnetes Projekt" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Kein übergeordnetes Projekt</SelectItem>
+                      {parentOptions.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-2 w-2 rounded-full shrink-0"
+                              style={{ backgroundColor: project.color }}
+                            />
+                            {project.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="space-y-2">
-              <label className="text-sm font-medium">Color</label>
+              <label className="text-sm font-medium">Farbe</label>
               <div className="flex flex-wrap gap-2">
                 {PRESET_COLORS.map((color) => (
                   <button
@@ -137,10 +194,10 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Cancel
+                Abbrechen
               </Button>
               <Button type="submit" disabled={createProject.isPending}>
-                {createProject.isPending ? 'Creating...' : 'Create Project'}
+                {createProject.isPending ? 'Erstelle...' : 'Erstellen'}
               </Button>
             </div>
           </form>

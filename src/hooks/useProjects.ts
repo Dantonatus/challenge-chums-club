@@ -80,7 +80,12 @@ export function useCreateProject() {
       const { data, error } = await supabase
         .from('projects')
         .insert({
-          ...input,
+          name: input.name,
+          description: input.description,
+          color: input.color,
+          group_id: input.group_id,
+          parent_id: input.parent_id || null,
+          sort_order: input.sort_order || 0,
           user_id: user.user.id,
         })
         .select()

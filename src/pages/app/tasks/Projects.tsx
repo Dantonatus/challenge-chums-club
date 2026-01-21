@@ -1,56 +1,123 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FolderKanban } from 'lucide-react';
-import { ProjectCard, NewProjectCard } from '@/components/tasks/ProjectCard';
+import { useState, useMemo } from 'react';
+import { DndContext, DragOverlay, closestCenter, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import { useProjectTree } from '@/hooks/useProjectTree';
+import { useTasks } from '@/hooks/useTasks';
+import { useMoveTask } from '@/hooks/useMoveTask';
+import { ProjectTreeView } from '@/components/tasks/projects/ProjectTreeView';
+import { ProjectDetailPanel } from '@/components/tasks/projects/ProjectDetailPanel';
+import { TaskDragOverlay } from '@/components/tasks/projects/DraggableTaskItem';
 import { CreateProjectDialog } from '@/components/tasks/CreateProjectDialog';
-import { useProjects } from '@/hooks/useProjects';
-import { Skeleton } from '@/components/ui/skeleton';
+import type { Task, Project } from '@/lib/tasks/types';
+import { findProjectInTree } from '@/hooks/useProjectTree';
 
 export default function TasksProjects() {
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const navigate = useNavigate();
-  const { data: projects, isLoading } = useProjects('active');
+  const [createDialogParentId, setCreateDialogParentId] = useState<string | undefined>();
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  const { data: projectTree = [], isLoading: projectsLoading } = useProjectTree();
+  const { data: allTasks = [], isLoading: tasksLoading } = useTasks({ status: ['open', 'in_progress'] });
+  const { data: allDoneTasks = [] } = useTasks({ status: ['done'] });
+  const moveTask = useMoveTask();
+
+  // Filter tasks for selected project
+  const projectTasks = useMemo(() => {
+    if (selectedProjectId === null) {
+      // Unassigned tasks
+      return allTasks.filter(t => !t.project_id);
+    }
+    return allTasks.filter(t => t.project_id === selectedProjectId);
+  }, [allTasks, selectedProjectId]);
+
+  const projectDoneTasks = useMemo(() => {
+    if (selectedProjectId === null) {
+      return allDoneTasks.filter(t => !t.project_id);
+    }
+    return allDoneTasks.filter(t => t.project_id === selectedProjectId);
+  }, [allDoneTasks, selectedProjectId]);
+
+  // Get selected project object
+  const selectedProject = useMemo(() => {
+    if (selectedProjectId === null) return null;
+    return findProjectInTree(projectTree, selectedProjectId);
+  }, [projectTree, selectedProjectId]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const task = event.active.data.current?.task as Task | undefined;
+    if (task) {
+      setActiveTask(task);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveTask(null);
+
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const targetId = over.id as string;
+
+    // Determine target project ID
+    const newProjectId = targetId === 'unassigned' ? null : targetId;
+
+    // Only move if different from current
+    const task = allTasks.find(t => t.id === taskId) || allDoneTasks.find(t => t.id === taskId);
+    if (task && task.project_id !== newProjectId) {
+      moveTask.mutate({ taskId, projectId: newProjectId });
+    }
+  };
+
+  const handleCreateProject = () => {
+    setCreateDialogParentId(undefined);
+    setShowCreateDialog(true);
+  };
+
+  const handleCreateSubproject = (parentId: string) => {
+    setCreateDialogParentId(parentId);
+    setShowCreateDialog(true);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground">
-            Organize related tasks together
-          </p>
+    <DndContext
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex h-[calc(100vh-8rem)] gap-0 -mx-4 -mt-4">
+        {/* Left: Project Tree */}
+        <div className="w-64 shrink-0 border-r bg-muted/30">
+          <ProjectTreeView
+            projects={projectTree}
+            isLoading={projectsLoading}
+            selectedId={selectedProjectId}
+            onSelect={setSelectedProjectId}
+            onCreateProject={handleCreateProject}
+          />
         </div>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <FolderKanban className="h-4 w-4" />
-          <span className="text-sm">{projects?.length || 0} projects</span>
-        </div>
+
+        {/* Right: Project Detail with Tasks */}
+        <ProjectDetailPanel
+          project={selectedProject}
+          projects={projectTree}
+          tasks={projectTasks}
+          doneTasks={projectDoneTasks}
+          isLoading={tasksLoading}
+          onCreateSubproject={handleCreateSubproject}
+        />
       </div>
 
-      {/* Projects Grid */}
-      {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-36 rounded-2xl" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects?.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onClick={() => navigate(`/app/tasks/projects/${project.id}`)}
-            />
-          ))}
-          <NewProjectCard onClick={() => setShowCreateDialog(true)} />
-        </div>
-      )}
+      {/* Drag overlay */}
+      <DragOverlay>
+        {activeTask && <TaskDragOverlay task={activeTask} />}
+      </DragOverlay>
 
       <CreateProjectDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
+        parentId={createDialogParentId}
       />
-    </div>
+    </DndContext>
   );
 }

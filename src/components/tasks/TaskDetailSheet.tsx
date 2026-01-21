@@ -34,7 +34,7 @@ import { SubtaskList } from './SubtaskList';
 import type { Task, TaskPriority, RecurringFrequency, TaskEffort } from '@/lib/tasks/types';
 import { useUpdateTask, useDeleteTask, useCompleteTask } from '@/hooks/useTasks';
 import { useCreateSubtask, useUpdateSubtask, useDeleteSubtask } from '@/hooks/useSubtasks';
-import { useProjects } from '@/hooks/useProjects';
+import { useProjectsFlat } from '@/hooks/useProjectTree';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -75,7 +75,7 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
   const createSubtask = useCreateSubtask();
   const updateSubtask = useUpdateSubtask();
   const deleteSubtask = useDeleteSubtask();
-  const { data: projects } = useProjects();
+  const { data: projects } = useProjectsFlat();
 
   // Sync state when task changes
   useEffect(() => {
@@ -308,6 +308,7 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
                   {projects?.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       <div className="flex items-center gap-2">
+                        {project.parent_id && <span className="text-muted-foreground ml-2">↳</span>}
                         <div
                           className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: project.color || 'hsl(var(--muted))' }}
