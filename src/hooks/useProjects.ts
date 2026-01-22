@@ -120,22 +120,41 @@ export function useUpdateProject() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<CreateProjectInput> & { id: string }) => {
+      // Convert undefined parent_id to null for database
+      const dbUpdates = {
+        ...updates,
+        parent_id: updates.parent_id === undefined ? null : updates.parent_id,
+      };
+
       const { data, error } = await supabase
         .from('projects')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Audit log
+      const { data: user } = await supabase.auth.getUser();
+      if (user.user) {
+        await supabase.from('task_audit_log').insert({
+          entity_type: 'project',
+          entity_id: id,
+          action: 'updated',
+          payload_json: updates,
+          user_id: user.user.id,
+        });
+      }
+
       return data as Project;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PROJECTS_KEY });
-      toast.success('Project updated');
+      toast.success('Projekt aktualisiert');
     },
     onError: (error) => {
-      toast.error('Failed to update project: ' + error.message);
+      toast.error('Projekt konnte nicht aktualisiert werden: ' + error.message);
     },
   });
 }

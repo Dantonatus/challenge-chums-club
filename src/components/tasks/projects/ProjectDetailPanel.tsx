@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { MoreHorizontal, Plus, Trash2, ChevronRight, FolderPlus } from 'lucide-react';
+import { MoreHorizontal, Trash2, ChevronRight, FolderPlus, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,7 +15,7 @@ import { TaskDetailSheet } from '@/components/tasks/TaskDetailSheet';
 import { QuickAdd } from '@/components/tasks/QuickAdd';
 import { DraggableTaskItem } from './DraggableTaskItem';
 import { useDeleteProject } from '@/hooks/useProjects';
-import { getProjectPath } from '@/hooks/useProjectTree';
+import { getProjectPath, findProjectInTree } from '@/hooks/useProjectTree';
 import type { Task, Project } from '@/lib/tasks/types';
 
 interface ProjectDetailPanelProps {
@@ -24,6 +25,8 @@ interface ProjectDetailPanelProps {
   doneTasks: Task[];
   isLoading: boolean;
   onCreateSubproject: (parentId: string) => void;
+  onEditProject?: (project: Project) => void;
+  onSelectProject?: (id: string) => void;
 }
 
 export function ProjectDetailPanel({
@@ -33,6 +36,8 @@ export function ProjectDetailPanel({
   doneTasks,
   isLoading,
   onCreateSubproject,
+  onEditProject,
+  onSelectProject,
 }: ProjectDetailPanelProps) {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showDone, setShowDone] = useState(false);
@@ -45,6 +50,10 @@ export function ProjectDetailPanel({
     if (confirm(`Projekt "${project.name}" wirklich löschen?`)) {
       await deleteProject.mutateAsync(project.id);
     }
+  };
+
+  const handleBreadcrumbClick = (projectId: string) => {
+    onSelectProject?.(projectId);
   };
 
   if (isLoading) {
@@ -106,15 +115,23 @@ export function ProjectDetailPanel({
           {breadcrumbs.map((p, i) => (
             <div key={p.id} className="flex items-center min-w-0">
               {i > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mx-1" />}
-              <div className="flex items-center gap-1.5 min-w-0">
+              <button
+                onClick={() => handleBreadcrumbClick(p.id)}
+                className={`flex items-center gap-1.5 min-w-0 rounded px-1.5 py-0.5 transition-colors ${
+                  i === breadcrumbs.length - 1 
+                    ? 'font-semibold cursor-default' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                }`}
+                disabled={i === breadcrumbs.length - 1}
+              >
                 <div
                   className="h-3 w-3 rounded-full shrink-0"
                   style={{ backgroundColor: p.color }}
                 />
-                <span className={`truncate ${i === breadcrumbs.length - 1 ? 'font-semibold' : 'text-muted-foreground'}`}>
+                <span className="truncate">
                   {p.name}
                 </span>
-              </div>
+              </button>
             </div>
           ))}
         </div>
@@ -126,12 +143,17 @@ export function ProjectDetailPanel({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEditProject?.(project)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Projekt bearbeiten
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onCreateSubproject(project.id)}>
               <FolderPlus className="h-4 w-4 mr-2" />
               Unterprojekt erstellen
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-destructive"
+              className="text-destructive focus:text-destructive"
               onClick={handleDeleteProject}
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -156,9 +178,15 @@ export function ProjectDetailPanel({
       {/* Tasks */}
       <ScrollArea className="flex-1 px-4 py-2">
         {tasks.length === 0 && doneTasks.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            Noch keine Tasks in diesem Projekt
-          </p>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="text-4xl mb-3">📁</div>
+            <p className="text-muted-foreground mb-4">
+              Noch keine Tasks in diesem Projekt
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Tipp: Ziehe Tasks hierher oder nutze Quick-Add oben
+            </p>
+          </div>
         ) : (
           <div className="space-y-1">
             {tasks.map((task) => (
