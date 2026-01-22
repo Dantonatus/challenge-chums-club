@@ -3,10 +3,12 @@ import { DndContext, DragOverlay, closestCenter, DragEndEvent, DragStartEvent } 
 import { useProjectTree } from '@/hooks/useProjectTree';
 import { useTasks } from '@/hooks/useTasks';
 import { useMoveTask } from '@/hooks/useMoveTask';
+import { useDeleteProject } from '@/hooks/useProjects';
 import { ProjectTreeView } from '@/components/tasks/projects/ProjectTreeView';
 import { ProjectDetailPanel } from '@/components/tasks/projects/ProjectDetailPanel';
 import { TaskDragOverlay } from '@/components/tasks/projects/DraggableTaskItem';
 import { CreateProjectDialog } from '@/components/tasks/CreateProjectDialog';
+import { EditProjectDialog } from '@/components/tasks/EditProjectDialog';
 import type { Task, Project } from '@/lib/tasks/types';
 import { findProjectInTree } from '@/hooks/useProjectTree';
 
@@ -15,11 +17,13 @@ export default function TasksProjects() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createDialogParentId, setCreateDialogParentId] = useState<string | undefined>();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   const { data: projectTree = [], isLoading: projectsLoading } = useProjectTree();
   const { data: allTasks = [], isLoading: tasksLoading } = useTasks({ status: ['open', 'in_progress'] });
   const { data: allDoneTasks = [] } = useTasks({ status: ['done'] });
   const moveTask = useMoveTask();
+  const deleteProject = useDeleteProject();
 
   // Filter tasks for selected project
   const projectTasks = useMemo(() => {
@@ -79,6 +83,19 @@ export default function TasksProjects() {
     setShowCreateDialog(true);
   };
 
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+  };
+
+  const handleDeleteProject = async (project: Project) => {
+    if (confirm(`Projekt "${project.name}" wirklich löschen?`)) {
+      await deleteProject.mutateAsync(project.id);
+      if (selectedProjectId === project.id) {
+        setSelectedProjectId(null);
+      }
+    }
+  };
+
   return (
     <DndContext
       collisionDetection={closestCenter}
@@ -94,6 +111,9 @@ export default function TasksProjects() {
             selectedId={selectedProjectId}
             onSelect={setSelectedProjectId}
             onCreateProject={handleCreateProject}
+            onCreateSubproject={handleCreateSubproject}
+            onEditProject={handleEditProject}
+            onDeleteProject={handleDeleteProject}
           />
         </div>
 
@@ -105,6 +125,8 @@ export default function TasksProjects() {
           doneTasks={projectDoneTasks}
           isLoading={tasksLoading}
           onCreateSubproject={handleCreateSubproject}
+          onEditProject={handleEditProject}
+          onSelectProject={setSelectedProjectId}
         />
       </div>
 
@@ -117,6 +139,12 @@ export default function TasksProjects() {
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         parentId={createDialogParentId}
+      />
+
+      <EditProjectDialog
+        open={!!editingProject}
+        onOpenChange={(open) => !open && setEditingProject(null)}
+        project={editingProject}
       />
     </DndContext>
   );

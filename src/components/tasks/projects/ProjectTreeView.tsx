@@ -15,6 +15,8 @@ interface ProjectTreeViewProps {
   onSelect: (id: string | null) => void;
   onCreateProject: () => void;
   onCreateSubproject?: (parentId: string) => void;
+  onEditProject?: (project: Project) => void;
+  onDeleteProject?: (project: Project) => void;
 }
 
 export function ProjectTreeView({
@@ -23,6 +25,9 @@ export function ProjectTreeView({
   selectedId,
   onSelect,
   onCreateProject,
+  onCreateSubproject,
+  onEditProject,
+  onDeleteProject,
 }: ProjectTreeViewProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -116,6 +121,9 @@ export function ProjectTreeView({
               onSelect={onSelect}
               expandedIds={expandedIds}
               onToggleExpand={handleToggleExpand}
+              onEdit={onEditProject}
+              onCreateSubproject={onCreateSubproject}
+              onDelete={onDeleteProject}
             />
           ))}
 
