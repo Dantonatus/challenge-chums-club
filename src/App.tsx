@@ -28,6 +28,7 @@ import TasksUpcoming from "./pages/app/tasks/Upcoming";
 import AllTasksZen from "./pages/app/tasks/AllTasksZen";
 import TasksProjects from "./pages/app/tasks/Projects";
 import ProjectDetail from "./pages/app/tasks/ProjectDetail";
+import TasksCalendar from "./pages/app/tasks/Calendar";
 import TasksArchive from "./pages/app/tasks/Archive";
 // Recipes
 import RecipesLayout from "./pages/app/recipes/RecipesLayout";
@@ -77,6 +78,7 @@ const App = () => (
                 <Route path="all" element={<AllTasksZen />} />
                 <Route path="projects" element={<TasksProjects />} />
                 <Route path="projects/:projectId" element={<ProjectDetail />} />
+                <Route path="calendar" element={<TasksCalendar />} />
                 <Route path="archive" element={<TasksArchive />} />
               </Route>
               {/* Recipes */}
