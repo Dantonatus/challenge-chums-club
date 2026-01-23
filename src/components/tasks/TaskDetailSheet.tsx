@@ -34,7 +34,7 @@ import { SubtaskList } from './SubtaskList';
 import type { Task, TaskPriority, RecurringFrequency, TaskEffort } from '@/lib/tasks/types';
 import { useUpdateTask, useDeleteTask, useCompleteTask } from '@/hooks/useTasks';
 import { useCreateSubtask, useUpdateSubtask, useDeleteSubtask } from '@/hooks/useSubtasks';
-import { useProjectsFlat } from '@/hooks/useProjectTree';
+import { useProjectTree } from '@/hooks/useProjectTree';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -75,7 +75,19 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
   const createSubtask = useCreateSubtask();
   const updateSubtask = useUpdateSubtask();
   const deleteSubtask = useDeleteSubtask();
-  const { data: projects } = useProjectsFlat();
+  const { data: projectTree } = useProjectTree();
+
+  const flattenedProjects = (() => {
+    const out: Array<{ id: string; name: string; color: string | null; depth: number }> = [];
+    const walk = (nodes: typeof projectTree extends Array<infer T> ? T[] : any, depth: number) => {
+      (nodes || []).forEach((p: any) => {
+        out.push({ id: p.id, name: p.name, color: p.color ?? null, depth });
+        if (p.children && p.children.length > 0) walk(p.children, depth + 1);
+      });
+    };
+    walk(projectTree || [], 0);
+    return out;
+  })();
 
   // Sync state when task changes
   useEffect(() => {
@@ -305,10 +317,15 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Kein Projekt</SelectItem>
-                  {projects?.map((project) => (
+                  {flattenedProjects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
-                      <div className="flex items-center gap-2">
-                        {project.parent_id && <span className="text-muted-foreground ml-2">↳</span>}
+                      <div
+                        className="flex items-center gap-2"
+                        style={{ paddingLeft: project.depth * 14 }}
+                      >
+                        {project.depth > 0 && (
+                          <span className="text-muted-foreground">↳</span>
+                        )}
                         <div
                           className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: project.color || 'hsl(var(--muted))' }}
