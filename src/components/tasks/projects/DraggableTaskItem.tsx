@@ -1,5 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/lib/tasks/types';
 
@@ -24,14 +25,24 @@ export function DraggableTaskItem({ task, children }: DraggableTaskItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
       className={cn(
-        'touch-none',
+        'group/drag flex items-center gap-1',
         isDragging && 'opacity-50 z-50'
       )}
     >
-      {children}
+      {/* Drag handle - only this triggers drag, not the whole item */}
+      <button
+        {...listeners}
+        {...attributes}
+        className="shrink-0 p-1 opacity-0 group-hover/drag:opacity-100 cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground transition-opacity"
+        aria-label="Drag to move"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      {/* Task content - clicking this opens edit, NOT drag */}
+      <div className="flex-1 min-w-0">
+        {children}
+      </div>
     </div>
   );
 }
