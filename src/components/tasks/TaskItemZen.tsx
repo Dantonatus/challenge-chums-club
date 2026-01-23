@@ -205,6 +205,11 @@ export function TaskItemZen({
             </span>
           )}
           
+          {/* Created at date */}
+          <span className="text-[11px] text-muted-foreground/60">
+            ({format(parseISO(task.created_at), 'd.M.yy', { locale: de })})
+          </span>
+          
           {/* Tag dots */}
           {visibleTags.length > 0 && (
             <span className="inline-flex items-center gap-0.5">
