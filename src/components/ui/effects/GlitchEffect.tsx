@@ -13,16 +13,25 @@ const THEME_SWITCH_DELAY = 400;
 
 export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: GlitchEffectProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
-  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  const completedRef = useRef(false);
   
-  callbacksRef.current = { onThemeSwitch, onComplete };
+  // Store callbacks in ref
+  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  useEffect(() => {
+    callbacksRef.current = { onThemeSwitch, onComplete };
+  }, [onThemeSwitch, onComplete]);
 
   useEffect(() => {
     if (!isActive) {
       themeSwitchedRef.current = false;
+      completedRef.current = false;
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
       return;
     }
 
@@ -37,8 +46,11 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
 
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
+    completedRef.current = false;
 
     const animate = (currentTime: number) => {
+      if (!isActive || completedRef.current) return;
+      
       const elapsed = currentTime - startTimeRef.current;
       const normalizedTime = elapsed / DURATION;
 
@@ -54,7 +66,7 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
       } else {
         intensity = 1 - ((normalizedTime - 0.4) / 0.6);
       }
-      intensity = Math.pow(intensity, 0.5);
+      intensity = Math.max(0, Math.pow(intensity, 0.5));
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -118,13 +130,14 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
         }
       }
 
-      // Noise texture
+      // Noise texture (optimized - only process a sample of pixels)
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
       const noiseIntensity = intensity * 0.15;
+      const step = 16; // Process every 16th pixel for performance
       
-      for (let i = 0; i < data.length; i += 4) {
-        if (Math.random() < noiseIntensity * 0.1) {
+      for (let i = 0; i < data.length; i += 4 * step) {
+        if (Math.random() < noiseIntensity * 0.3) {
           const noise = (Math.random() - 0.5) * 255 * noiseIntensity;
           data[i] = Math.min(255, Math.max(0, data[i] + noise));
           data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise));
@@ -135,7 +148,8 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
 
       if (elapsed < DURATION) {
         animationRef.current = requestAnimationFrame(animate);
-      } else {
+      } else if (!completedRef.current) {
+        completedRef.current = true;
         callbacksRef.current.onComplete();
       }
     };
@@ -145,6 +159,7 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
   }, [isActive, isDark]);
@@ -156,6 +171,7 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.05 }}
       className="fixed inset-0 z-[9999] pointer-events-none"
     >
       <canvas

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, Moon } from 'lucide-react';
 import { useThemeTransition, TransitionEffect } from '@/hooks/useThemeTransition';
@@ -20,11 +20,22 @@ const EFFECT_NAMES: Record<TransitionEffect, string> = {
 export function MatrixDarkModeToggle() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [buttonPosition, setButtonPosition] = useState<{ x: number; y: number } | undefined>();
-  const [activeEffect, setActiveEffect] = useState<TransitionEffect | null>(null);
+  
+  // Local state to track active animation
+  const [animationState, setAnimationState] = useState<{
+    isRunning: boolean;
+    effect: TransitionEffect | null;
+    startedAsDark: boolean;
+  }>({
+    isRunning: false,
+    effect: null,
+    startedAsDark: false,
+  });
+  
+  // Theme switched flag - prevents double switching
+  const themeSwitchedRef = useRef(false);
   
   const {
-    isTransitioning,
-    setIsTransitioning,
     currentEffect,
     isDark,
     getNextEffect,
@@ -33,15 +44,9 @@ export function MatrixDarkModeToggle() {
     prefersReducedMotion,
   } = useThemeTransition();
 
-  // Stable refs for callbacks
-  const toggleThemeRef = useRef(toggleTheme);
-  toggleThemeRef.current = toggleTheme;
-  
-  const advanceEffectRef = useRef(advanceEffect);
-  advanceEffectRef.current = advanceEffect;
-
   const handleClick = useCallback(() => {
-    if (isTransitioning) return;
+    // Prevent clicking while animation is running
+    if (animationState.isRunning) return;
 
     // Get button position for effects that use it
     if (buttonRef.current) {
@@ -59,25 +64,42 @@ export function MatrixDarkModeToggle() {
       return;
     }
 
-    // Set the active effect BEFORE transitioning
-    setActiveEffect(currentEffect);
-    setIsTransitioning(true);
-  }, [isTransitioning, prefersReducedMotion, toggleTheme, advanceEffect, currentEffect, setIsTransitioning]);
+    // Reset the theme switched flag
+    themeSwitchedRef.current = false;
 
-  // Stable callback - theme switch happens mid-animation
+    // Lock in the current effect and start animation
+    setAnimationState({
+      isRunning: true,
+      effect: currentEffect,
+      startedAsDark: isDark,
+    });
+  }, [animationState.isRunning, prefersReducedMotion, toggleTheme, advanceEffect, currentEffect, isDark]);
+
+  // Handle theme switch - called by effect component mid-animation
   const handleThemeSwitch = useCallback(() => {
-    toggleThemeRef.current();
-  }, []);
+    // Only switch once per animation
+    if (themeSwitchedRef.current) return;
+    themeSwitchedRef.current = true;
+    toggleTheme();
+  }, [toggleTheme]);
 
-  // Stable callback - cleanup after animation
+  // Handle animation complete - cleanup and advance to next effect
   const handleComplete = useCallback(() => {
-    setIsTransitioning(false);
-    setActiveEffect(null);
-    // Advance to next effect AFTER completion
-    advanceEffectRef.current();
-  }, [setIsTransitioning]);
+    setAnimationState({
+      isRunning: false,
+      effect: null,
+      startedAsDark: false,
+    });
+    themeSwitchedRef.current = false;
+    // Advance to next effect for next click
+    advanceEffect();
+  }, [advanceEffect]);
 
   const nextEffect = getNextEffect();
+
+  // The effect components should use startedAsDark to determine colors
+  // This prevents flickering - the animation knows what theme it started from
+  const effectIsDark = animationState.isRunning ? animationState.startedAsDark : isDark;
 
   return (
     <>
@@ -85,7 +107,7 @@ export function MatrixDarkModeToggle() {
       <motion.button
         ref={buttonRef}
         onClick={handleClick}
-        disabled={isTransitioning}
+        disabled={animationState.isRunning}
         className={cn(
           "relative flex items-center justify-center",
           "w-10 h-10 rounded-full",
@@ -177,47 +199,47 @@ export function MatrixDarkModeToggle() {
         </div>
       </motion.button>
 
-      {/* Effect Overlays - use activeEffect to lock in which effect plays */}
+      {/* Effect Overlays - use animationState.effect to lock in which effect plays */}
       <AnimatePresence>
-        {isTransitioning && activeEffect === 'matrix' && (
+        {animationState.isRunning && animationState.effect === 'matrix' && (
           <MatrixRain
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={isDark}
+            isDark={effectIsDark}
           />
         )}
-        {isTransitioning && activeEffect === 'liquid' && (
+        {animationState.isRunning && animationState.effect === 'liquid' && (
           <LiquidMorph
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={isDark}
+            isDark={effectIsDark}
             buttonPosition={buttonPosition}
           />
         )}
-        {isTransitioning && activeEffect === 'portal' && (
+        {animationState.isRunning && animationState.effect === 'portal' && (
           <PortalWarp
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={isDark}
+            isDark={effectIsDark}
           />
         )}
-        {isTransitioning && activeEffect === 'glitch' && (
+        {animationState.isRunning && animationState.effect === 'glitch' && (
           <GlitchEffect
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={isDark}
+            isDark={effectIsDark}
           />
         )}
-        {isTransitioning && activeEffect === 'particles' && (
+        {animationState.isRunning && animationState.effect === 'particles' && (
           <ParticleExplosion
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={isDark}
+            isDark={effectIsDark}
             buttonPosition={buttonPosition}
           />
         )}

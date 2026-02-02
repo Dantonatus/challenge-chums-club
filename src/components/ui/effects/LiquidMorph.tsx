@@ -14,16 +14,25 @@ const THEME_SWITCH_DELAY = 600;
 
 export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, buttonPosition }: LiquidMorphProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
-  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  const completedRef = useRef(false);
   
-  callbacksRef.current = { onThemeSwitch, onComplete };
+  // Store callbacks in ref
+  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  useEffect(() => {
+    callbacksRef.current = { onThemeSwitch, onComplete };
+  }, [onThemeSwitch, onComplete]);
 
   useEffect(() => {
     if (!isActive) {
       themeSwitchedRef.current = false;
+      completedRef.current = false;
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
       return;
     }
 
@@ -41,8 +50,11 @@ export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, butto
 
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
+    completedRef.current = false;
 
     const animate = (currentTime: number) => {
+      if (!isActive || completedRef.current) return;
+      
       const elapsed = currentTime - startTimeRef.current;
       
       if (!themeSwitchedRef.current && elapsed >= THEME_SWITCH_DELAY) {
@@ -125,7 +137,8 @@ export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, butto
 
       if (elapsed < DURATION) {
         animationRef.current = requestAnimationFrame(animate);
-      } else {
+      } else if (!completedRef.current) {
+        completedRef.current = true;
         callbacksRef.current.onComplete();
       }
     };
@@ -135,6 +148,7 @@ export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, butto
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
   }, [isActive, isDark, buttonPosition]);
@@ -146,6 +160,7 @@ export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, butto
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.1 }}
       className="fixed inset-0 z-[9999] pointer-events-none"
     >
       <canvas
