@@ -5,18 +5,21 @@ interface PortalWarpProps {
   isActive: boolean;
   onThemeSwitch: () => void;
   onComplete: () => void;
-  isDark: boolean;
+  startedAsDark: boolean;
 }
 
 const DURATION = 1800;
 const THEME_SWITCH_DELAY = 900;
 
-export function PortalWarp({ isActive, onThemeSwitch, onComplete, isDark }: PortalWarpProps) {
+export function PortalWarp({ isActive, onThemeSwitch, onComplete, startedAsDark }: PortalWarpProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
   const completedRef = useRef(false);
+  
+  // Freeze the dark state at animation start
+  const frozenDarkRef = useRef(startedAsDark);
   
   // Store callbacks in ref to avoid stale closures
   const callbacksRef = useRef({ onThemeSwitch, onComplete });
@@ -35,6 +38,9 @@ export function PortalWarp({ isActive, onThemeSwitch, onComplete, isDark }: Port
       return;
     }
 
+    // Freeze the dark state when animation starts
+    frozenDarkRef.current = startedAsDark;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -51,6 +57,9 @@ export function PortalWarp({ isActive, onThemeSwitch, onComplete, isDark }: Port
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
     completedRef.current = false;
+
+    // Use the frozen value for the entire animation
+    const wasDark = frozenDarkRef.current;
 
     // Speed lines
     const lines: { angle: number; speed: number; length: number; width: number }[] = [];
@@ -117,7 +126,7 @@ export function PortalWarp({ isActive, onThemeSwitch, onComplete, isDark }: Port
           Math.sin(line.angle) * endDist
         );
 
-        const lineColor = isDark ? 'hsl(45, 100%, 70%)' : 'hsl(270, 80%, 50%)';
+        const lineColor = wasDark ? 'hsl(45, 100%, 70%)' : 'hsl(270, 80%, 50%)';
         gradient.addColorStop(0, 'transparent');
         gradient.addColorStop(0.5, lineColor);
         gradient.addColorStop(1, 'transparent');
@@ -149,7 +158,7 @@ export function PortalWarp({ isActive, onThemeSwitch, onComplete, isDark }: Port
             centerX, centerY, ringRadius
           );
           
-          const glowColor = isDark 
+          const glowColor = wasDark 
             ? `hsla(45, 100%, 70%, ${0.3 - i * 0.07})`
             : `hsla(270, 80%, 50%, ${0.3 - i * 0.07})`;
           
@@ -170,7 +179,7 @@ export function PortalWarp({ isActive, onThemeSwitch, onComplete, isDark }: Port
           centerX, centerY, portalRadius
         );
         
-        if (isDark) {
+        if (wasDark) {
           portalGradient.addColorStop(0, 'hsl(0, 0%, 100%)');
           portalGradient.addColorStop(0.3, 'hsl(45, 100%, 95%)');
           portalGradient.addColorStop(0.7, 'hsl(45, 80%, 85%)');
@@ -205,7 +214,7 @@ export function PortalWarp({ isActive, onThemeSwitch, onComplete, isDark }: Port
         animationRef.current = null;
       }
     };
-  }, [isActive, isDark]);
+  }, [isActive]); // Only isActive as dependency - startedAsDark is frozen at start
 
   if (!isActive) return null;
 

@@ -5,7 +5,7 @@ interface ParticleExplosionProps {
   isActive: boolean;
   onThemeSwitch: () => void;
   onComplete: () => void;
-  isDark: boolean;
+  startedAsDark: boolean;
   buttonPosition?: { x: number; y: number };
 }
 
@@ -27,8 +27,8 @@ interface Particle {
   trail: { x: number; y: number }[];
 }
 
-function createParticles(centerX: number, centerY: number, isDark: boolean): Particle[] {
-  const colors = isDark 
+function createParticles(centerX: number, centerY: number, wasDark: boolean): Particle[] {
+  const colors = wasDark 
     ? ['#FFD700', '#FFA500', '#FF69B4', '#FF6B6B', '#FFEAA7']
     : ['#9B59B6', '#3498DB', '#00CED1', '#1ABC9C', '#00FF88'];
 
@@ -79,13 +79,16 @@ function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes:
   ctx.fill();
 }
 
-export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark, buttonPosition }: ParticleExplosionProps) {
+export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, startedAsDark, buttonPosition }: ParticleExplosionProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
   const completedRef = useRef(false);
   const particlesRef = useRef<Particle[]>([]);
+  
+  // Freeze the dark state at animation start
+  const frozenDarkRef = useRef(startedAsDark);
   
   // Store callbacks in ref to avoid stale closures
   const callbacksRef = useRef({ onThemeSwitch, onComplete });
@@ -105,6 +108,9 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
       return;
     }
 
+    // Freeze the dark state when animation starts
+    frozenDarkRef.current = startedAsDark;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -117,7 +123,10 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
     const centerX = buttonPosition?.x ?? canvas.width - 100;
     const centerY = buttonPosition?.y ?? 40;
 
-    particlesRef.current = createParticles(centerX, centerY, isDark);
+    // Use the frozen value for the entire animation
+    const wasDark = frozenDarkRef.current;
+
+    particlesRef.current = createParticles(centerX, centerY, wasDark);
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
     completedRef.current = false;
@@ -217,7 +226,7 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
         animationRef.current = null;
       }
     };
-  }, [isActive, isDark, buttonPosition]);
+  }, [isActive, buttonPosition]); // Only isActive and buttonPosition - startedAsDark is frozen
 
   if (!isActive) return null;
 

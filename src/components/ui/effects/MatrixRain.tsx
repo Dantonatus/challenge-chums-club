@@ -5,19 +5,29 @@ interface MatrixRainProps {
   isActive: boolean;
   onThemeSwitch: () => void;
   onComplete: () => void;
-  isDark: boolean;
+  startedAsDark: boolean;
 }
 
 const CHARACTERS = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const DURATION = 1500;
 const THEME_SWITCH_DELAY = 500;
 
-export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: MatrixRainProps) {
+interface TrailChar {
+  x: number;
+  y: number;
+  char: string;
+  age: number;
+}
+
+export function MatrixRain({ isActive, onThemeSwitch, onComplete, startedAsDark }: MatrixRainProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
   const completedRef = useRef(false);
+  
+  // Freeze the dark state at animation start
+  const frozenDarkRef = useRef(startedAsDark);
   
   // Store callbacks in ref to avoid stale closures
   const callbacksRef = useRef({ onThemeSwitch, onComplete });
@@ -36,6 +46,9 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
       return;
     }
 
+    // Freeze the dark state when animation starts
+    frozenDarkRef.current = startedAsDark;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -53,9 +66,16 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
     const drops: number[] = Array(columns).fill(0).map(() => Math.random() * -50);
     const speeds: number[] = Array(columns).fill(0).map(() => 3 + Math.random() * 5);
     
+    // Trail buffer for smooth rendering
+    const trailBuffer: TrailChar[][] = Array(columns).fill(null).map(() => []);
+    const MAX_TRAIL_AGE = 12;
+    
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
     completedRef.current = false;
+
+    // Use the frozen value for the entire animation
+    const wasDark = frozenDarkRef.current;
 
     const animate = (currentTime: number) => {
       if (!isActive || completedRef.current) return;
@@ -72,41 +92,51 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
       const fadeProgress = Math.max(0, (elapsed - DURATION * 0.6) / (DURATION * 0.4));
       const globalAlpha = 1 - fadeProgress;
 
-      // Clear with semi-transparent black for trail effect
-      ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Full clear for consistent rendering
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       ctx.font = `${fontSize}px monospace`;
 
+      // Draw trail characters with fading
+      for (let col = 0; col < columns; col++) {
+        // Age existing trail characters and draw them
+        trailBuffer[col] = trailBuffer[col].filter(item => {
+          item.age++;
+          if (item.age >= MAX_TRAIL_AGE) return false;
+          
+          const trailOpacity = (1 - item.age / MAX_TRAIL_AGE) * globalAlpha * 0.6;
+          ctx.fillStyle = `rgba(0, 255, 136, ${trailOpacity})`;
+          ctx.fillText(item.char, item.x, item.y);
+          return true;
+        });
+      }
+
+      // Draw new head characters
       for (let i = 0; i < columns; i++) {
-        // Get random character
         const char = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
         
         const x = i * fontSize;
         const y = drops[i] * fontSize;
 
-        // Gradient effect - brighter at the head
-        const gradient = ctx.createLinearGradient(x, y - fontSize * 10, x, y);
-        gradient.addColorStop(0, `rgba(0, 255, 136, ${0.1 * globalAlpha})`);
-        gradient.addColorStop(0.8, `rgba(0, 255, 200, ${0.8 * globalAlpha})`);
-        gradient.addColorStop(1, `rgba(0, 255, 255, ${globalAlpha})`);
-        
-        ctx.fillStyle = gradient;
-        ctx.fillText(char, x, y);
+        // Only draw if on screen
+        if (y > 0 && y < canvas.height + fontSize) {
+          // Add to trail buffer
+          trailBuffer[i].push({ x, y, char, age: 0 });
 
-        // Add glow effect for head character
-        ctx.shadowColor = '#00ffcc';
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = `rgba(0, 255, 204, ${globalAlpha})`;
-        ctx.fillText(char, x, y);
-        ctx.shadowBlur = 0;
+          // Draw head character with glow
+          ctx.shadowColor = '#00ffcc';
+          ctx.shadowBlur = 15;
+          ctx.fillStyle = `rgba(0, 255, 255, ${globalAlpha})`;
+          ctx.fillText(char, x, y);
+          ctx.shadowBlur = 0;
+        }
 
         // Move drop down
-        drops[i] += speeds[i] * 0.1;
+        drops[i] += speeds[i] * 0.15;
 
         // Reset drop when it goes off screen
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.98) {
+          drops[i] = Math.random() * -10;
         }
       }
 
@@ -126,7 +156,7 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
         animationRef.current = null;
       }
     };
-  }, [isActive, isDark]);
+  }, [isActive]); // Only isActive as dependency - startedAsDark is frozen at start
 
   if (!isActive) return null;
 

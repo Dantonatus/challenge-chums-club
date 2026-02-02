@@ -5,18 +5,21 @@ interface GlitchEffectProps {
   isActive: boolean;
   onThemeSwitch: () => void;
   onComplete: () => void;
-  isDark: boolean;
+  startedAsDark: boolean;
 }
 
 const DURATION = 800;
 const THEME_SWITCH_DELAY = 400;
 
-export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: GlitchEffectProps) {
+export function GlitchEffect({ isActive, onThemeSwitch, onComplete, startedAsDark }: GlitchEffectProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
   const completedRef = useRef(false);
+  
+  // Freeze the dark state at animation start
+  const frozenDarkRef = useRef(startedAsDark);
   
   // Store callbacks in ref
   const callbacksRef = useRef({ onThemeSwitch, onComplete });
@@ -35,6 +38,9 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
       return;
     }
 
+    // Freeze the dark state when animation starts
+    frozenDarkRef.current = startedAsDark;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -47,6 +53,9 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
     completedRef.current = false;
+
+    // Use the frozen value for the entire animation
+    const wasDark = frozenDarkRef.current;
 
     const animate = (currentTime: number) => {
       if (!isActive || completedRef.current) return;
@@ -84,10 +93,10 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
         const offset = (Math.random() - 0.5) * 30 * intensity;
 
         const gradient = ctx.createLinearGradient(0, y, canvas.width, y);
-        const color1 = isDark 
+        const color1 = wasDark 
           ? `rgba(0, 255, 255, ${0.3 * intensity})`
           : `rgba(255, 0, 255, ${0.3 * intensity})`;
-        const color2 = isDark 
+        const color2 = wasDark 
           ? `rgba(255, 0, 255, ${0.2 * intensity})`
           : `rgba(0, 255, 255, ${0.2 * intensity})`;
         
@@ -124,7 +133,7 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
           const h = 5 + Math.random() * 20;
           
           ctx.fillStyle = Math.random() > 0.5 
-            ? (isDark ? `rgba(255, 255, 255, ${Math.random() * intensity})` : `rgba(0, 0, 0, ${Math.random() * intensity})`)
+            ? (wasDark ? `rgba(255, 255, 255, ${Math.random() * intensity})` : `rgba(0, 0, 0, ${Math.random() * intensity})`)
             : `hsla(${Math.random() * 360}, 100%, 50%, ${Math.random() * intensity})`;
           ctx.fillRect(x, y, w, h);
         }
@@ -162,7 +171,7 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
         animationRef.current = null;
       }
     };
-  }, [isActive, isDark]);
+  }, [isActive]); // Only isActive as dependency - startedAsDark is frozen at start
 
   if (!isActive) return null;
 
