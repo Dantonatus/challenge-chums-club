@@ -5,19 +5,22 @@ interface LiquidMorphProps {
   isActive: boolean;
   onThemeSwitch: () => void;
   onComplete: () => void;
-  isDark: boolean;
+  startedAsDark: boolean;
   buttonPosition?: { x: number; y: number };
 }
 
 const DURATION = 1200;
 const THEME_SWITCH_DELAY = 600;
 
-export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, buttonPosition }: LiquidMorphProps) {
+export function LiquidMorph({ isActive, onThemeSwitch, onComplete, startedAsDark, buttonPosition }: LiquidMorphProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
   const completedRef = useRef(false);
+  
+  // Freeze the dark state at animation start
+  const frozenDarkRef = useRef(startedAsDark);
   
   // Store callbacks in ref
   const callbacksRef = useRef({ onThemeSwitch, onComplete });
@@ -36,6 +39,9 @@ export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, butto
       return;
     }
 
+    // Freeze the dark state when animation starts
+    frozenDarkRef.current = startedAsDark;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -51,6 +57,9 @@ export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, butto
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
     completedRef.current = false;
+
+    // Use the frozen value for the entire animation
+    const wasDark = frozenDarkRef.current;
 
     const animate = (currentTime: number) => {
       if (!isActive || completedRef.current) return;
@@ -108,13 +117,13 @@ export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, butto
       }
       ctx.closePath();
 
-      // Create gradient fill
+      // Create gradient fill - use wasDark (frozen value)
       const gradient = ctx.createRadialGradient(
         centerX, centerY, 0,
         centerX, centerY, radius
       );
       
-      if (isDark) {
+      if (wasDark) {
         // Dark -> Light: light colors
         gradient.addColorStop(0, 'hsl(200, 100%, 98%)');
         gradient.addColorStop(0.5, 'hsl(180, 80%, 95%)');
@@ -130,7 +139,7 @@ export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, butto
       ctx.fill();
 
       // Add glow
-      ctx.shadowColor = isDark ? 'hsl(180, 100%, 80%)' : 'hsl(270, 80%, 50%)';
+      ctx.shadowColor = wasDark ? 'hsl(180, 100%, 80%)' : 'hsl(270, 80%, 50%)';
       ctx.shadowBlur = 30;
       ctx.fill();
       ctx.shadowBlur = 0;
@@ -151,7 +160,7 @@ export function LiquidMorph({ isActive, onThemeSwitch, onComplete, isDark, butto
         animationRef.current = null;
       }
     };
-  }, [isActive, isDark, buttonPosition]);
+  }, [isActive, buttonPosition]); // Only isActive and buttonPosition - startedAsDark is frozen
 
   if (!isActive) return null;
 

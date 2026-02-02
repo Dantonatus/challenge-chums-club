@@ -17,6 +17,9 @@ const EFFECT_NAMES: Record<TransitionEffect, string> = {
   particles: 'Particle Explosion',
 };
 
+// Safety timeout to prevent button from getting stuck
+const ANIMATION_SAFETY_TIMEOUT = 3000;
+
 export function MatrixDarkModeToggle() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [buttonPosition, setButtonPosition] = useState<{ x: number; y: number } | undefined>();
@@ -43,6 +46,23 @@ export function MatrixDarkModeToggle() {
     advanceEffect,
     prefersReducedMotion,
   } = useThemeTransition();
+
+  // Safety timeout - reset animation state if it gets stuck
+  useEffect(() => {
+    if (!animationState.isRunning) return;
+    
+    const timeout = setTimeout(() => {
+      console.warn('Animation safety timeout triggered - resetting state');
+      setAnimationState({
+        isRunning: false,
+        effect: null,
+        startedAsDark: false,
+      });
+      themeSwitchedRef.current = false;
+    }, ANIMATION_SAFETY_TIMEOUT);
+    
+    return () => clearTimeout(timeout);
+  }, [animationState.isRunning]);
 
   const handleClick = useCallback(() => {
     // Prevent clicking while animation is running
@@ -96,10 +116,6 @@ export function MatrixDarkModeToggle() {
   }, [advanceEffect]);
 
   const nextEffect = getNextEffect();
-
-  // The effect components should use startedAsDark to determine colors
-  // This prevents flickering - the animation knows what theme it started from
-  const effectIsDark = animationState.isRunning ? animationState.startedAsDark : isDark;
 
   return (
     <>
@@ -200,13 +216,14 @@ export function MatrixDarkModeToggle() {
       </motion.button>
 
       {/* Effect Overlays - use animationState.effect to lock in which effect plays */}
+      {/* Pass startedAsDark instead of isDark to prevent mid-animation changes */}
       <AnimatePresence>
         {animationState.isRunning && animationState.effect === 'matrix' && (
           <MatrixRain
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={effectIsDark}
+            startedAsDark={animationState.startedAsDark}
           />
         )}
         {animationState.isRunning && animationState.effect === 'liquid' && (
@@ -214,7 +231,7 @@ export function MatrixDarkModeToggle() {
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={effectIsDark}
+            startedAsDark={animationState.startedAsDark}
             buttonPosition={buttonPosition}
           />
         )}
@@ -223,7 +240,7 @@ export function MatrixDarkModeToggle() {
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={effectIsDark}
+            startedAsDark={animationState.startedAsDark}
           />
         )}
         {animationState.isRunning && animationState.effect === 'glitch' && (
@@ -231,7 +248,7 @@ export function MatrixDarkModeToggle() {
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={effectIsDark}
+            startedAsDark={animationState.startedAsDark}
           />
         )}
         {animationState.isRunning && animationState.effect === 'particles' && (
@@ -239,7 +256,7 @@ export function MatrixDarkModeToggle() {
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
             onComplete={handleComplete}
-            isDark={effectIsDark}
+            startedAsDark={animationState.startedAsDark}
             buttonPosition={buttonPosition}
           />
         )}

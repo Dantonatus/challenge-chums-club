@@ -6,16 +6,24 @@ export type TransitionEffect = 'matrix' | 'liquid' | 'portal' | 'glitch' | 'part
 const EFFECTS: TransitionEffect[] = ['matrix', 'liquid', 'portal', 'glitch', 'particles'];
 const EFFECT_STORAGE_KEY = 'theme-effect-index';
 
-export function useThemeTransition() {
-  const { preferences, setPreferences } = useTaskPreferences();
-  
-  // Initialize effect index from localStorage
-  const [effectIndex, setEffectIndex] = useState(() => {
-    if (typeof window === 'undefined') return 0;
+// Read effect index from localStorage
+function getStoredEffectIndex(): number {
+  if (typeof window === 'undefined') return 0;
+  try {
     const stored = localStorage.getItem(EFFECT_STORAGE_KEY);
     const parsed = stored ? parseInt(stored, 10) : 0;
     return isNaN(parsed) ? 0 : parsed % EFFECTS.length;
-  });
+  } catch {
+    return 0;
+  }
+}
+
+export function useThemeTransition() {
+  const { preferences, setPreferences } = useTaskPreferences();
+  
+  // Use ref to maintain stable effect index across re-renders
+  const effectIndexRef = useRef<number>(getStoredEffectIndex());
+  const [effectIndex, setEffectIndex] = useState(effectIndexRef.current);
   
   const [isTransitioning, setIsTransitioning] = useState(false);
   
@@ -31,7 +39,7 @@ export function useThemeTransition() {
     return EFFECTS[(effectIndex + 1) % EFFECTS.length];
   }, [effectIndex]);
 
-  // Toggle theme - simple, direct
+  // Toggle theme - forces to explicit light/dark (not system)
   const toggleTheme = useCallback(() => {
     const newTheme = isDark ? 'light' : 'dark';
     setPreferences({ theme: newTheme });
@@ -39,11 +47,14 @@ export function useThemeTransition() {
 
   // Advance to next effect - called AFTER animation completes
   const advanceEffect = useCallback(() => {
-    setEffectIndex(prev => {
-      const nextIndex = (prev + 1) % EFFECTS.length;
+    const nextIndex = (effectIndexRef.current + 1) % EFFECTS.length;
+    effectIndexRef.current = nextIndex;
+    setEffectIndex(nextIndex);
+    try {
       localStorage.setItem(EFFECT_STORAGE_KEY, String(nextIndex));
-      return nextIndex;
-    });
+    } catch {
+      // Ignore localStorage errors
+    }
   }, []);
 
   // Check for reduced motion preference
