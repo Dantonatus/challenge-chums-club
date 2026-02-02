@@ -17,6 +17,10 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
   const animationRef = useRef<number>();
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
+  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  
+  // Keep callbacks fresh
+  callbacksRef.current = { onThemeSwitch, onComplete };
 
   useEffect(() => {
     if (!isActive) {
@@ -50,7 +54,7 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
       // Trigger theme switch at the right moment
       if (!themeSwitchedRef.current && elapsed >= THEME_SWITCH_DELAY) {
         themeSwitchedRef.current = true;
-        onThemeSwitch();
+        callbacksRef.current.onThemeSwitch();
       }
 
       // Calculate fade out
@@ -98,7 +102,7 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
       if (elapsed < DURATION) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        onComplete();
+        callbacksRef.current.onComplete();
       }
     };
 
@@ -109,7 +113,7 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isActive, onThemeSwitch, onComplete, isDark]);
+  }, [isActive, isDark]);
 
   if (!isActive) return null;
 

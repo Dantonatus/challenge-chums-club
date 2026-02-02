@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 interface GlitchEffectProps {
@@ -11,35 +11,29 @@ interface GlitchEffectProps {
 const DURATION = 800;
 const THEME_SWITCH_DELAY = 400;
 
-// Generate random glitch slices
-function generateSlices(count: number): { top: number; height: number; offset: number }[] {
-  const slices = [];
-  for (let i = 0; i < count; i++) {
-    slices.push({
-      top: Math.random() * 100,
-      height: 2 + Math.random() * 8,
-      offset: (Math.random() - 0.5) * 30,
-    });
-  }
-  return slices;
-}
-
 export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: GlitchEffectProps) {
-  const [intensity, setIntensity] = useState(0);
-  const [slices, setSlices] = useState<{ top: number; height: number; offset: number }[]>([]);
-  const [rgbOffset, setRgbOffset] = useState({ r: 0, g: 0, b: 0 });
-  const startTimeRef = useRef<number>(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
+  const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
+  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  
+  callbacksRef.current = { onThemeSwitch, onComplete };
 
   useEffect(() => {
     if (!isActive) {
-      setIntensity(0);
-      setSlices([]);
-      setRgbOffset({ r: 0, g: 0, b: 0 });
       themeSwitchedRef.current = false;
       return;
     }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
@@ -48,40 +42,101 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
       const elapsed = currentTime - startTimeRef.current;
       const normalizedTime = elapsed / DURATION;
 
-      // Trigger theme switch
       if (!themeSwitchedRef.current && elapsed >= THEME_SWITCH_DELAY) {
         themeSwitchedRef.current = true;
-        onThemeSwitch();
+        callbacksRef.current.onThemeSwitch();
       }
 
       // Intensity curve: quick ramp up, peak at 40%, then fade
-      let newIntensity: number;
+      let intensity: number;
       if (normalizedTime < 0.4) {
-        newIntensity = normalizedTime / 0.4;
+        intensity = normalizedTime / 0.4;
       } else {
-        newIntensity = 1 - ((normalizedTime - 0.4) / 0.6);
+        intensity = 1 - ((normalizedTime - 0.4) / 0.6);
       }
-      newIntensity = Math.pow(newIntensity, 0.5); // Sharper curve
+      intensity = Math.pow(intensity, 0.5);
 
-      setIntensity(newIntensity);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Update slices randomly during peak
-      if (normalizedTime < 0.7 && Math.random() > 0.5) {
-        setSlices(generateSlices(Math.floor(newIntensity * 15)));
+      // Scan lines
+      ctx.fillStyle = `rgba(0, 0, 0, ${0.1 * intensity})`;
+      for (let y = 0; y < canvas.height; y += 4) {
+        ctx.fillRect(0, y, canvas.width, 2);
       }
 
-      // RGB offset
-      const maxOffset = 5 * newIntensity;
-      setRgbOffset({
-        r: (Math.random() - 0.5) * maxOffset * 2,
-        g: 0,
-        b: (Math.random() - 0.5) * maxOffset * 2,
-      });
+      // Horizontal slice distortions
+      const sliceCount = Math.floor(intensity * 15);
+      for (let i = 0; i < sliceCount; i++) {
+        const y = Math.random() * canvas.height;
+        const height = 2 + Math.random() * 8;
+        const offset = (Math.random() - 0.5) * 30 * intensity;
+
+        const gradient = ctx.createLinearGradient(0, y, canvas.width, y);
+        const color1 = isDark 
+          ? `rgba(0, 255, 255, ${0.3 * intensity})`
+          : `rgba(255, 0, 255, ${0.3 * intensity})`;
+        const color2 = isDark 
+          ? `rgba(255, 0, 255, ${0.2 * intensity})`
+          : `rgba(0, 255, 255, ${0.2 * intensity})`;
+        
+        gradient.addColorStop(0, 'transparent');
+        gradient.addColorStop(0.3, color1);
+        gradient.addColorStop(0.7, color2);
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.save();
+        ctx.translate(offset, 0);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, y, canvas.width, height);
+        ctx.restore();
+      }
+
+      // RGB channel overlays
+      const rgbOffset = 5 * intensity;
+      
+      // Red channel
+      ctx.fillStyle = `rgba(255, 0, 0, ${0.1 * intensity})`;
+      ctx.fillRect(-rgbOffset + (Math.random() - 0.5) * 4, 0, canvas.width, canvas.height);
+      
+      // Blue channel
+      ctx.fillStyle = `rgba(0, 0, 255, ${0.1 * intensity})`;
+      ctx.fillRect(rgbOffset + (Math.random() - 0.5) * 4, 0, canvas.width, canvas.height);
+
+      // Random flash blocks
+      if (intensity > 0.5) {
+        const blockCount = Math.floor(intensity * 8);
+        for (let i = 0; i < blockCount; i++) {
+          const x = Math.random() * canvas.width;
+          const y = Math.random() * canvas.height;
+          const w = 10 + Math.random() * 50;
+          const h = 5 + Math.random() * 20;
+          
+          ctx.fillStyle = Math.random() > 0.5 
+            ? (isDark ? `rgba(255, 255, 255, ${Math.random() * intensity})` : `rgba(0, 0, 0, ${Math.random() * intensity})`)
+            : `hsla(${Math.random() * 360}, 100%, 50%, ${Math.random() * intensity})`;
+          ctx.fillRect(x, y, w, h);
+        }
+      }
+
+      // Noise texture
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const noiseIntensity = intensity * 0.15;
+      
+      for (let i = 0; i < data.length; i += 4) {
+        if (Math.random() < noiseIntensity * 0.1) {
+          const noise = (Math.random() - 0.5) * 255 * noiseIntensity;
+          data[i] = Math.min(255, Math.max(0, data[i] + noise));
+          data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise));
+          data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise));
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
 
       if (elapsed < DURATION) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        onComplete();
+        callbacksRef.current.onComplete();
       }
     };
 
@@ -92,120 +147,22 @@ export function GlitchEffect({ isActive, onThemeSwitch, onComplete, isDark }: Gl
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isActive, onThemeSwitch, onComplete]);
+  }, [isActive, isDark]);
 
   if (!isActive) return null;
 
-  const jitter = {
-    x: (Math.random() - 0.5) * intensity * 4,
-    y: (Math.random() - 0.5) * intensity * 4,
-  };
-
   return (
-    <>
-      {/* Inject glitch styles into body */}
-      <style>
-        {`
-          .glitch-active {
-            transform: translate(${jitter.x}px, ${jitter.y}px) !important;
-          }
-        `}
-      </style>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] pointer-events-none"
-      >
-        {/* Scan lines overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `repeating-linear-gradient(
-              0deg,
-              transparent,
-              transparent 2px,
-              rgba(0, 0, 0, ${0.1 * intensity}) 2px,
-              rgba(0, 0, 0, ${0.1 * intensity}) 4px
-            )`,
-            opacity: intensity,
-          }}
-        />
-
-        {/* RGB channel overlays */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'rgba(255, 0, 0, 0.1)',
-            mixBlendMode: 'multiply',
-            transform: `translateX(${rgbOffset.r}px)`,
-            opacity: intensity * 0.5,
-          }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'rgba(0, 0, 255, 0.1)',
-            mixBlendMode: 'multiply',
-            transform: `translateX(${rgbOffset.b}px)`,
-            opacity: intensity * 0.5,
-          }}
-        />
-
-        {/* Horizontal slice distortions */}
-        {slices.map((slice, i) => (
-          <div
-            key={i}
-            className="absolute left-0 right-0"
-            style={{
-              top: `${slice.top}%`,
-              height: `${slice.height}px`,
-              background: isDark 
-                ? `linear-gradient(90deg, transparent, rgba(0, 255, 255, ${0.3 * intensity}), rgba(255, 0, 255, ${0.2 * intensity}), transparent)`
-                : `linear-gradient(90deg, transparent, rgba(255, 0, 255, ${0.3 * intensity}), rgba(0, 255, 255, ${0.2 * intensity}), transparent)`,
-              transform: `translateX(${slice.offset * intensity}px)`,
-              mixBlendMode: 'screen',
-            }}
-          />
-        ))}
-
-        {/* Random flash blocks */}
-        {intensity > 0.5 && (
-          <>
-            {Array.from({ length: Math.floor(intensity * 5) }).map((_, i) => (
-              <div
-                key={`block-${i}`}
-                className="absolute"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  width: `${10 + Math.random() * 50}px`,
-                  height: `${5 + Math.random() * 20}px`,
-                  background: Math.random() > 0.5 
-                    ? (isDark ? 'white' : 'black')
-                    : `hsl(${Math.random() * 360}, 100%, 50%)`,
-                  opacity: Math.random() * intensity,
-                }}
-              />
-            ))}
-          </>
-        )}
-
-        {/* Noise texture */}
-        <svg className="absolute inset-0 w-full h-full opacity-20" style={{ opacity: intensity * 0.2 }}>
-          <filter id="glitch-noise">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.9"
-              numOctaves="4"
-              seed={Date.now()}
-            />
-            <feColorMatrix type="saturate" values="0" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#glitch-noise)" />
-        </svg>
-      </motion.div>
-    </>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[9999] pointer-events-none"
+    >
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full"
+        style={{ background: 'transparent' }}
+      />
+    </motion.div>
   );
 }
