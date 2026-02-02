@@ -1,168 +1,302 @@
 
-# Fancy AGI Matrix Dark Mode Toggle
+# Fancy AGI Dark Mode Toggle mit 5 rotierenden Effekten
 
 ## Konzept & Vision
 
-Ein **spektakulärer Dark Mode Toggle** neben dem Logout-Button mit einem einzigartigen "Matrix Rain" Übergangseffekt, der beim Aktivieren über den gesamten Bildschirm fließt.
+Ein **spektakulärer Dark Mode Toggle** neben dem Logout-Button mit **5 verschiedenen Übergangseffekten**, die bei jedem Klick abwechselnd durchrotieren.
 
-### Was macht ihn besonders?
+### Effekt-Rotation
 
-1. **Der Button selbst**
-   - Morphendes Icon: Sonne ↔ Mond mit fließender Animation
-   - Pulsierender Glow-Ring bei Hover
-   - Glasmorphism-Effekt mit leichtem Backdrop-Blur
-   - Subtle "Digital Noise" Textur im Hintergrund
-
-2. **Der Matrix Rain Übergang** (Das Highlight!)
-   - Beim Klick erscheint ein fullscreen Overlay
-   - Grüne/Cyan-farbene Zeichen (wie im Film "The Matrix") fließen von oben nach unten
-   - Die Zeichen sind random: Zahlen, Buchstaben, japanische Katakana
-   - Nach ~1.5 Sekunden "zerfällt" der Rain und der neue Theme wird revealed
-   - Sound-lose, aber visuell beeindruckend
-
-3. **Smooth Theme Transition**
-   - Alle Farben morphen sanft via CSS transitions
-   - Der Matrix-Effekt maskiert den harten Farbwechsel elegant
+```text
+Klick 1 → Matrix Rain
+Klick 2 → Liquid Morph  
+Klick 3 → Portal Warp
+Klick 4 → Glitch Effect
+Klick 5 → Particle Explosion
+Klick 6 → Matrix Rain (wieder von vorne)
+...
+```
 
 ---
 
-## Technische Umsetzung
+## Die 5 Effekte im Detail
+
+### 1. Matrix Rain (Klassiker)
+
+```text
+Visuelle Beschreibung:
++--------------------------------------------------+
+|  ░▒▓█ カタカナ 01 ░▒▓█  ░▒▓█ カタカナ 01         |
+|    ▓█ 01 タカ ░▒▓█ カタ 01  ▓█ タカ ░▒           |
+|  █カタ ░▒▓█ 01 カタ ░▒▓    カタ ░▒▓█ 01          |
+|         ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓                          |
+|    (Zeichen fließen nach unten mit Trail)        |
++--------------------------------------------------+
+
+Technische Details:
+- Canvas-basiert mit 40-60 Spalten
+- Zeichen-Set: 0-9, A-Z, カタカナ (Katakana)
+- Farbe: Cyan-Gradient #00ff88 → #00ffcc (passt zu Primary)
+- Jede Spalte hat eigene Geschwindigkeit (3-8px pro Frame)
+- Trail-Effekt: Letzte 10 Zeichen faden von 100% → 10% Opacity
+- Dauer: 1.5 Sekunden
+- Theme-Switch: Nach 500ms
+```
+
+### 2. Liquid Morph (Farbflüssigkeit)
+
+```text
+Visuelle Beschreibung:
++--------------------------------------------------+
+|                                                  |
+|           ████                                   |
+|         ████████                                 |
+|       ████████████    ← Expandiert vom Button    |
+|     ████████████████                             |
+|   ████████████████████                           |
+|  (Organische, wellenförmige Ränder)              |
++--------------------------------------------------+
+
+Technische Details:
+- SVG-basiert mit animierten Bezier-Kurven
+- Startet als kleiner Kreis am Button-Position
+- Expandiert organisch mit "blob-artigen" Rändern
+- Verwendet Perlin Noise für wellige Konturen
+- Farbe: 
+  - Light→Dark: Dunkles Violett #1a1a2e → Schwarz
+  - Dark→Light: Helles Mint #e0fff4 → Weiß
+- Ränder haben leichten Glow (box-shadow blur)
+- Dauer: 1.2 Sekunden
+- Easing: cubic-bezier(0.4, 0, 0.2, 1) für organisches Gefühl
+
+Animation Stages:
+0ms    - Kleiner Punkt (5px) erscheint am Button
+200ms  - Kreis wächst auf 100px, beginnt zu "wabbeln"
+400ms  - Blob erreicht 50% des Screens
+600ms  - Theme Switch passiert
+800ms  - Blob bedeckt 100% des Screens  
+1200ms - Blob "zieht sich zurück" ins Nichts
+```
+
+### 3. Portal Warp (Schwarzes Loch)
+
+```text
+Visuelle Beschreibung:
++--------------------------------------------------+
+|                    ╭─────╮                       |
+|                ╭───│     │───╮                   |
+|            ╭───│   │  ●  │   │───╮  ← Spirale    |
+|            │   │   │     │   │   │               |
+|            ╰───│   │     │   │───╯               |
+|                ╰───│     │───╯                   |
+|                    ╰─────╯                       |
+|         (Alles wird zur Mitte gesaugt)           |
++--------------------------------------------------+
+
+Technische Details:
+- CSS Transform + Filter basiert
+- Zentrum: Bildschirmmitte (oder Button-Position)
+- Content wird mit scale() + rotateZ() verzerrt
+- Spiralförmige Rotation: 0° → 720° während Warp
+- Blur-Effekt verstärkt sich zur Mitte hin (0px → 20px)
+- Schwarzer Kreis in der Mitte wächst von 0 → 100vmax
+- Farbe Zentrum:
+  - Light→Dark: Tiefes Schwarz mit violettem Rand-Glow
+  - Dark→Light: Strahlendes Weiß mit goldenem Rand-Glow
+- Dauer: 1.8 Sekunden
+- Sound-Design (visuell): "Whoosh" Linien die zur Mitte fliegen
+
+Animation Stages:
+0ms    - Kleiner schwarzer Punkt erscheint (2px)
+300ms  - Content beginnt zu rotieren (subtle, 5°)
+500ms  - Schwarzer Kreis wächst, Rotation intensiviert (90°)
+700ms  - Content wird "gesaugt" (scale: 0.8)
+900ms  - Theme Switch während maximaler Verzerrung
+1100ms - Schwarzer Kreis ist fullscreen
+1400ms - "Explosion" zurück: Kreis schrumpft schnell
+1600ms - Content "ploppt" zurück (scale: 1.05 overshoot)
+1800ms - Settle auf Normal-Zustand
+```
+
+### 4. Glitch Effect (Digitaler Fehler)
+
+```text
+Visuelle Beschreibung:
++--------------------------------------------------+
+|████████████████  ← Horizontale "Riss"-Linien     |
+|   R G B         ← RGB Kanäle versetzt            |
+|░░░░░░░░░░░░░░░░  ← Scan-Lines / Noise            |
+|████████████████                                  |
+|        ▓▓▓▓▓▓▓▓  ← Zufällige Blöcke verschieben  |
+|░░░░░░░░░░░░░░░░                                  |
+|    (Alles zittert und verzerrt sich)             |
++--------------------------------------------------+
+
+Technische Details:
+- CSS Filter + Pseudo-Elements
+- RGB Split: Drei Kopien des Contents
+  - Red Channel: translateX(-3px)
+  - Green Channel: translateX(0px) (normal)
+  - Blue Channel: translateX(+3px)
+  - Mix-blend-mode: screen
+- Horizontal Slices: 10-15 Streifen die zufällig nach links/rechts versetzt werden
+- Scan Lines: Repeating-linear-gradient Overlay (2px lines, 50% opacity)
+- Random Blocks: Einige Bereiche flashen weiß/schwarz
+- Noise Overlay: SVG turbulence filter
+- Zitter-Animation: Schnelle random translate (-2px bis +2px)
+- Farben: Cyan, Magenta, Gelb Blitze
+- Dauer: 0.8 Sekunden (schnell und aggressiv)
+
+Animation Stages:
+0ms    - Erster Glitch-Frame: Alles zittert kurz
+100ms  - RGB Split aktiviert (max 5px offset)
+200ms  - Horizontale Slices verschieben sich
+300ms  - Intensität Maximum: Alles gleichzeitig
+400ms  - Theme Switch (versteckt im Chaos)
+500ms  - Glitch beginnt abzuklingen
+600ms  - RGB kommt zusammen
+700ms  - Letzte Zitter
+800ms  - Clean State
+```
+
+### 5. Particle Explosion (Partikel-Feuerwerk)
+
+```text
+Visuelle Beschreibung:
++--------------------------------------------------+
+|        ·  *              ·   *                   |
+|    *        ·    ✧    ·        *                 |
+|  ·    ✧         ●         ✧    ·    ← Button    |
+|    *        ·    ✧    ·        *                 |
+|        ·  *              ·   *                   |
+|                                                  |
+|   (Partikel fliegen radial vom Button weg)       |
++--------------------------------------------------+
+
+Technische Details:
+- Canvas-basiert für Performance (300-500 Partikel)
+- Startpunkt: Button-Position
+- Partikel-Typen:
+  - Kreise (60%): 2-8px Durchmesser
+  - Sterne (20%): 4-zackig, 5-15px
+  - Linien (20%): 10-30px Länge, folgen Bewegungsrichtung
+- Physik:
+  - Initiale Geschwindigkeit: 5-20px pro Frame
+  - Gravity: -0.1 (leicht nach oben driftend)
+  - Friction: 0.98 (verlangsamen sich)
+  - Rotation: Jedes Partikel rotiert individuell
+- Farben:
+  - Light→Dark: Violett, Blau, Cyan Partikel
+  - Dark→Light: Gold, Orange, Rosa Partikel
+- Trail-Effekt: Jedes Partikel hinterlässt 5-Frame Trail
+- Fade: Opacity 1 → 0 über Lebensdauer
+- Dauer: 1.5 Sekunden
+
+Animation Stages:
+0ms    - Explosion! Alle Partikel starten vom Button
+200ms  - Partikel haben ~30% des Screens erreicht
+400ms  - Langsamere Partikel bilden zweite Welle
+600ms  - Erste Partikel erreichen Screen-Rand
+700ms  - Theme Switch
+900ms  - Partikel beginnen zu faden
+1200ms - Nur noch wenige Partikel sichtbar
+1500ms - Letztes Partikel verschwindet
+```
+
+---
+
+## Technische Architektur
 
 ### Neue Dateien
 
 | Datei | Zweck |
 |-------|-------|
-| `src/components/ui/MatrixDarkModeToggle.tsx` | Der Button + Matrix Rain Animation |
-| `src/components/ui/MatrixRain.tsx` | Die Canvas-basierte Matrix-Animation |
+| `src/components/ui/MatrixDarkModeToggle.tsx` | Haupt-Button + Effekt-Orchestrierung |
+| `src/components/ui/effects/MatrixRain.tsx` | Canvas: Fallende Zeichen |
+| `src/components/ui/effects/LiquidMorph.tsx` | SVG: Organischer Blob |
+| `src/components/ui/effects/PortalWarp.tsx` | CSS: Schwarzes Loch Verzerrung |
+| `src/components/ui/effects/GlitchEffect.tsx` | CSS: RGB Split + Noise |
+| `src/components/ui/effects/ParticleExplosion.tsx` | Canvas: Partikel-System |
 
-### Änderungen an bestehenden Dateien
+### Geänderte Dateien
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/layout/AppLayout.tsx` | Toggle neben Logout-Button integrieren |
-| `src/index.css` | Zusätzliche Transition-Utilities für smooth theme morphing |
+| `src/components/layout/AppLayout.tsx` | Toggle neben Logout integrieren |
+| `src/index.css` | Transition Utilities + Glitch Keyframes |
 
 ---
 
-## Detailliertes Design
-
-### MatrixRain Komponente
+## State Management
 
 ```text
-+--------------------------------------------------+
-|  ░ ▒ ▓ █ カ タ カ ナ 0 1 0 1 ░ ▒ ▓ █             |
-|    ▓ █ 0 1 タ カ ░ ▒ ▓ █ カ タ 0 1               |
-|  █ カ タ ░ ▒ ▓ █ 0 1 カ タ ░ ▒ ▓                 |
-|    (Zeichen fließen nach unten)                  |
-|         ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓                          |
-+--------------------------------------------------+
+localStorage: "theme-effect-index"
+
+┌─────────────────────────────────────────────────┐
+│  useTaskPreferences (theme: light/dark/system)  │
+│              ↕                                  │
+│  useThemeTransition Hook (NEU)                  │
+│  - currentEffectIndex: 0-4                      │
+│  - isTransitioning: boolean                     │
+│  - triggerTransition(): void                    │
+│              ↕                                  │
+│  Effect Components (MatrixRain, etc.)           │
+└─────────────────────────────────────────────────┘
 ```
 
-**Technologie:** HTML5 Canvas mit requestAnimationFrame
-- ~30-50 Spalten mit fallenden Zeichen
-- Verschiedene Fallgeschwindigkeiten für Tiefe
-- Fading Trail-Effekt (ältere Zeichen werden dunkler)
-- Farbe: Cyan/Mint `#00ff88` bis `#00ffcc` (passt zum Primary-Accent)
+---
 
-### Toggle Button Design
+## Button Design
 
 ```text
-Light Mode:                    Dark Mode:
-+-------------------------+    +-------------------------+
-|  ☀️  [pulsing glow]     |    |  🌙  [starfield glow]   |
-|  backdrop-blur          |    |  backdrop-blur          |
-|  ring-2 ring-primary/30 |    |  ring-2 ring-primary/50 |
-+-------------------------+    +-------------------------+
-```
+┌──────────────────────────────────────┐
+│                                      │
+│   ☀️/🌙  ← Morphendes Icon           │
+│                                      │
+│   [Glasmorphism Background]          │
+│   [Pulsierender Ring bei Hover]      │
+│   [Subtle Particle-Hint Animation]   │
+│                                      │
+└──────────────────────────────────────┘
 
-**States:**
-- `idle`: Subtiler Glow
-- `hover`: Intensiverer Glow + Scale 1.1
-- `active`: Matrix Rain wird getriggert
-
-### Animations-Flow
-
-```text
-1. User klickt Button
-         ↓
-2. Matrix Rain Overlay erscheint (AnimatePresence)
-         ↓
-3. Nach 500ms: Theme wechselt (class toggle)
-         ↓
-4. Nach 1500ms: Rain "zerfällt" (opacity fade)
-         ↓
-5. Overlay entfernt, neues Theme ist aktiv
+Hover-State:
+- Kleine Preview-Partikel schweben um Button
+- Leuchtet im Accent-Farbton auf
+- Tooltip zeigt nächsten Effekt: "Next: Portal Warp"
 ```
 
 ---
 
-## Code-Architektur
+## Accessibility
 
-### MatrixDarkModeToggle.tsx
-
-```tsx
-// Hauptkomponente mit:
-// - useState für isTransitioning
-// - Framer Motion für Button-Animationen
-// - AnimatePresence für Matrix-Overlay
-// - useTaskPreferences Hook für Theme-State
-```
-
-### MatrixRain.tsx
-
-```tsx
-// Canvas-Komponente mit:
-// - useRef für Canvas-Element
-// - useEffect mit requestAnimationFrame Loop
-// - Konfigurierbare Props: duration, columnCount, colors
-// - Cleanup bei unmount
-```
-
-### CSS Erweiterungen
-
-```css
-/* Smooth theme transitions */
-body {
-  transition: background-color 0.5s ease, color 0.3s ease;
-}
-
-/* Matrix glow effect */
-.matrix-glow {
-  animation: matrix-pulse 2s infinite;
-  box-shadow: 0 0 20px hsl(160 100% 50% / 0.4);
-}
-```
+| Situation | Verhalten |
+|-----------|-----------|
+| `prefers-reduced-motion: reduce` | Einfacher Opacity-Fade (300ms) |
+| Keyboard Navigation | Enter/Space triggert Toggle |
+| Screen Reader | "Toggle dark mode. Currently light mode." |
 
 ---
 
-## Warum dieser Ansatz?
+## Performance Optimierungen
 
-| Aspekt | Vorteil |
-|--------|---------|
-| **Einzigartigkeit** | Matrix-Effekt ist iconic, aber selten als Theme-Toggle |
-| **Performance** | Canvas ist GPU-beschleunigt, smooth auch auf Mobile |
-| **Bestehende Patterns** | Nutzt bereits vorhandenes framer-motion |
-| **Theme-System** | Integriert nahtlos mit bestehendem useTaskPreferences |
-| **Accessibility** | Respektiert `prefers-reduced-motion` (dann einfacher Fade) |
-
----
-
-## Alternative Effekte (falls gewünscht)
-
-Falls der Matrix-Effekt zu viel ist, hier Alternativen:
-
-1. **Liquid Morph**: Farbflüssigkeit die sich ausbreitet
-2. **Portal Warp**: Schwarzes Loch das sich öffnet und schließt
-3. **Glitch Effect**: Kurzer digitaler Glitch-Übergang
-4. **Particle Explosion**: Partikel die vom Button explodieren
+| Technik | Anwendung |
+|---------|-----------|
+| Canvas für Matrix & Particles | GPU-beschleunigt, keine DOM Manipulationen |
+| CSS transforms/opacity only | Keine Layout-Reflows bei Animationen |
+| requestAnimationFrame | Smooth 60fps für Canvas-Animationen |
+| will-change: transform | Browser-Hint für bessere Performance |
+| Lazy Loading | Effekt-Komponenten werden nur bei Bedarf geladen |
 
 ---
 
-## Nächste Schritte nach Approval
+## Implementierungs-Reihenfolge
 
-1. MatrixRain Canvas-Komponente erstellen
-2. MatrixDarkModeToggle Button-Komponente erstellen
-3. In AppLayout neben Logout integrieren
-4. CSS Transitions für smoothe Theme-Übergänge hinzufügen
-5. Testen auf Desktop und Mobile
-
+1. **Base Hook**: `useThemeTransition` für State + Effect Rotation
+2. **MatrixRain**: Canvas-Animation (bereits konzipiert)
+3. **LiquidMorph**: SVG Blob-Animation
+4. **PortalWarp**: CSS Warp-Effekt
+5. **GlitchEffect**: CSS + Filter Animation
+6. **ParticleExplosion**: Canvas Partikel-System
+7. **MatrixDarkModeToggle**: Haupt-Button mit Effekt-Orchestrierung
+8. **Integration**: In AppLayout einbauen
+9. **Polish**: Accessibility + reduced-motion Support
