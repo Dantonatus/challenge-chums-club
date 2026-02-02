@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
 import { ArrowLeft, Home, ListTodo, UtensilsCrossed } from "lucide-react";
+import { MatrixDarkModeToggle } from "@/components/ui/MatrixDarkModeToggle";
 
 const AppLayout = () => {
   const navigate = useNavigate();
@@ -98,7 +99,10 @@ const AppLayout = () => {
               </NavLink>
             </nav>
           </div>
-          <Button variant="outline" onClick={handleLogout}>Log out</Button>
+          <div className="flex items-center gap-3">
+            <MatrixDarkModeToggle />
+            <Button variant="outline" onClick={handleLogout}>Log out</Button>
+          </div>
         </div>
       </header>
       <main className="container py-6">
