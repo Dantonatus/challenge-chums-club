@@ -20,6 +20,7 @@ const EFFECT_NAMES: Record<TransitionEffect, string> = {
 export function MatrixDarkModeToggle() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [buttonPosition, setButtonPosition] = useState<{ x: number; y: number } | undefined>();
+  const [activeEffect, setActiveEffect] = useState<TransitionEffect | null>(null);
   
   const {
     isTransitioning,
@@ -28,8 +29,16 @@ export function MatrixDarkModeToggle() {
     isDark,
     getNextEffect,
     toggleTheme,
+    advanceEffect,
     prefersReducedMotion,
   } = useThemeTransition();
+
+  // Stable refs for callbacks
+  const toggleThemeRef = useRef(toggleTheme);
+  toggleThemeRef.current = toggleTheme;
+  
+  const advanceEffectRef = useRef(advanceEffect);
+  advanceEffectRef.current = advanceEffect;
 
   const handleClick = useCallback(() => {
     if (isTransitioning) return;
@@ -46,18 +55,26 @@ export function MatrixDarkModeToggle() {
     // If user prefers reduced motion, just toggle instantly
     if (prefersReducedMotion) {
       toggleTheme();
+      advanceEffect();
       return;
     }
 
+    // Set the active effect BEFORE transitioning
+    setActiveEffect(currentEffect);
     setIsTransitioning(true);
-  }, [isTransitioning, prefersReducedMotion, toggleTheme, setIsTransitioning]);
+  }, [isTransitioning, prefersReducedMotion, toggleTheme, advanceEffect, currentEffect, setIsTransitioning]);
 
+  // Stable callback - theme switch happens mid-animation
   const handleThemeSwitch = useCallback(() => {
-    toggleTheme();
-  }, [toggleTheme]);
+    toggleThemeRef.current();
+  }, []);
 
+  // Stable callback - cleanup after animation
   const handleComplete = useCallback(() => {
     setIsTransitioning(false);
+    setActiveEffect(null);
+    // Advance to next effect AFTER completion
+    advanceEffectRef.current();
   }, [setIsTransitioning]);
 
   const nextEffect = getNextEffect();
@@ -160,9 +177,9 @@ export function MatrixDarkModeToggle() {
         </div>
       </motion.button>
 
-      {/* Effect Overlays */}
+      {/* Effect Overlays - use activeEffect to lock in which effect plays */}
       <AnimatePresence>
-        {isTransitioning && currentEffect === 'matrix' && (
+        {isTransitioning && activeEffect === 'matrix' && (
           <MatrixRain
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
@@ -170,7 +187,7 @@ export function MatrixDarkModeToggle() {
             isDark={isDark}
           />
         )}
-        {isTransitioning && currentEffect === 'liquid' && (
+        {isTransitioning && activeEffect === 'liquid' && (
           <LiquidMorph
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
@@ -179,7 +196,7 @@ export function MatrixDarkModeToggle() {
             buttonPosition={buttonPosition}
           />
         )}
-        {isTransitioning && currentEffect === 'portal' && (
+        {isTransitioning && activeEffect === 'portal' && (
           <PortalWarp
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
@@ -187,7 +204,7 @@ export function MatrixDarkModeToggle() {
             isDark={isDark}
           />
         )}
-        {isTransitioning && currentEffect === 'glitch' && (
+        {isTransitioning && activeEffect === 'glitch' && (
           <GlitchEffect
             isActive={true}
             onThemeSwitch={handleThemeSwitch}
@@ -195,7 +212,7 @@ export function MatrixDarkModeToggle() {
             isDark={isDark}
           />
         )}
-        {isTransitioning && currentEffect === 'particles' && (
+        {isTransitioning && activeEffect === 'particles' && (
           <ParticleExplosion
             isActive={true}
             onThemeSwitch={handleThemeSwitch}

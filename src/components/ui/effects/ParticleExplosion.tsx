@@ -23,35 +23,60 @@ interface Particle {
   rotation: number;
   rotationSpeed: number;
   color: string;
-  life: number;
   maxLife: number;
   trail: { x: number; y: number }[];
 }
 
-function createParticle(centerX: number, centerY: number, isDark: boolean): Particle {
-  const angle = Math.random() * Math.PI * 2;
-  const speed = 5 + Math.random() * 15;
-  const type = Math.random() < 0.6 ? 'circle' : Math.random() < 0.5 ? 'star' : 'line';
-  
-  // Colors based on theme direction
+function createParticles(centerX: number, centerY: number, isDark: boolean): Particle[] {
   const colors = isDark 
-    ? ['#FFD700', '#FFA500', '#FF69B4', '#FF6B6B', '#FFEAA7'] // Warm colors for dark->light
-    : ['#9B59B6', '#3498DB', '#00CED1', '#1ABC9C', '#00FF88']; // Cool colors for light->dark
+    ? ['#FFD700', '#FFA500', '#FF69B4', '#FF6B6B', '#FFEAA7']
+    : ['#9B59B6', '#3498DB', '#00CED1', '#1ABC9C', '#00FF88'];
 
-  return {
-    x: centerX,
-    y: centerY,
-    vx: Math.cos(angle) * speed,
-    vy: Math.sin(angle) * speed,
-    size: type === 'circle' ? 2 + Math.random() * 6 : 5 + Math.random() * 10,
-    type,
-    rotation: Math.random() * 360,
-    rotationSpeed: (Math.random() - 0.5) * 20,
-    color: colors[Math.floor(Math.random() * colors.length)],
-    life: 1,
-    maxLife: 0.7 + Math.random() * 0.3,
-    trail: [],
-  };
+  const particles: Particle[] = [];
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 5 + Math.random() * 15;
+    const type = Math.random() < 0.6 ? 'circle' : Math.random() < 0.5 ? 'star' : 'line';
+
+    particles.push({
+      x: centerX,
+      y: centerY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: type === 'circle' ? 2 + Math.random() * 6 : 5 + Math.random() * 10,
+      type,
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 20,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      maxLife: 0.7 + Math.random() * 0.3,
+      trail: [],
+    });
+  }
+  return particles;
+}
+
+function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number) {
+  let rot = (Math.PI / 2) * 3;
+  const step = Math.PI / spikes;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerRadius);
+
+  for (let i = 0; i < spikes; i++) {
+    let x = cx + Math.cos(rot) * outerRadius;
+    let y = cy + Math.sin(rot) * outerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+  ctx.fill();
 }
 
 export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark, buttonPosition }: ParticleExplosionProps) {
@@ -60,6 +85,9 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
   const particlesRef = useRef<Particle[]>([]);
+  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  
+  callbacksRef.current = { onThemeSwitch, onComplete };
 
   useEffect(() => {
     if (!isActive) {
@@ -74,18 +102,13 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
     const centerX = buttonPosition?.x ?? canvas.width - 100;
     const centerY = buttonPosition?.y ?? 40;
 
-    // Create particles
-    particlesRef.current = Array.from({ length: PARTICLE_COUNT }, () => 
-      createParticle(centerX, centerY, isDark)
-    );
-
+    particlesRef.current = createParticles(centerX, centerY, isDark);
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
 
@@ -93,31 +116,28 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
       const elapsed = currentTime - startTimeRef.current;
       const progress = elapsed / DURATION;
 
-      // Trigger theme switch
       if (!themeSwitchedRef.current && elapsed >= THEME_SWITCH_DELAY) {
         themeSwitchedRef.current = true;
-        onThemeSwitch();
+        callbacksRef.current.onThemeSwitch();
       }
 
-      // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Update and draw particles
       particlesRef.current.forEach((particle) => {
         // Update position
         particle.x += particle.vx;
         particle.y += particle.vy;
 
         // Apply physics
-        particle.vy += -0.1; // Slight upward drift
-        particle.vx *= 0.98; // Friction
+        particle.vy += -0.1;
+        particle.vx *= 0.98;
         particle.vy *= 0.98;
 
         // Update rotation
         particle.rotation += particle.rotationSpeed;
 
-        // Update life
-        particle.life = Math.max(0, 1 - progress / particle.maxLife);
+        // Calculate life
+        const life = Math.max(0, 1 - progress / particle.maxLife);
 
         // Update trail
         particle.trail.push({ x: particle.x, y: particle.y });
@@ -125,29 +145,28 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
           particle.trail.shift();
         }
 
-        // Skip if dead
-        if (particle.life <= 0) return;
+        if (life <= 0) return;
 
         ctx.save();
         ctx.translate(particle.x, particle.y);
         ctx.rotate((particle.rotation * Math.PI) / 180);
-        ctx.globalAlpha = particle.life;
+        ctx.globalAlpha = life;
 
         // Draw trail
         if (particle.trail.length > 1) {
           ctx.beginPath();
           ctx.moveTo(particle.trail[0].x - particle.x, particle.trail[0].y - particle.y);
-          particle.trail.forEach((point, i) => {
+          particle.trail.forEach((point) => {
             ctx.lineTo(point.x - particle.x, point.y - particle.y);
           });
           ctx.strokeStyle = particle.color;
           ctx.lineWidth = particle.size * 0.3;
-          ctx.globalAlpha = particle.life * 0.3;
+          ctx.globalAlpha = life * 0.3;
           ctx.stroke();
-          ctx.globalAlpha = particle.life;
+          ctx.globalAlpha = life;
         }
 
-        // Draw particle based on type
+        // Draw particle
         ctx.fillStyle = particle.color;
         ctx.shadowColor = particle.color;
         ctx.shadowBlur = 10;
@@ -159,7 +178,6 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
         } else if (particle.type === 'star') {
           drawStar(ctx, 0, 0, 4, particle.size, particle.size * 0.5);
         } else {
-          // Line
           ctx.beginPath();
           ctx.moveTo(-particle.size / 2, 0);
           ctx.lineTo(particle.size / 2, 0);
@@ -174,7 +192,7 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
       if (elapsed < DURATION) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        onComplete();
+        callbacksRef.current.onComplete();
       }
     };
 
@@ -185,7 +203,7 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isActive, onThemeSwitch, onComplete, isDark, buttonPosition]);
+  }, [isActive, isDark, buttonPosition]);
 
   if (!isActive) return null;
 
@@ -203,31 +221,4 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
       />
     </motion.div>
   );
-}
-
-// Helper function to draw a star
-function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number) {
-  let rot = (Math.PI / 2) * 3;
-  let x = cx;
-  let y = cy;
-  const step = Math.PI / spikes;
-
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - outerRadius);
-
-  for (let i = 0; i < spikes; i++) {
-    x = cx + Math.cos(rot) * outerRadius;
-    y = cy + Math.sin(rot) * outerRadius;
-    ctx.lineTo(x, y);
-    rot += step;
-
-    x = cx + Math.cos(rot) * innerRadius;
-    y = cy + Math.sin(rot) * innerRadius;
-    ctx.lineTo(x, y);
-    rot += step;
-  }
-
-  ctx.lineTo(cx, cy - outerRadius);
-  ctx.closePath();
-  ctx.fill();
 }

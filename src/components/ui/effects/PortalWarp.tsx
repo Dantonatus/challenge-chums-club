@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 interface PortalWarpProps {
@@ -12,51 +12,175 @@ const DURATION = 1800;
 const THEME_SWITCH_DELAY = 900;
 
 export function PortalWarp({ isActive, onThemeSwitch, onComplete, isDark }: PortalWarpProps) {
-  const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState<'sucking' | 'expanding' | 'settling'>('sucking');
-  const startTimeRef = useRef<number>(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
+  const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
+  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  
+  callbacksRef.current = { onThemeSwitch, onComplete };
 
   useEffect(() => {
     if (!isActive) {
-      setProgress(0);
-      setPhase('sucking');
       themeSwitchedRef.current = false;
       return;
     }
 
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY) * 1.2;
+
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
+
+    // Speed lines
+    const lines: { angle: number; speed: number; length: number; width: number }[] = [];
+    for (let i = 0; i < 60; i++) {
+      lines.push({
+        angle: Math.random() * Math.PI * 2,
+        speed: 0.5 + Math.random() * 1.5,
+        length: 50 + Math.random() * 200,
+        width: 1 + Math.random() * 3,
+      });
+    }
 
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTimeRef.current;
       const normalizedTime = elapsed / DURATION;
 
-      // Trigger theme switch
       if (!themeSwitchedRef.current && elapsed >= THEME_SWITCH_DELAY) {
         themeSwitchedRef.current = true;
-        onThemeSwitch();
+        callbacksRef.current.onThemeSwitch();
       }
 
-      // Phase transitions
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Calculate progress and phase
+      let portalRadius: number;
+      let rotation: number;
+      let intensity: number;
+      
       if (normalizedTime < 0.5) {
-        setPhase('sucking');
-        setProgress(normalizedTime * 2); // 0 -> 1
+        // Opening phase
+        const t = normalizedTime * 2;
+        portalRadius = maxRadius * t * t;
+        rotation = t * 720;
+        intensity = t;
       } else if (normalizedTime < 0.8) {
-        setPhase('expanding');
-        setProgress(1 - ((normalizedTime - 0.5) / 0.3)); // 1 -> 0
+        // Closing phase
+        const t = (normalizedTime - 0.5) / 0.3;
+        portalRadius = maxRadius * (1 - t * t);
+        rotation = 720 + t * 360;
+        intensity = 1 - t;
       } else {
-        setPhase('settling');
-        const settleProgress = (normalizedTime - 0.8) / 0.2;
-        // Overshoot and settle
-        setProgress(Math.sin(settleProgress * Math.PI) * 0.05);
+        // Settle phase
+        portalRadius = 0;
+        rotation = 1080;
+        intensity = 0;
+      }
+
+      // Draw speed lines
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate((rotation * Math.PI) / 180);
+
+      lines.forEach((line) => {
+        const lineProgress = ((elapsed * line.speed * 0.01) % 1);
+        const startDist = lineProgress * maxRadius;
+        const endDist = startDist + line.length * intensity;
+
+        const gradient = ctx.createLinearGradient(
+          Math.cos(line.angle) * startDist,
+          Math.sin(line.angle) * startDist,
+          Math.cos(line.angle) * endDist,
+          Math.sin(line.angle) * endDist
+        );
+
+        const lineColor = isDark ? 'hsl(45, 100%, 70%)' : 'hsl(270, 80%, 50%)';
+        gradient.addColorStop(0, 'transparent');
+        gradient.addColorStop(0.5, lineColor);
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.beginPath();
+        ctx.moveTo(
+          Math.cos(line.angle) * startDist,
+          Math.sin(line.angle) * startDist
+        );
+        ctx.lineTo(
+          Math.cos(line.angle) * endDist,
+          Math.sin(line.angle) * endDist
+        );
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = line.width * intensity;
+        ctx.globalAlpha = intensity * 0.6;
+        ctx.stroke();
+      });
+
+      ctx.restore();
+
+      // Draw portal
+      if (portalRadius > 0) {
+        // Outer glow rings
+        for (let i = 3; i >= 0; i--) {
+          const ringRadius = portalRadius * (1 + i * 0.1);
+          const gradient = ctx.createRadialGradient(
+            centerX, centerY, ringRadius * 0.9,
+            centerX, centerY, ringRadius
+          );
+          
+          const glowColor = isDark 
+            ? `hsla(45, 100%, 70%, ${0.3 - i * 0.07})`
+            : `hsla(270, 80%, 50%, ${0.3 - i * 0.07})`;
+          
+          gradient.addColorStop(0, 'transparent');
+          gradient.addColorStop(0.5, glowColor);
+          gradient.addColorStop(1, 'transparent');
+
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+          ctx.fillStyle = gradient;
+          ctx.globalAlpha = intensity;
+          ctx.fill();
+        }
+
+        // Main portal
+        const portalGradient = ctx.createRadialGradient(
+          centerX, centerY, 0,
+          centerX, centerY, portalRadius
+        );
+        
+        if (isDark) {
+          portalGradient.addColorStop(0, 'hsl(0, 0%, 100%)');
+          portalGradient.addColorStop(0.3, 'hsl(45, 100%, 95%)');
+          portalGradient.addColorStop(0.7, 'hsl(45, 80%, 85%)');
+          portalGradient.addColorStop(1, 'hsl(45, 60%, 75%)');
+        } else {
+          portalGradient.addColorStop(0, 'hsl(0, 0%, 0%)');
+          portalGradient.addColorStop(0.3, 'hsl(270, 50%, 10%)');
+          portalGradient.addColorStop(0.7, 'hsl(270, 40%, 20%)');
+          portalGradient.addColorStop(1, 'hsl(270, 30%, 30%)');
+        }
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, portalRadius, 0, Math.PI * 2);
+        ctx.fillStyle = portalGradient;
+        ctx.globalAlpha = 1;
+        ctx.fill();
       }
 
       if (elapsed < DURATION) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        onComplete();
+        callbacksRef.current.onComplete();
       }
     };
 
@@ -67,107 +191,22 @@ export function PortalWarp({ isActive, onThemeSwitch, onComplete, isDark }: Port
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isActive, onThemeSwitch, onComplete]);
+  }, [isActive, isDark]);
 
   if (!isActive) return null;
 
-  // Calculate warp effects based on phase and progress
-  const rotation = phase === 'sucking' ? progress * 720 : phase === 'expanding' ? 720 - progress * 360 : 0;
-  const scale = phase === 'sucking' ? 1 - progress * 0.2 : phase === 'expanding' ? 0.8 + progress * 0.25 : 1 + progress;
-  const blur = phase === 'sucking' ? progress * 20 : phase === 'expanding' ? (1 - progress) * 20 : 0;
-  const portalSize = phase === 'sucking' ? progress * 150 : phase === 'expanding' ? 150 - progress * 150 : 0;
-
-  const portalColor = isDark 
-    ? 'hsl(45, 100%, 70%)' // Golden for dark->light
-    : 'hsl(270, 80%, 30%)'; // Purple for light->dark
-
-  const glowColor = isDark 
-    ? 'rgba(255, 215, 100, 0.6)'
-    : 'rgba(138, 43, 226, 0.6)';
-
   return (
-    <>
-      {/* Warp effect on body content */}
-      <style>
-        {`
-          .portal-warp-active {
-            transform: scale(${scale}) rotate(${rotation}deg) !important;
-            filter: blur(${blur}px) !important;
-            transition: none !important;
-          }
-        `}
-      </style>
-
-      {/* Portal center */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center"
-      >
-        {/* Speed lines */}
-        {phase === 'sucking' && (
-          <div className="absolute inset-0 overflow-hidden">
-            {Array.from({ length: 20 }).map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute bg-current"
-                style={{
-                  width: 2,
-                  height: '100vh',
-                  left: `${5 + i * 5}%`,
-                  transformOrigin: 'center',
-                  opacity: progress * 0.3,
-                  background: `linear-gradient(to bottom, transparent, ${portalColor}, transparent)`,
-                  transform: `rotate(${(i - 10) * 5}deg) translateY(${-progress * 50}%)`,
-                }}
-                initial={{ scaleY: 0 }}
-                animate={{ scaleY: progress }}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Central portal */}
-        <motion.div
-          className="rounded-full"
-          style={{
-            width: `${portalSize}vmax`,
-            height: `${portalSize}vmax`,
-            background: isDark 
-              ? 'radial-gradient(circle, hsl(0, 0%, 100%) 0%, hsl(45, 100%, 90%) 50%, transparent 100%)'
-              : 'radial-gradient(circle, hsl(0, 0%, 0%) 0%, hsl(270, 80%, 20%) 50%, transparent 100%)',
-            boxShadow: `
-              0 0 ${portalSize * 0.5}px ${glowColor},
-              0 0 ${portalSize}px ${glowColor},
-              inset 0 0 ${portalSize * 0.3}px ${glowColor}
-            `,
-          }}
-          animate={{
-            rotate: rotation,
-          }}
-          transition={{ duration: 0 }}
-        />
-
-        {/* Spiral rings */}
-        {[1, 2, 3].map((ring) => (
-          <motion.div
-            key={ring}
-            className="absolute rounded-full border-2"
-            style={{
-              width: `${portalSize * (1 + ring * 0.3)}vmax`,
-              height: `${portalSize * (1 + ring * 0.3)}vmax`,
-              borderColor: portalColor,
-              opacity: (1 - ring * 0.25) * progress,
-            }}
-            animate={{
-              rotate: rotation * (1 - ring * 0.2),
-              scale: 1 + Math.sin(progress * Math.PI * 2) * 0.1,
-            }}
-            transition={{ duration: 0 }}
-          />
-        ))}
-      </motion.div>
-    </>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[9999] pointer-events-none"
+    >
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full"
+        style={{ background: 'transparent' }}
+      />
+    </motion.div>
   );
 }

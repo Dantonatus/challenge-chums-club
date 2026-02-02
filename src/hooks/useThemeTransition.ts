@@ -1,17 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useTaskPreferences } from './useTaskPreferences';
 
 export type TransitionEffect = 'matrix' | 'liquid' | 'portal' | 'glitch' | 'particles';
 
 const EFFECTS: TransitionEffect[] = ['matrix', 'liquid', 'portal', 'glitch', 'particles'];
 const EFFECT_STORAGE_KEY = 'theme-effect-index';
-
-interface ThemeTransitionState {
-  isTransitioning: boolean;
-  currentEffect: TransitionEffect;
-  effectIndex: number;
-  isDark: boolean;
-}
 
 export function useThemeTransition() {
   const { preferences, setPreferences } = useTaskPreferences();
@@ -24,39 +17,34 @@ export function useThemeTransition() {
   
   const [isTransitioning, setIsTransitioning] = useState(false);
   
+  // Use refs for stable callback references
+  const effectIndexRef = useRef(effectIndex);
+  effectIndexRef.current = effectIndex;
+  
   const isDark = preferences.theme === 'dark' || 
     (preferences.theme === 'system' && 
      typeof window !== 'undefined' && 
      window.matchMedia('(prefers-color-scheme: dark)').matches);
+  
+  const isDarkRef = useRef(isDark);
+  isDarkRef.current = isDark;
 
   const currentEffect = EFFECTS[effectIndex];
   
   const getNextEffect = useCallback(() => {
-    return EFFECTS[(effectIndex + 1) % EFFECTS.length];
-  }, [effectIndex]);
-
-  const triggerTransition = useCallback((onThemeSwitch: () => void) => {
-    if (isTransitioning) return;
-    
-    setIsTransitioning(true);
-    
-    // Store the callback to be called at the right time during the effect
-    return {
-      onThemeSwitch,
-      onComplete: () => {
-        // Update effect index for next time
-        const nextIndex = (effectIndex + 1) % EFFECTS.length;
-        setEffectIndex(nextIndex);
-        localStorage.setItem(EFFECT_STORAGE_KEY, String(nextIndex));
-        setIsTransitioning(false);
-      }
-    };
-  }, [isTransitioning, effectIndex]);
+    return EFFECTS[(effectIndexRef.current + 1) % EFFECTS.length];
+  }, []);
 
   const toggleTheme = useCallback(() => {
-    const newTheme = isDark ? 'light' : 'dark';
+    const newTheme = isDarkRef.current ? 'light' : 'dark';
     setPreferences({ theme: newTheme });
-  }, [isDark, setPreferences]);
+  }, [setPreferences]);
+
+  const advanceEffect = useCallback(() => {
+    const nextIndex = (effectIndexRef.current + 1) % EFFECTS.length;
+    setEffectIndex(nextIndex);
+    localStorage.setItem(EFFECT_STORAGE_KEY, String(nextIndex));
+  }, []);
 
   // Check for reduced motion preference
   const prefersReducedMotion = typeof window !== 'undefined' 
@@ -70,8 +58,8 @@ export function useThemeTransition() {
     effectIndex,
     isDark,
     getNextEffect,
-    triggerTransition,
     toggleTheme,
+    advanceEffect,
     prefersReducedMotion,
   };
 }
