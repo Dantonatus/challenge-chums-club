@@ -14,17 +14,25 @@ const THEME_SWITCH_DELAY = 500;
 
 export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: MatrixRainProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
-  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  const completedRef = useRef(false);
   
-  // Keep callbacks fresh
-  callbacksRef.current = { onThemeSwitch, onComplete };
+  // Store callbacks in ref to avoid stale closures
+  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  useEffect(() => {
+    callbacksRef.current = { onThemeSwitch, onComplete };
+  }, [onThemeSwitch, onComplete]);
 
   useEffect(() => {
     if (!isActive) {
       themeSwitchedRef.current = false;
+      completedRef.current = false;
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
       return;
     }
 
@@ -47,11 +55,14 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
     
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
+    completedRef.current = false;
 
     const animate = (currentTime: number) => {
+      if (!isActive || completedRef.current) return;
+      
       const elapsed = currentTime - startTimeRef.current;
       
-      // Trigger theme switch at the right moment
+      // Trigger theme switch at the right moment (only once)
       if (!themeSwitchedRef.current && elapsed >= THEME_SWITCH_DELAY) {
         themeSwitchedRef.current = true;
         callbacksRef.current.onThemeSwitch();
@@ -101,7 +112,8 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
 
       if (elapsed < DURATION) {
         animationRef.current = requestAnimationFrame(animate);
-      } else {
+      } else if (!completedRef.current) {
+        completedRef.current = true;
         callbacksRef.current.onComplete();
       }
     };
@@ -111,6 +123,7 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
   }, [isActive, isDark]);
@@ -122,6 +135,7 @@ export function MatrixRain({ isActive, onThemeSwitch, onComplete, isDark }: Matr
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.1 }}
       className="fixed inset-0 z-[9999] pointer-events-none"
     >
       <canvas

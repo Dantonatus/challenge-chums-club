@@ -81,18 +81,27 @@ function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes:
 
 export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark, buttonPosition }: ParticleExplosionProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const themeSwitchedRef = useRef(false);
+  const completedRef = useRef(false);
   const particlesRef = useRef<Particle[]>([]);
-  const callbacksRef = useRef({ onThemeSwitch, onComplete });
   
-  callbacksRef.current = { onThemeSwitch, onComplete };
+  // Store callbacks in ref to avoid stale closures
+  const callbacksRef = useRef({ onThemeSwitch, onComplete });
+  useEffect(() => {
+    callbacksRef.current = { onThemeSwitch, onComplete };
+  }, [onThemeSwitch, onComplete]);
 
   useEffect(() => {
     if (!isActive) {
       themeSwitchedRef.current = false;
+      completedRef.current = false;
       particlesRef.current = [];
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
       return;
     }
 
@@ -111,8 +120,11 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
     particlesRef.current = createParticles(centerX, centerY, isDark);
     startTimeRef.current = performance.now();
     themeSwitchedRef.current = false;
+    completedRef.current = false;
 
     const animate = (currentTime: number) => {
+      if (!isActive || completedRef.current) return;
+      
       const elapsed = currentTime - startTimeRef.current;
       const progress = elapsed / DURATION;
 
@@ -191,7 +203,8 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
 
       if (elapsed < DURATION) {
         animationRef.current = requestAnimationFrame(animate);
-      } else {
+      } else if (!completedRef.current) {
+        completedRef.current = true;
         callbacksRef.current.onComplete();
       }
     };
@@ -201,6 +214,7 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
   }, [isActive, isDark, buttonPosition]);
@@ -212,6 +226,7 @@ export function ParticleExplosion({ isActive, onThemeSwitch, onComplete, isDark,
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.1 }}
       className="fixed inset-0 z-[9999] pointer-events-none"
     >
       <canvas
