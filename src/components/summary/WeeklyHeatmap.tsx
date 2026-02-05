@@ -14,7 +14,8 @@ interface WeeklyHeatmapProps {
   habitStats: Array<{
     challengeId: string;
     title: string;
-    lastSevenDays: DayEntry[];
+    lastSevenDays?: DayEntry[];
+    last30Days?: DayEntry[];
   }>;
   lang: "de" | "en";
   weeksToShow?: number;
@@ -68,13 +69,17 @@ export function WeeklyHeatmap({ habitStats, lang, weeksToShow = 4 }: WeeklyHeatm
     const dataMap: Record<string, { success: number; fail: number; total: number }> = {};
 
     habitStats.forEach((habit) => {
-      habit.lastSevenDays.forEach((day) => {
+      // Use last30Days if available, fallback to lastSevenDays
+      const daysData = habit.last30Days || habit.lastSevenDays || [];
+      daysData.forEach((day) => {
         if (!dataMap[day.date]) {
           dataMap[day.date] = { success: 0, fail: 0, total: 0 };
         }
-        dataMap[day.date].total++;
-        if (day.success === true) dataMap[day.date].success++;
-        if (day.success === false) dataMap[day.date].fail++;
+        if (day.success !== null) {
+          dataMap[day.date].total++;
+          if (day.success === true) dataMap[day.date].success++;
+          if (day.success === false) dataMap[day.date].fail++;
+        }
       });
     });
 
