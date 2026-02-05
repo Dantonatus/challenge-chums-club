@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, ArrowRight, TrendingUp, Award, AlertCircle, Flame } from "lucide-react";
+import { Sparkles, ArrowRight, TrendingUp, TrendingDown, Award, AlertCircle, Flame, Lightbulb } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ interface OverallStats {
   totalEntries: number;
   bestStreak: number;
   bestStreakHabit: string;
+  trend?: number;
 }
 
 interface HabitStats {
@@ -39,11 +40,18 @@ const t = {
     days: "Tage",
     successRate: "Erfolgsquote",
     suggestion: "Tipp",
+    betterThanLastWeek: "besser als letzte Woche!",
+    worseThanLastWeek: "weniger als letzte Woche",
     suggestions: {
       excellent: "Du bist auf einem großartigen Weg! Halte deine Routinen aufrecht.",
       good: "Gute Fortschritte! Konzentriere dich auf Konsistenz.",
       needsWork: "Versuche, jeden Tag kleine Schritte zu machen.",
       focus: "Fokussiere dich besonders auf:",
+    },
+    implementationTips: {
+      morning: "Morgens ist deine Power-Zeit! Erledige Habits vor 10 Uhr.",
+      evening: "Abend-Routinen funktionieren am besten nach dem Abendessen.",
+      stack: "Verknüpfe Habits: Mache sie direkt nach etwas, das du sowieso täglich tust.",
     },
   },
   en: {
@@ -58,11 +66,18 @@ const t = {
     days: "days",
     successRate: "Success Rate",
     suggestion: "Tip",
+    betterThanLastWeek: "better than last week!",
+    worseThanLastWeek: "down from last week",
     suggestions: {
       excellent: "You're on an amazing track! Keep your routines going.",
       good: "Good progress! Focus on consistency.",
       needsWork: "Try to take small steps every day.",
       focus: "Pay special attention to:",
+    },
+    implementationTips: {
+      morning: "Morning is your power hour! Consider doing your habits before 10am.",
+      evening: "Evening routines work best when you pair them with existing habits like dinner.",
+      stack: "Stack your habits: do them right after something you already do daily.",
     },
   },
 };
@@ -85,17 +100,44 @@ export function MotivationalInsights({
     .sort((a, b) => b.successRate - a.successRate)[0];
 
   // Determine motivation message
-  const getMotivationMessage = () => {
-    if (overallStats.averageSuccessRate >= 80) {
-      return { type: "excellent", message: labels.suggestions.excellent };
+  const getMotivationMessage = (): { type: string; message: string; icon: React.ReactNode } => {
+    const trend = overallStats.trend || 0;
+    const rate = overallStats.averageSuccessRate;
+    
+    if (trend > 10) {
+      return { 
+        type: "excellent", 
+        message: `+${Math.round(trend)}% ${labels.betterThanLastWeek}`,
+        icon: <TrendingUp className="h-4 w-4 text-green-500" />
+      };
     }
-    if (overallStats.averageSuccessRate >= 50) {
-      return { type: "good", message: labels.suggestions.good };
+    if (trend < -10) {
+      return { 
+        type: "needsWork", 
+        message: `${Math.round(trend)}% ${labels.worseThanLastWeek}`,
+        icon: <TrendingDown className="h-4 w-4 text-amber-500" />
+      };
     }
-    return { type: "needsWork", message: labels.suggestions.needsWork };
+    
+    if (rate >= 80) {
+      return { type: "excellent", message: labels.suggestions.excellent, icon: <Award className="h-4 w-4 text-green-500" /> };
+    }
+    if (rate >= 50) {
+      return { type: "good", message: labels.suggestions.good, icon: <TrendingUp className="h-4 w-4 text-amber-500" /> };
+    }
+    return { type: "needsWork", message: labels.suggestions.needsWork, icon: <AlertCircle className="h-4 w-4 text-blue-500" /> };
+  };
+  
+  const getImplementationTip = (): string => {
+    const hour = new Date().getHours();
+    const tips = labels.implementationTips;
+    if (hour < 12) return tips.morning;
+    if (hour < 18) return tips.stack;
+    return tips.evening;
   };
 
   const motivation = getMotivationMessage();
+  const implementationTip = getImplementationTip();
 
   if (!overallStats.totalHabits) {
     return (
@@ -158,7 +200,7 @@ export function MotivationalInsights({
         {/* Motivation Message */}
         <div
           className={cn(
-            "rounded-lg p-3 mb-4",
+            "rounded-lg p-3 mb-3",
             motivation.type === "excellent"
               ? "bg-green-500/10 border border-green-500/20"
               : motivation.type === "good"
@@ -167,20 +209,22 @@ export function MotivationalInsights({
           )}
         >
           <div className="flex items-start gap-2">
-            {motivation.type === "excellent" ? (
-              <Award className="h-4 w-4 text-green-500 mt-0.5" />
-            ) : motivation.type === "good" ? (
-              <TrendingUp className="h-4 w-4 text-amber-500 mt-0.5" />
-            ) : (
-              <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5" />
-            )}
+            <div className="mt-0.5">{motivation.icon}</div>
             <p className="text-sm text-foreground">{motivation.message}</p>
+          </div>
+        </div>
+        
+        {/* Implementation Intention Tip */}
+        <div className="bg-muted/30 rounded-lg p-3 mb-3">
+          <div className="flex items-start gap-2">
+            <Lightbulb className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <p className="text-xs text-muted-foreground">{implementationTip}</p>
           </div>
         </div>
 
         {/* Focus Habit (if needed) */}
         {habitNeedingFocus && (
-          <div className="bg-red-500/10 rounded-lg p-3 mb-4 border border-red-500/20">
+          <div className="bg-red-500/10 rounded-lg p-3 mb-3 border border-red-500/20">
             <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
               {labels.focusNeeded}
