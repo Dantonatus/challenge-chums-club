@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, eachDayOfInterval, parseISO, isSameDay } from "date-fns";
 import { useMemo } from "react";
+import { calculateAchievements, getNextAchievement, UnlockedAchievement, Achievement } from "@/lib/achievements";
 
 interface HabitStats {
   challengeId: string;
@@ -13,6 +14,10 @@ interface HabitStats {
   currentStreak: number;
   longestStreak: number;
   lastSevenDays: Array<{ date: string; success: boolean | null }>;
+  last30Days: Array<{ date: string; success: boolean | null }>;
+  todayStatus: 'done' | 'pending' | 'missed';
+  missedYesterday: boolean;
+  streakAtRisk: boolean;
 }
 
 interface Log {
@@ -27,6 +32,20 @@ interface Challenge {
   title: string;
   start_date: string;
   end_date: string;
+}
+
+interface OverallStats {
+  totalHabits: number;
+  averageSuccessRate: number;
+  totalSuccesses: number;
+  totalEntries: number;
+  bestStreak: number;
+  bestStreakHabit: string;
+  thisWeekSuccessRate: number;
+  lastWeekSuccessRate: number;
+  trend: number;
+  achievements: UnlockedAchievement[];
+  nextGoal: { achievement: Achievement; progress: number; max: number; habitTitle?: string } | null;
 }
 
 export function useHabitStats() {
@@ -85,8 +104,16 @@ export function useHabitStats() {
     if (!challenges || !logs) return [];
 
     const today = new Date();
+    const todayStr = format(today, "yyyy-MM-dd");
+    const yesterdayStr = format(subDays(today, 1), "yyyy-MM-dd");
+    
     const lastSevenDaysInterval = eachDayOfInterval({
       start: subDays(today, 6),
+      end: today,
+    });
+    
+    const last30DaysInterval = eachDayOfInterval({
+      start: subDays(today, 29),
       end: today,
     });
 
@@ -99,7 +126,7 @@ export function useHabitStats() {
       const failedEntries = challengeLogs.filter((l) => !l.success).length;
       const successRate = totalEntries > 0 ? (successfulEntries / totalEntries) * 100 : 0;
 
-      // Last 7 days
+      // Last 7 days for backward compatibility
       const lastSevenDays = lastSevenDaysInterval.map((date) => {
         const dateStr = format(date, "yyyy-MM-dd");
         const log = challengeLogs.find((l) => l.date === dateStr);
@@ -108,6 +135,26 @@ export function useHabitStats() {
           success: log ? log.success : null,
         };
       });
+      
+      // Last 30 days for heatmap
+      const last30Days = last30DaysInterval.map((date) => {
+        const dateStr = format(date, "yyyy-MM-dd");
+        const log = challengeLogs.find((l) => l.date === dateStr);
+        return {
+          date: dateStr,
+          success: log ? log.success : null,
+        };
+      });
+      
+      // Today's status
+      const todayLog = challengeLogs.find((l) => l.date === todayStr);
+      const todayStatus: 'done' | 'pending' | 'missed' = todayLog 
+        ? (todayLog.success ? 'done' : 'missed') 
+        : 'pending';
+      
+      // Yesterday's status for "Never Miss Twice"
+      const yesterdayLog = challengeLogs.find((l) => l.date === yesterdayStr);
+      const missedYesterday = !yesterdayLog || !yesterdayLog.success;
 
       // Calculate current streak (consecutive successful days ending today or yesterday)
       const sortedSuccessLogs = challengeLogs
@@ -135,6 +182,9 @@ export function useHabitStats() {
           }
         }
       }
+
+      // Streak at risk: has a streak AND missed yesterday
+      const streakAtRisk = currentStreak > 0 && missedYesterday && todayStatus !== 'done';
 
       // Calculate longest streak
       let longestStreak = 0;
@@ -170,12 +220,16 @@ export function useHabitStats() {
         currentStreak,
         longestStreak,
         lastSevenDays,
+        last30Days,
+        todayStatus,
+        missedYesterday,
+        streakAtRisk,
       };
     });
   }, [challenges, logs]);
 
   // Overall stats
-  const overallStats = useMemo(() => {
+  const overallStats = useMemo((): OverallStats => {
     if (!habitStats.length) {
       return {
         totalHabits: 0,
@@ -184,6 +238,11 @@ export function useHabitStats() {
         totalEntries: 0,
         bestStreak: 0,
         bestStreakHabit: "",
+        thisWeekSuccessRate: 0,
+        lastWeekSuccessRate: 0,
+        trend: 0,
+        achievements: [],
+        nextGoal: null,
       };
     }
 
@@ -195,6 +254,42 @@ export function useHabitStats() {
     const bestStreakHabit = habitStats.reduce((best, current) =>
       current.longestStreak > best.longestStreak ? current : best
     );
+    
+    // Calculate weekly trends
+    const today = new Date();
+    const thisWeekStart = format(subDays(today, 6), "yyyy-MM-dd");
+    const lastWeekStart = format(subDays(today, 13), "yyyy-MM-dd");
+    const lastWeekEnd = format(subDays(today, 7), "yyyy-MM-dd");
+    
+    let thisWeekSuccess = 0;
+    let thisWeekTotal = 0;
+    let lastWeekSuccess = 0;
+    let lastWeekTotal = 0;
+    
+    habitStats.forEach(h => {
+      h.last30Days.forEach(day => {
+        if (day.date >= thisWeekStart) {
+          if (day.success !== null) {
+            thisWeekTotal++;
+            if (day.success) thisWeekSuccess++;
+          }
+        } else if (day.date >= lastWeekStart && day.date <= lastWeekEnd) {
+          if (day.success !== null) {
+            lastWeekTotal++;
+            if (day.success) lastWeekSuccess++;
+          }
+        }
+      });
+    });
+    
+    const thisWeekSuccessRate = thisWeekTotal > 0 ? (thisWeekSuccess / thisWeekTotal) * 100 : 0;
+    const lastWeekSuccessRate = lastWeekTotal > 0 ? (lastWeekSuccess / lastWeekTotal) * 100 : 0;
+    const trend = thisWeekSuccessRate - lastWeekSuccessRate;
+    
+    // Calculate achievements
+    const achievements = calculateAchievements(habitStats, totalHabits);
+    const unlockedIds = achievements.map(a => a.id);
+    const nextGoal = getNextAchievement(habitStats, unlockedIds);
 
     return {
       totalHabits,
@@ -203,6 +298,11 @@ export function useHabitStats() {
       totalEntries,
       bestStreak: bestStreakHabit.longestStreak,
       bestStreakHabit: bestStreakHabit.title,
+      thisWeekSuccessRate,
+      lastWeekSuccessRate,
+      trend,
+      achievements,
+      nextGoal,
     };
   }, [habitStats]);
 

@@ -14,12 +14,28 @@ import { HabitStreakCards } from "@/components/summary/HabitStreakCards";
 import { WeeklyHeatmap } from "@/components/summary/WeeklyHeatmap";
 import { CompletionRings } from "@/components/summary/CompletionRings";
 import { MotivationalInsights } from "@/components/summary/MotivationalInsights";
+import { TodayWidget } from "@/components/summary/TodayWidget";
+import { NeverMissTwiceAlert } from "@/components/summary/NeverMissTwiceAlert";
+import { AchievementBadges } from "@/components/summary/AchievementBadges";
 
 // Keep some existing components
 import { GlobalBar } from "@/components/summary/GlobalBar";
 import { FilterBar } from "@/components/summary/FilterBar";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+
+const HABIT_TEMPLATES = {
+  de: [
+    { emoji: "🧘", title: "Meditation", description: "10 Min täglich", key: "meditation" },
+    { emoji: "💪", title: "Bewegung", description: "30 Min täglich", key: "exercise" },
+    { emoji: "📚", title: "Lesen", description: "20 Seiten täglich", key: "reading" },
+  ],
+  en: [
+    { emoji: "🧘", title: "Meditation", description: "10 min daily", key: "meditation" },
+    { emoji: "💪", title: "Exercise", description: "30 min daily", key: "exercise" },
+    { emoji: "📚", title: "Reading", description: "20 pages daily", key: "reading" },
+  ],
+};
 
 const Summary = () => {
   const { start, end } = useDateRange();
@@ -49,6 +65,13 @@ const Summary = () => {
       goToEntry: "Jetzt eintragen",
       greeting: "Willkommen zurück!",
       statsTitle: "Deine Statistiken",
+      todaySection: "Heute",
+      achievementsSection: "Errungenschaften",
+      emptyValueProp: '"Kleine tägliche Verbesserungen führen zu außergewöhnlichen Ergebnissen."',
+      emptyOr: "oder",
+      emptyCreateOwn: "Eigenes Habit erstellen",
+      emptySocialProof: "Nutzer haben bereits",
+      emptyHabits: "Habits abgeschlossen",
     },
     en: {
       title: "Your Habit Dashboard",
@@ -62,6 +85,13 @@ const Summary = () => {
       goToEntry: "Log Now",
       greeting: "Welcome back!",
       statsTitle: "Your Statistics",
+      todaySection: "Today",
+      achievementsSection: "Achievements",
+      emptyValueProp: '"Small daily improvements lead to extraordinary results."',
+      emptyOr: "or",
+      emptyCreateOwn: "Create your own habit",
+      emptySocialProof: "users have completed",
+      emptyHabits: "habits",
     }
   };
 
@@ -137,6 +167,18 @@ const Summary = () => {
 
   // Check if user has no habits
   const hasNoHabits = !habitStats || habitStats.length === 0;
+  
+  // Get habits at risk for "Never Miss Twice" alert
+  const habitsAtRisk = habitStats
+    .filter(h => h.streakAtRisk)
+    .map(h => ({
+      challengeId: h.challengeId,
+      title: h.title,
+      currentStreak: h.currentStreak,
+    }));
+  
+  // Get habit templates for current language
+  const templates = HABIT_TEMPLATES[lang];
 
   return (
     <div className="animate-fade-in">
@@ -171,40 +213,79 @@ const Summary = () => {
 
         {hasNoHabits ? (
           /* Empty State - No Habits */
-          <Card className="animate-scale-in border-0 bg-gradient-to-br from-background/80 to-muted/20 shadow-sm">
-            <CardContent className="pt-6 text-center py-16">
-              <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
+          <Card className="animate-scale-in border-0 bg-gradient-to-br from-background/80 to-muted/20 shadow-lg">
+            <CardContent className="pt-8 text-center py-12">
+              <div className="flex flex-col items-center gap-8 max-w-lg mx-auto">
                 <div className="relative">
                   <div className="text-7xl mb-2">🌱</div>
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent rounded-full blur-xl" />
                 </div>
-                <div className="space-y-3">
-                  <h3 className="text-xl font-semibold text-foreground">{t[lang].emptyState}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {lang === 'de' 
-                      ? "Erstelle dein erstes Habit und beginne deine Reise zu besseren Gewohnheiten."
-                      : "Create your first habit and start your journey to better routines."
-                    }
-                  </p>
+                
+                <div className="space-y-2">
+                  <p className="text-lg text-muted-foreground italic">{t[lang].emptyValueProp}</p>
                 </div>
-                <div className="flex gap-3">
-                  <Button 
+                
+                <div className="grid grid-cols-3 gap-3 w-full">
+                  {templates.map((template) => (
+                    <Link
+                      key={template.key}
+                      to={`/app/challenges?template=${template.key}`}
+                      className="group p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 hover:shadow-md"
+                    >
+                      <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">
+                        {template.emoji}
+                      </div>
+                      <h4 className="font-medium text-sm">{template.title}</h4>
+                      <p className="text-xs text-muted-foreground">{template.description}</p>
+                    </Link>
+                  ))}
+                </div>
+                
+                <div className="flex items-center gap-3 text-sm text-muted-foreground w-full">
+                  <div className="h-px bg-border flex-1" />
+                  <span>{t[lang].emptyOr}</span>
+                  <div className="h-px bg-border flex-1" />
+                </div>
+                
+                <Button 
                     asChild 
+                    variant="outline"
                     size="lg"
-                    className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-300"
                   >
                     <Link to="/app/challenges" className="gap-2">
-                      {t[lang].createChallenge}
+                      <Sparkles className="h-4 w-4" />
+                      {t[lang].emptyCreateOwn}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
-                </div>
+                
+                <p className="text-xs text-muted-foreground">
+                  ✨ 12.847 {t[lang].emptySocialProof} 2.3M {t[lang].emptyHabits}
+                </p>
               </div>
             </CardContent>
           </Card>
         ) : (
           /* Habit Dashboard Content */
           <>
+            {/* Section 0: Today Widget + Never Miss Twice */}
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TodayWidget
+                habits={habitStats.map(h => ({
+                  challengeId: h.challengeId,
+                  title: h.title,
+                  todayStatus: h.todayStatus,
+                  streakAtRisk: h.streakAtRisk,
+                  currentStreak: h.currentStreak,
+                }))}
+                lang={lang}
+              />
+              
+              {habitsAtRisk.length > 0 && (
+                <NeverMissTwiceAlert habitsAtRisk={habitsAtRisk} lang={lang} />
+              )}
+            </section>
+
             {/* Section 1: Streak Cards */}
             <section>
               <div className="flex items-center gap-2 mb-4">
@@ -233,6 +314,7 @@ const Summary = () => {
                     challengeId: h.challengeId,
                     title: h.title,
                     lastSevenDays: h.lastSevenDays,
+                    last30Days: h.last30Days,
                   }))} 
                   lang={lang}
                   weeksToShow={4}
@@ -252,6 +334,20 @@ const Summary = () => {
                   lang={lang}
                 />
               </div>
+            </section>
+
+            {/* Section 2.5: Achievements */}
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  🏆 {t[lang].achievementsSection}
+                </h2>
+              </div>
+              <AchievementBadges
+                unlockedAchievements={overallStats.achievements}
+                nextGoal={overallStats.nextGoal}
+                lang={lang}
+              />
             </section>
 
             {/* Section 3: Completion Rings */}
