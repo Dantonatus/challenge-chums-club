@@ -1,21 +1,99 @@
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus, CalendarDays } from 'lucide-react';
-import { Quarter, getQuarterLabel, getPreviousQuarter, getNextQuarter, getCurrentQuarter } from '@/lib/planning/types';
+import { ChevronLeft, ChevronRight, Plus, CalendarDays, Download } from 'lucide-react';
+import { 
+  Quarter, 
+  HalfYear,
+  ViewMode,
+  getQuarterLabel, 
+  getHalfYearLabel,
+  getPreviousQuarter, 
+  getNextQuarter, 
+  getPreviousHalfYear,
+  getNextHalfYear,
+  getCurrentQuarter, 
+  getCurrentHalfYear,
+  Client,
+  MilestoneWithClient
+} from '@/lib/planning/types';
+import { ViewModeToggle } from './ViewModeToggle';
+import { exportPlanningPDF } from '@/lib/planning/exportPDF';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface QuarterHeaderProps {
+  viewMode: ViewMode;
   quarter: Quarter;
+  halfYear: HalfYear;
+  onViewModeChange: (mode: ViewMode) => void;
   onQuarterChange: (quarter: Quarter) => void;
+  onHalfYearChange: (halfYear: HalfYear) => void;
   onAddClick: () => void;
+  clientData: Array<{ client: Client; milestones: MilestoneWithClient[] }>;
 }
 
-export function QuarterHeader({ quarter, onQuarterChange, onAddClick }: QuarterHeaderProps) {
+export function QuarterHeader({ 
+  viewMode,
+  quarter, 
+  halfYear,
+  onViewModeChange,
+  onQuarterChange, 
+  onHalfYearChange,
+  onAddClick,
+  clientData
+}: QuarterHeaderProps) {
+  const isMobile = useIsMobile();
+  
   const isCurrentQuarter = 
     quarter.year === getCurrentQuarter().year && 
     quarter.quarter === getCurrentQuarter().quarter;
+    
+  const isCurrentHalfYear =
+    halfYear.year === getCurrentHalfYear().year &&
+    halfYear.half === getCurrentHalfYear().half;
 
-  const monthNames = getMonthRange(quarter);
+  const isCurrentPeriod = viewMode === 'halfyear' ? isCurrentHalfYear : isCurrentQuarter;
+
+  const handlePrevious = () => {
+    if (viewMode === 'halfyear') {
+      onHalfYearChange(getPreviousHalfYear(halfYear));
+    } else {
+      onQuarterChange(getPreviousQuarter(quarter));
+    }
+  };
+
+  const handleNext = () => {
+    if (viewMode === 'halfyear') {
+      onHalfYearChange(getNextHalfYear(halfYear));
+    } else {
+      onQuarterChange(getNextQuarter(quarter));
+    }
+  };
+
+  const handleToday = () => {
+    if (viewMode === 'halfyear') {
+      onHalfYearChange(getCurrentHalfYear());
+    } else {
+      onQuarterChange(getCurrentQuarter());
+    }
+  };
+
+  const handleExport = () => {
+    exportPlanningPDF({
+      viewMode,
+      quarter: viewMode === 'quarter' ? quarter : undefined,
+      halfYear: viewMode === 'halfyear' ? halfYear : undefined,
+      clientData,
+    });
+  };
+
+  const periodLabel = viewMode === 'halfyear' 
+    ? getHalfYearLabel(halfYear)
+    : getQuarterLabel(quarter);
+
+  const monthRange = viewMode === 'halfyear'
+    ? getHalfYearMonthRange(halfYear)
+    : getQuarterMonthRange(quarter);
 
   return (
     <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -23,38 +101,51 @@ export function QuarterHeader({ quarter, onQuarterChange, onAddClick }: QuarterH
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => onQuarterChange(getPreviousQuarter(quarter))}
-          aria-label="Vorheriges Quartal"
+          onClick={handlePrevious}
+          aria-label="Vorheriger Zeitraum"
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>
 
         <div className="text-center min-w-[140px]">
-          <h1 className="text-xl font-bold">{getQuarterLabel(quarter)}</h1>
-          <p className="text-sm text-muted-foreground">{monthNames}</p>
+          <h1 className="text-xl font-bold">{periodLabel}</h1>
+          <p className="text-sm text-muted-foreground">{monthRange}</p>
         </div>
 
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => onQuarterChange(getNextQuarter(quarter))}
-          aria-label="Nächstes Quartal"
+          onClick={handleNext}
+          aria-label="Nächster Zeitraum"
         >
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
 
       <div className="flex items-center gap-2">
-        {!isCurrentQuarter && (
+        {!isMobile && (
+          <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
+        )}
+        
+        {!isCurrentPeriod && (
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onQuarterChange(getCurrentQuarter())}
+            onClick={handleToday}
           >
             <CalendarDays className="h-4 w-4 mr-1" />
             Heute
           </Button>
         )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+        >
+          <Download className="h-4 w-4 mr-1" />
+          PDF
+        </Button>
         
         <Button onClick={onAddClick} size="sm">
           <Plus className="h-4 w-4 mr-1" />
@@ -65,10 +156,21 @@ export function QuarterHeader({ quarter, onQuarterChange, onAddClick }: QuarterH
   );
 }
 
-function getMonthRange(quarter: Quarter): string {
+function getQuarterMonthRange(quarter: Quarter): string {
   const startMonth = (quarter.quarter - 1) * 3;
   const startDate = new Date(quarter.year, startMonth, 1);
   const endDate = new Date(quarter.year, startMonth + 2, 1);
+  
+  const startName = format(startDate, 'MMM', { locale: de });
+  const endName = format(endDate, 'MMM', { locale: de });
+  
+  return `${startName} – ${endName}`;
+}
+
+function getHalfYearMonthRange(halfYear: HalfYear): string {
+  const startMonth = halfYear.half === 1 ? 0 : 6;
+  const startDate = new Date(halfYear.year, startMonth, 1);
+  const endDate = new Date(halfYear.year, startMonth + 5, 1);
   
   const startName = format(startDate, 'MMM', { locale: de });
   const endName = format(endDate, 'MMM', { locale: de });
