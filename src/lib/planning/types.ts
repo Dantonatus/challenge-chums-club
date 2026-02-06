@@ -176,6 +176,9 @@ export function halfYearToQuarter(h: HalfYear): Quarter {
   };
 }
 
+// Milestone types that should show labels (critical milestones only)
+export const LABEL_VISIBLE_TYPES: MilestoneType[] = ['contract', 'kickoff', 'deadline', 'delivery'];
+
 // Milestone type config
 export const MILESTONE_TYPE_CONFIG: Record<MilestoneType, {
   label: string;

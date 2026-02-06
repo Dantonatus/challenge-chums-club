@@ -19,7 +19,7 @@ interface QuarterCalendarProps {
 
 const MAX_VISIBLE_CLIENTS = 7;
 const ROW_HEIGHT_COMPACT = 80;
-const ROW_HEIGHT_EXPANDED = 120;
+const ROW_HEIGHT_EXPANDED = 100; // Reduced from 120 - smart labels need less space
 
 interface ClientRowProps {
   client: Client;
