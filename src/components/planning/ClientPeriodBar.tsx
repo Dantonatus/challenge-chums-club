@@ -45,13 +45,6 @@ function formatDateCompact(date: Date): string {
   return format(date, 'd. MMM', { locale: de });
 }
 
-// Edge-safe label alignment to prevent clipping
-function getLabelAlignment(leftPercent: number): 'left' | 'center' | 'right' {
-  if (leftPercent > 85) return 'right';
-  if (leftPercent < 15) return 'left';
-  return 'center';
-}
-
 interface EnrichedPosition {
   milestone: MilestoneWithClient;
   left: number;
@@ -187,53 +180,37 @@ export function ClientPeriodBar({
           </Tooltip>
         </TooltipProvider>
         
-        {/* Compact Label - edge-safe positioning with correct connection line */}
-        {showLabels && mpShowLabel && (() => {
-          const alignment = getLabelAlignment(leftPos);
-          return (
-            <div 
-              className={cn(
-                "absolute pointer-events-none z-20 flex flex-col items-center",
-                labelPosition === 'above' ? "bottom-full mb-1" : "top-full mt-1",
-                alignment === 'center' && "left-1/2 -translate-x-1/2",
-                alignment === 'left' && "left-0",
-                alignment === 'right' && "right-0"
-              )}
-            >
-              {/* Connection line - always points toward the icon - stronger color for export */}
-              {labelPosition === 'above' && (
-                <div className="order-last w-0.5 h-4" style={{ backgroundColor: 'rgba(80, 80, 80, 0.6)' }} />
-              )}
-              {labelPosition === 'below' && (
-                <div className="order-first w-0.5 h-4" style={{ backgroundColor: 'rgba(80, 80, 80, 0.6)' }} />
-              )}
-              
-              {/* Text content */}
+        {/* Compact Label - ALWAYS centered directly above/below the milestone icon */}
+        {showLabels && mpShowLabel && (
+          <div 
+            className={cn(
+              "absolute pointer-events-none z-20 flex flex-col items-center",
+              "left-1/2 -translate-x-1/2", // Always centered on the icon
+              labelPosition === 'above' ? "bottom-full mb-1" : "top-full mt-1"
+            )}
+          >
+            {/* Connection line - always points toward the icon */}
+            {labelPosition === 'above' && (
+              <div className="order-last w-0.5 h-3" style={{ backgroundColor: 'rgba(60, 60, 60, 0.7)' }} />
+            )}
+            {labelPosition === 'below' && (
+              <div className="order-first w-0.5 h-3" style={{ backgroundColor: 'rgba(60, 60, 60, 0.7)' }} />
+            )}
+            
+            {/* Text content - centered, with enough room for text */}
+            <div className="text-center" style={{ width: '140px' }}>
+              <div className="text-[11px] font-bold text-foreground leading-tight whitespace-nowrap">
+                {formatDateCompact(new Date(milestone.date))}
+              </div>
               <div 
-                className={cn(
-                  alignment === 'center' && "text-center",
-                  alignment === 'left' && "text-left",
-                  alignment === 'right' && "text-right"
-                )} 
-                style={{ maxWidth: '160px', minWidth: '90px' }}
+                className="text-[10px] text-muted-foreground leading-snug line-clamp-3"
+                style={{ wordBreak: 'break-word' }}
               >
-                <div className="text-[11px] font-bold text-foreground leading-tight whitespace-nowrap">
-                  {formatDateCompact(new Date(milestone.date))}
-                </div>
-                <div 
-                  className="text-[10px] text-muted-foreground leading-snug"
-                  style={{ 
-                    height: '32px',
-                    overflow: 'hidden',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {milestone.title}
-                </div>
+                {milestone.title}
               </div>
             </div>
-          );
-        })()}
+          </div>
+        )}
       </div>
     );
   };
