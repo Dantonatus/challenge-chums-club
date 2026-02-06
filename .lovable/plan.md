@@ -1,92 +1,161 @@
 
 
-# Fix: Label-Überschneidung mit Today-Line + Größere Zeilenhöhe
+# Fix: Label-Positionierung & Export-Qualität für Planungsansicht
 
-## Problem-Analyse
+## Problem-Analyse (aus dem Screenshot)
 
-Nach Sichtung des Screenshots und Codes identifiziere ich drei konkrete Issues:
+### 1. Label-Positionierung fehlerhaft
 
-1. **Today-Line Überlappung**: Die vertikale grüne "Heute"-Linie (`z-10`) liegt über den Labels (`z-20`), aber visuell kollidieren sie trotzdem weil beide im gleichen Bereich sind
-2. **Zu geringer Label-Abstand**: `mb-0.5` (2px) und die winzige Verbindungslinie `h-1` (4px) lassen Labels fast am Icon kleben
-3. **Zeilenhöhe zu knapp**: Bei `ROW_HEIGHT_EXPANDED = 100px` ist nicht genug Platz für 2-zeilige Labels + Stagger
+**Wafon (27. Feb):**
+- Das Label "27. Feb. Pol." sitzt direkt NEBEN dem Meilenstein-Icon statt DARÜBER/DARUNTER
+- Die Verbindungslinie geht nicht zum Icon, sondern schwebt irgendwo
 
-## Lösung
+**Sensoplast (5. März):**
+- Gleiches Problem - "5. März Kick-Off" ist horizontal versetzt
+- Zeilen-/Spalten-Layout ist falsch - der Text bricht merkwürdig um
 
-### 1. Größere Zeilenhöhe für mehr Breathing Room
+**Root Cause:**
+Der aktuelle Code positioniert Labels mit `left-1/2 -translate-x-1/2`, was bei Meilensteinen am RECHTEN Rand der Periode-Bar problematisch wird. Wenn `relativeLeft` nahe 100% ist, wird das Label außerhalb des sichtbaren Bereichs gerendert oder clippt am Container.
 
-```text
-Aktuell:
-ROW_HEIGHT_COMPACT = 80px
-ROW_HEIGHT_EXPANDED = 100px
+### 2. Verbindungslinien-Ausrichtung
 
-Neu:
-ROW_HEIGHT_COMPACT = 80px (unverändert)
-ROW_HEIGHT_EXPANDED = 120px (+20px für Labels mit Stagger)
+Die vertikale Verbindungslinie (`w-px h-2`) wird INNERHALB des Label-Containers gerendert, aber die Positionierung mit `flex-col` und `flex-col-reverse` führt zu inkonsistenten Ergebnissen:
+
+```
+AKTUELL (Zeile 185-192):
+<div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
+  <div className="w-px h-2" />   ← Linie VOR Text
+  <div className="text-center">  ← Text
+</div>
 ```
 
-### 2. Mehr Abstand zwischen Label und Icon
+Das Problem: Bei `flex-col-reverse` (für "below") wird die Linie UNTER dem Text gerendert - aber die Linie soll IMMER zum Icon zeigen.
+
+### 3. Export-Qualität
+
+Der Screenshot zeigt, dass `html2canvas` grundsätzlich funktioniert, aber:
+- Die Sub-Pixel-Positionierung von Tailwind-Klassen (`translate-x-1/2`) wird nicht korrekt erfasst
+- Overflow von Labels am Rand wird abgeschnitten
+- Keine Polsterung am Chart-Rand für Labels die "überstehen"
+
+## Lösungs-Architektur
+
+### A. Label-Positionierung korrigieren
 
 ```text
-Aktuell:
-- labelPosition === 'above' → "bottom-full mb-0.5"
-- Connection line: h-1 (4px)
+STRUKTUR AKTUELL:
+┌─────────────────────────────────────────┐
+│  [Icon]                                 │
+│    └─ Label (absolute, center via 50%)  │ ← PROBLEM: clippt am Rand
+└─────────────────────────────────────────┘
 
-Neu:
-- labelPosition === 'above' → "bottom-full mb-2" (8px)
-- Connection line: h-2 (8px) - längere Verbindung
+STRUKTUR NEU:
+┌──────────────────────────────────────────────┐
+│  [Icon]                                      │
+│    └─ Label (transform-aware, edge-safe)     │ ← Intelligente Positionierung
+└──────────────────────────────────────────────┘
 ```
 
-### 3. Today-Line hinter Labels rendern (z-index)
+**Lösung: Edge-Safe Label Positioning**
+- Bei `relativeLeft > 85%`: Label nach LINKS ausrichten
+- Bei `relativeLeft < 15%`: Label nach RECHTS ausrichten
+- Sonst: Zentriert
+
+### B. Verbindungslinie zum Icon korrigieren
 
 ```text
-Aktuell:
-- TodayLine: z-10
-- Labels: z-20
+AKTUELL (mit flex-col-reverse Problem):
+Label Position = 'below'
+→ flex-col-reverse
+→ [Text] [Line]  ← Linie zeigt NACH UNTEN (weg vom Icon)
 
-Die Labels haben bereits höheren z-index, aber die Today-Line sollte 
-visuell hinter den Labels sein. Wir reduzieren auf z-5.
+LÖSUNG:
+Separate Rendering-Logik für Linie:
+- Above: Linie am UNTEREN Rand des Labels (zeigt nach unten zum Icon)
+- Below: Linie am OBEREN Rand des Labels (zeigt nach oben zum Icon)
 ```
 
-### 4. Label-Text etwas größer für bessere Lesbarkeit
+### C. Export-Container mit Padding
 
 ```text
-Aktuell:
-- Datum: text-[9px]
-- Titel: text-[8px]
+AKTUELL:
+┌───────────────────────────┐
+│ Chart (overflow: hidden)  │ ← Labels werden abgeschnitten
+└───────────────────────────┘
 
-Neu:
-- Datum: text-[10px]
-- Titel: text-[9px]
+NEU:
+┌─────────────────────────────────┐
+│ ┌───────────────────────────┐   │
+│ │ Chart                     │   │ ← Padding für Label-Overflow
+│ └───────────────────────────┘   │
+└─────────────────────────────────┘
 ```
 
-## Dateien & Änderungen
+## Implementierung
 
-| Datei | Änderung |
-|-------|----------|
-| `src/components/planning/ClientPeriodBar.tsx` | Größerer Label-Abstand (`mb-2`), längere Verbindungslinie (`h-2`), größere Schrift |
-| `src/components/planning/HalfYearCalendar.tsx` | `ROW_HEIGHT_EXPANDED = 120`, TodayLine `z-5` |
-| `src/components/planning/QuarterCalendar.tsx` | Gleiche Änderungen |
+### Datei 1: `ClientPeriodBar.tsx`
 
-## Technische Details
-
-### ClientPeriodBar.tsx - Label-Rendering
+**Änderung A: Edge-Safe Label Alignment**
 
 ```tsx
-{/* Compact Label - mehr Abstand, größere Schrift */}
+// Neue Funktion zur Berechnung der Text-Ausrichtung
+function getLabelAlignment(leftPercent: number): 'left' | 'center' | 'right' {
+  if (leftPercent > 85) return 'right';
+  if (leftPercent < 15) return 'left';
+  return 'center';
+}
+
+// In renderMilestoneMarker:
+const alignment = getLabelAlignment(leftPos);
+
+<div 
+  className={cn(
+    "absolute flex flex-col items-center pointer-events-none z-20",
+    labelPosition === 'above' ? "bottom-full mb-1" : "top-full mt-1",
+    // Edge-safe alignment
+    alignment === 'center' && "left-1/2 -translate-x-1/2",
+    alignment === 'left' && "left-0",
+    alignment === 'right' && "right-0 translate-x-1/2"
+  )}
+>
+```
+
+**Änderung B: Verbindungslinie immer zum Icon zeigend**
+
+```tsx
+{/* Label mit korrekter Linien-Richtung */}
 {showLabels && mpShowLabel && (
   <div 
     className={cn(
-      "absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-20",
-      labelPosition === 'above' ? "bottom-full mb-2" : "top-full mt-2",  // mb-0.5 → mb-2
-      labelPosition === 'below' && "flex-col-reverse"
+      "absolute pointer-events-none z-20 flex flex-col items-center",
+      labelPosition === 'above' ? "bottom-full mb-1" : "top-full mt-1",
+      alignment === 'center' && "left-1/2 -translate-x-1/2",
+      alignment === 'left' && "left-0",
+      alignment === 'right' && "right-0"
     )}
   >
-    <div className="w-px h-2 bg-muted-foreground/30" />  {/* h-1 → h-2, opacity 20→30 */}
-    <div className="text-center" style={{ maxWidth: '100px' }}>
-      <div className="text-[10px] font-medium text-foreground leading-tight">  {/* 9px → 10px */}
+    {/* Linie zum Icon - IMMER in Richtung Icon */}
+    {labelPosition === 'above' && (
+      <div className="order-last w-px h-3 bg-muted-foreground/40" />
+    )}
+    {labelPosition === 'below' && (
+      <div className="order-first w-px h-3 bg-muted-foreground/40" />
+    )}
+    
+    {/* Text */}
+    <div 
+      className={cn(
+        "whitespace-nowrap",
+        alignment === 'center' && "text-center",
+        alignment === 'left' && "text-left",
+        alignment === 'right' && "text-right"
+      )} 
+      style={{ maxWidth: '120px' }}
+    >
+      <div className="text-[10px] font-medium text-foreground leading-tight">
         {formatDateCompact(new Date(milestone.date))}
       </div>
-      <div className="text-[9px] text-muted-foreground leading-tight line-clamp-2">  {/* 8px → 9px */}
+      <div className="text-[9px] text-muted-foreground leading-tight line-clamp-2">
         {milestone.title}
       </div>
     </div>
@@ -94,34 +163,113 @@ Neu:
 )}
 ```
 
-### HalfYearCalendar.tsx - Row Height & Z-Index
+### Datei 2: `QuarterCalendar.tsx` & `HalfYearCalendar.tsx`
+
+**Änderung: Overflow erlauben für Labels**
 
 ```tsx
-const ROW_HEIGHT_EXPANDED = 120; // vorher 100
+// Client period bar container - overflow visible für Labels
+<div className="relative h-full flex items-center px-2 overflow-visible">
+  <ClientPeriodBar ... />
+</div>
 
-// TodayLine z-index reduzieren
-<div 
-  className="absolute top-0 bottom-0 w-0.5 bg-primary z-5 pointer-events-none"  // z-10 → z-5
-  ...
->
+// Und am Chart-Container:
+<div id="planning-chart" className="border rounded-xl bg-card relative overflow-visible">
 ```
 
-### QuarterCalendar.tsx - Gleiche Änderungen
+Aber für Export brauchen wir einen Wrapper:
 
 ```tsx
-const ROW_HEIGHT_EXPANDED = 120;
-// TodayLine z-5
+// Wrapper für Export mit Padding
+<div id="planning-chart-export-wrapper" className="p-4">
+  <div id="planning-chart" className="border rounded-xl overflow-visible bg-card relative">
+    ...
+  </div>
+</div>
 ```
+
+### Datei 3: `exportCanvas.ts`
+
+**Änderung: Export-Wrapper statt Chart-Element**
+
+```tsx
+export async function exportPlanningCanvas({
+  elementId,
+  format,
+  filename,
+  periodLabel,
+}: ExportOptions): Promise<void> {
+  // Versuche erst den Wrapper, dann das Chart selbst
+  const wrapperElement = document.getElementById(`${elementId}-export-wrapper`);
+  const element = wrapperElement || document.getElementById(elementId);
+  
+  if (!element) {
+    throw new Error(`Element with id "${elementId}" not found`);
+  }
+
+  // Temporär overflow visible setzen für korrektes Capturing
+  const originalOverflow = element.style.overflow;
+  element.style.overflow = 'visible';
+
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff', // Explizit weiß für sauberen Export
+    logging: false,
+    scrollX: 0,
+    scrollY: 0,
+    windowWidth: element.scrollWidth + 40, // Extra padding für Labels
+    windowHeight: element.scrollHeight + 40,
+  });
+
+  element.style.overflow = originalOverflow;
+  
+  // ... rest
+}
+```
+
+## Visuelle Verbesserungen
+
+### Label-Design Refinement
+
+```text
+AKTUELL:
+┌─────────┐
+│ 5. Mär  │  ← Text zu dicht, schwer lesbar
+│ Kick-   │
+│ Off     │
+└─────────┘
+
+NEU:
+┌───────────┐
+│ 5. März   │  ← Bessere Lesbarkeit
+│ Kick-Off  │  ← Voller Text wenn möglich
+└───────────┘
+  │  ← Klare Verbindungslinie
+  ●  ← Icon
+```
+
+**Konkrete Werte:**
+- Datum: `text-[11px] font-semibold` (war 10px/medium)
+- Titel: `text-[10px] text-muted-foreground` (war 9px)
+- Linie: `h-3` (12px) statt `h-2` (8px)
+- Max-Width: `120px` statt `100px`
+
+## Zusammenfassung der Änderungen
+
+| Datei | Änderung |
+|-------|----------|
+| `ClientPeriodBar.tsx` | Edge-safe Label-Alignment, Verbindungslinie-Fix, größere Schrift |
+| `QuarterCalendar.tsx` | Wrapper für Export, overflow-visible |
+| `HalfYearCalendar.tsx` | Wrapper für Export, overflow-visible |
+| `exportCanvas.ts` | Wrapper-Support, expliziter weißer Background, extra Padding |
 
 ## Erwartetes Ergebnis
 
-| Aspekt | Vorher | Nachher |
-|--------|--------|---------|
-| Label-Icon Abstand | 2px (mb-0.5) | 8px (mb-2) |
-| Verbindungslinie | 4px, kaum sichtbar | 8px, leicht sichtbar |
-| Schriftgröße | 8-9px | 9-10px |
-| Zeilenhöhe (Labels an) | 100px | 120px |
-| Today-Line Layer | z-10 (über Icons) | z-5 (hinter Labels) |
+Nach diesen Änderungen:
 
-Das Ergebnis: Klare visuelle Trennung, keine Überlappungen, bessere Lesbarkeit - ohne das Layout fundamental zu ändern.
+1. **Labels am Rand** (wie Wafon 27. Feb) werden nach innen ausgerichtet statt abgeschnitten
+2. **Verbindungslinien** zeigen immer korrekt zum Icon (egal ob above/below)
+3. **Export** erfasst alle Labels vollständig mit sauberem weißem Hintergrund
+4. **Lesbarkeit** verbessert durch größere Schrift und mehr Platz
 
