@@ -119,9 +119,9 @@ function downloadPDF(canvas: HTMLCanvasElement, filename: string, periodLabel: s
 
   const pageWidth = 297;
   const pageHeight = 210;
-  const margin = 8;
-  const headerHeight = 15;
-  const footerHeight = 8;
+  const margin = 5;
+  const headerHeight = 12;
+  const footerHeight = 6;
   
   const contentWidth = pageWidth - 2 * margin;
   const contentHeight = pageHeight - headerHeight - footerHeight - margin;

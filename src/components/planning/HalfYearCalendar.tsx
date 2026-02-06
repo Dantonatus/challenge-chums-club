@@ -44,7 +44,7 @@ function HalfYearClientRow({
 }: ClientRowProps) {
   return (
     <div 
-      className="grid grid-cols-[140px_1fr] border-b last:border-b-0 group hover:bg-muted/5 transition-colors"
+      className="grid grid-cols-[160px_1fr] border-b last:border-b-0 group hover:bg-muted/5 transition-colors"
       style={{ height: `${rowHeight}px` }}
     >
       {/* Client column */}
@@ -119,7 +119,7 @@ export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onCli
     <div id="planning-chart-export-wrapper" className="p-6 -m-6" style={{ backgroundColor: '#ffffff' }}>
       <div id="planning-chart" className="border rounded-xl bg-card relative" style={{ overflow: 'visible', backgroundColor: '#ffffff' }}>
       {/* Month headers - sticky */}
-      <div className="grid grid-cols-[140px_repeat(6,1fr)] border-b bg-muted/30 sticky top-0 z-20">
+      <div className="grid grid-cols-[160px_repeat(6,1fr)] border-b bg-muted/30 sticky top-0 z-20">
         <div className="p-2 border-r text-xs font-medium text-muted-foreground">
           Kunden
         </div>
@@ -146,7 +146,7 @@ export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onCli
       )}
 
         {/* Today indicator */}
-        <TodayLine halfYear={halfYear} clientColumnWidth={140} />
+        <TodayLine halfYear={halfYear} clientColumnWidth={160} />
       </div>
     </div>
   );
