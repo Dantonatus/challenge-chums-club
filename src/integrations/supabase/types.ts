@@ -188,11 +188,13 @@ export type Database = {
           color: string
           contact_email: string | null
           created_at: string | null
+          end_date: string | null
           id: string
           is_active: boolean | null
           logo_url: string | null
           name: string
           notes: string | null
+          start_date: string | null
           updated_at: string | null
           user_id: string
         }
@@ -200,11 +202,13 @@ export type Database = {
           color?: string
           contact_email?: string | null
           created_at?: string | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           logo_url?: string | null
           name: string
           notes?: string | null
+          start_date?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -212,11 +216,13 @@ export type Database = {
           color?: string
           contact_email?: string | null
           created_at?: string | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           logo_url?: string | null
           name?: string
           notes?: string | null
+          start_date?: string | null
           updated_at?: string | null
           user_id?: string
         }
