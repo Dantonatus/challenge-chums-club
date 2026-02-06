@@ -1,275 +1,128 @@
 
 
-# Fix: Label-Positionierung & Export-Qualität für Planungsansicht
+# Fix: Label-Überlappung durch größere Zeilenhöhe und intelligenteres Stagger-System
 
 ## Problem-Analyse (aus dem Screenshot)
 
-### 1. Label-Positionierung fehlerhaft
+### Wagon-Zeile: 5. Feb & 27. Feb
+- "5. Feb. Datenanforderung CIO" und "27. Feb. PoV - Delivery" überlappen stark
+- Beide Labels sind "above" positioniert (keine Stagger-Logik greift, weil Abstand > 6%)
+- Die Labels laufen horizontal ineinander
 
-**Wafon (27. Feb):**
-- Das Label "27. Feb. Pol." sitzt direkt NEBEN dem Meilenstein-Icon statt DARÜBER/DARUNTER
-- Die Verbindungslinie geht nicht zum Icon, sondern schwebt irgendwo
+### Wein Wolf: 2. März, 27. März, 16. Apr, 22. Mai
+- 4 Meilensteine in einer Reihe
+- Horizontale Überlappung bei nahen Meilensteinen
 
-**Sensoplast (5. März):**
-- Gleiches Problem - "5. März Kick-Off" ist horizontal versetzt
-- Zeilen-/Spalten-Layout ist falsch - der Text bricht merkwürdig um
+### Root Causes
 
-**Root Cause:**
-Der aktuelle Code positioniert Labels mit `left-1/2 -translate-x-1/2`, was bei Meilensteinen am RECHTEN Rand der Periode-Bar problematisch wird. Wenn `relativeLeft` nahe 100% ist, wird das Label außerhalb des sichtbaren Bereichs gerendert oder clippt am Container.
+1. **`MIN_LABEL_DISTANCE_PERCENT = 6%`** ist für 6-Monats-Ansicht viel zu klein
+   - Bei 6 Monaten = 180 Tage → 6% = nur ~10 Tage Abstand erforderlich
+   - "5. Feb" und "27. Feb" sind 22 Tage auseinander → kein Stagger ausgelöst!
+   
+2. **`ROW_HEIGHT_EXPANDED = 120px`** reicht nicht für gestaffelte Labels
+   - Labels brauchen je ~40px (2 Zeilen + Linie)
+   - Mit Stagger above/below → 80px + Bar 40px = 120px → am Limit
 
-### 2. Verbindungslinien-Ausrichtung
+3. **`whitespace-nowrap`** bei Labels verhindert Umbruch
+   - Lange Titel wie "Datenanforderung CIO VPP" laufen horizontal über
 
-Die vertikale Verbindungslinie (`w-px h-2`) wird INNERHALB des Label-Containers gerendert, aber die Positionierung mit `flex-col` und `flex-col-reverse` führt zu inkonsistenten Ergebnissen:
+## Lösungsarchitektur
+
+### Strategie: "Room to Breathe"
 
 ```
-AKTUELL (Zeile 185-192):
-<div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
-  <div className="w-px h-2" />   ← Linie VOR Text
-  <div className="text-center">  ← Text
+AKTUELL (120px mit 6% Threshold):
+┌─────────────────────────────────────────────────────┐
+│         5. Feb. Datenanf...  27. Feb. PoV - Del...  │ ← Überlappung!
+│            ●────────────────────●                   │
+└─────────────────────────────────────────────────────┘
+
+NEU (160px mit 12% Threshold + 2-Zeilen-Wrap):
+┌─────────────────────────────────────────────────────┐
+│     5. Feb.              27. Feb.                   │
+│     Datenanforderung     PoV - Delivery             │ ← Getrennt
+│     CIO VPP                                         │
+│            ●────────────────────●                   │
+│                                                     │ ← Mehr Raum
+└─────────────────────────────────────────────────────┘
+```
+
+## Konkrete Änderungen
+
+### 1. Zeilenhöhe erhöhen
+
+| Konstante | Aktuell | Neu |
+|-----------|---------|-----|
+| `ROW_HEIGHT_COMPACT` | 80px | 80px (unverändert) |
+| `ROW_HEIGHT_EXPANDED` | 120px | **160px** |
+
+→ 40px mehr Platz für gestaffelte Labels
+
+### 2. Stagger-Threshold für 6-Monats-Ansicht anpassen
+
+| Konstante | Aktuell | Neu |
+|-----------|---------|-----|
+| `MIN_LABEL_DISTANCE_PERCENT` | 6% | **12%** |
+
+→ Bei 6 Monaten (180 Tage) = ~22 Tage Mindestabstand für Stagger
+
+### 3. Labels 2-zeilig mit intelligentem Wrap
+
+```tsx
+// AKTUELL:
+<div className="whitespace-nowrap" style={{ maxWidth: '120px' }}>
+
+// NEU:
+<div className="whitespace-normal text-center" style={{ maxWidth: '100px' }}>
+```
+
+→ Labels umbrechen bei Bedarf statt zu überlappen
+
+### 4. Label-Styling für bessere Trennung
+
+```tsx
+// Datum bleibt auf einer Zeile
+<div className="text-[11px] font-bold text-foreground whitespace-nowrap">
+  {formatDateCompact(new Date(milestone.date))}
+</div>
+
+// Titel umbricht auf 2 Zeilen
+<div className="text-[10px] text-muted-foreground line-clamp-2 leading-snug">
+  {milestone.title}
 </div>
 ```
 
-Das Problem: Bei `flex-col-reverse` (für "below") wird die Linie UNTER dem Text gerendert - aber die Linie soll IMMER zum Icon zeigen.
-
-### 3. Export-Qualität
-
-Der Screenshot zeigt, dass `html2canvas` grundsätzlich funktioniert, aber:
-- Die Sub-Pixel-Positionierung von Tailwind-Klassen (`translate-x-1/2`) wird nicht korrekt erfasst
-- Overflow von Labels am Rand wird abgeschnitten
-- Keine Polsterung am Chart-Rand für Labels die "überstehen"
-
-## Lösungs-Architektur
-
-### A. Label-Positionierung korrigieren
-
-```text
-STRUKTUR AKTUELL:
-┌─────────────────────────────────────────┐
-│  [Icon]                                 │
-│    └─ Label (absolute, center via 50%)  │ ← PROBLEM: clippt am Rand
-└─────────────────────────────────────────┘
-
-STRUKTUR NEU:
-┌──────────────────────────────────────────────┐
-│  [Icon]                                      │
-│    └─ Label (transform-aware, edge-safe)     │ ← Intelligente Positionierung
-└──────────────────────────────────────────────┘
-```
-
-**Lösung: Edge-Safe Label Positioning**
-- Bei `relativeLeft > 85%`: Label nach LINKS ausrichten
-- Bei `relativeLeft < 15%`: Label nach RECHTS ausrichten
-- Sonst: Zentriert
-
-### B. Verbindungslinie zum Icon korrigieren
-
-```text
-AKTUELL (mit flex-col-reverse Problem):
-Label Position = 'below'
-→ flex-col-reverse
-→ [Text] [Line]  ← Linie zeigt NACH UNTEN (weg vom Icon)
-
-LÖSUNG:
-Separate Rendering-Logik für Linie:
-- Above: Linie am UNTEREN Rand des Labels (zeigt nach unten zum Icon)
-- Below: Linie am OBEREN Rand des Labels (zeigt nach oben zum Icon)
-```
-
-### C. Export-Container mit Padding
-
-```text
-AKTUELL:
-┌───────────────────────────┐
-│ Chart (overflow: hidden)  │ ← Labels werden abgeschnitten
-└───────────────────────────┘
-
-NEU:
-┌─────────────────────────────────┐
-│ ┌───────────────────────────┐   │
-│ │ Chart                     │   │ ← Padding für Label-Overflow
-│ └───────────────────────────┘   │
-└─────────────────────────────────┘
-```
-
-## Implementierung
+## Dateien & Änderungen
 
 ### Datei 1: `ClientPeriodBar.tsx`
 
-**Änderung A: Edge-Safe Label Alignment**
+**Zeile 41:** `MIN_LABEL_DISTANCE_PERCENT` von 6 auf **12** erhöhen
 
-```tsx
-// Neue Funktion zur Berechnung der Text-Ausrichtung
-function getLabelAlignment(leftPercent: number): 'left' | 'center' | 'right' {
-  if (leftPercent > 85) return 'right';
-  if (leftPercent < 15) return 'left';
-  return 'center';
-}
+**Zeile 212-227:** Label-Container-Styling anpassen:
+- `whitespace-nowrap` → `whitespace-normal` (für Titel)
+- `maxWidth: '120px'` → `maxWidth: '100px'` (kompaktere Labels)
+- Datum: `whitespace-nowrap` behalten
+- Titel: `line-clamp-2` + `leading-snug`
 
-// In renderMilestoneMarker:
-const alignment = getLabelAlignment(leftPos);
+### Datei 2: `HalfYearCalendar.tsx`
 
-<div 
-  className={cn(
-    "absolute flex flex-col items-center pointer-events-none z-20",
-    labelPosition === 'above' ? "bottom-full mb-1" : "top-full mt-1",
-    // Edge-safe alignment
-    alignment === 'center' && "left-1/2 -translate-x-1/2",
-    alignment === 'left' && "left-0",
-    alignment === 'right' && "right-0 translate-x-1/2"
-  )}
->
-```
+**Zeile 22:** `ROW_HEIGHT_EXPANDED` von 120 auf **160** erhöhen
 
-**Änderung B: Verbindungslinie immer zum Icon zeigend**
+### Datei 3: `QuarterCalendar.tsx`
 
-```tsx
-{/* Label mit korrekter Linien-Richtung */}
-{showLabels && mpShowLabel && (
-  <div 
-    className={cn(
-      "absolute pointer-events-none z-20 flex flex-col items-center",
-      labelPosition === 'above' ? "bottom-full mb-1" : "top-full mt-1",
-      alignment === 'center' && "left-1/2 -translate-x-1/2",
-      alignment === 'left' && "left-0",
-      alignment === 'right' && "right-0"
-    )}
-  >
-    {/* Linie zum Icon - IMMER in Richtung Icon */}
-    {labelPosition === 'above' && (
-      <div className="order-last w-px h-3 bg-muted-foreground/40" />
-    )}
-    {labelPosition === 'below' && (
-      <div className="order-first w-px h-3 bg-muted-foreground/40" />
-    )}
-    
-    {/* Text */}
-    <div 
-      className={cn(
-        "whitespace-nowrap",
-        alignment === 'center' && "text-center",
-        alignment === 'left' && "text-left",
-        alignment === 'right' && "text-right"
-      )} 
-      style={{ maxWidth: '120px' }}
-    >
-      <div className="text-[10px] font-medium text-foreground leading-tight">
-        {formatDateCompact(new Date(milestone.date))}
-      </div>
-      <div className="text-[9px] text-muted-foreground leading-tight line-clamp-2">
-        {milestone.title}
-      </div>
-    </div>
-  </div>
-)}
-```
-
-### Datei 2: `QuarterCalendar.tsx` & `HalfYearCalendar.tsx`
-
-**Änderung: Overflow erlauben für Labels**
-
-```tsx
-// Client period bar container - overflow visible für Labels
-<div className="relative h-full flex items-center px-2 overflow-visible">
-  <ClientPeriodBar ... />
-</div>
-
-// Und am Chart-Container:
-<div id="planning-chart" className="border rounded-xl bg-card relative overflow-visible">
-```
-
-Aber für Export brauchen wir einen Wrapper:
-
-```tsx
-// Wrapper für Export mit Padding
-<div id="planning-chart-export-wrapper" className="p-4">
-  <div id="planning-chart" className="border rounded-xl overflow-visible bg-card relative">
-    ...
-  </div>
-</div>
-```
-
-### Datei 3: `exportCanvas.ts`
-
-**Änderung: Export-Wrapper statt Chart-Element**
-
-```tsx
-export async function exportPlanningCanvas({
-  elementId,
-  format,
-  filename,
-  periodLabel,
-}: ExportOptions): Promise<void> {
-  // Versuche erst den Wrapper, dann das Chart selbst
-  const wrapperElement = document.getElementById(`${elementId}-export-wrapper`);
-  const element = wrapperElement || document.getElementById(elementId);
-  
-  if (!element) {
-    throw new Error(`Element with id "${elementId}" not found`);
-  }
-
-  // Temporär overflow visible setzen für korrektes Capturing
-  const originalOverflow = element.style.overflow;
-  element.style.overflow = 'visible';
-
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff', // Explizit weiß für sauberen Export
-    logging: false,
-    scrollX: 0,
-    scrollY: 0,
-    windowWidth: element.scrollWidth + 40, // Extra padding für Labels
-    windowHeight: element.scrollHeight + 40,
-  });
-
-  element.style.overflow = originalOverflow;
-  
-  // ... rest
-}
-```
-
-## Visuelle Verbesserungen
-
-### Label-Design Refinement
-
-```text
-AKTUELL:
-┌─────────┐
-│ 5. Mär  │  ← Text zu dicht, schwer lesbar
-│ Kick-   │
-│ Off     │
-└─────────┘
-
-NEU:
-┌───────────┐
-│ 5. März   │  ← Bessere Lesbarkeit
-│ Kick-Off  │  ← Voller Text wenn möglich
-└───────────┘
-  │  ← Klare Verbindungslinie
-  ●  ← Icon
-```
-
-**Konkrete Werte:**
-- Datum: `text-[11px] font-semibold` (war 10px/medium)
-- Titel: `text-[10px] text-muted-foreground` (war 9px)
-- Linie: `h-3` (12px) statt `h-2` (8px)
-- Max-Width: `120px` statt `100px`
-
-## Zusammenfassung der Änderungen
-
-| Datei | Änderung |
-|-------|----------|
-| `ClientPeriodBar.tsx` | Edge-safe Label-Alignment, Verbindungslinie-Fix, größere Schrift |
-| `QuarterCalendar.tsx` | Wrapper für Export, overflow-visible |
-| `HalfYearCalendar.tsx` | Wrapper für Export, overflow-visible |
-| `exportCanvas.ts` | Wrapper-Support, expliziter weißer Background, extra Padding |
+**Zeile 22:** `ROW_HEIGHT_EXPANDED` von 120 auf **160** erhöhen (Konsistenz)
 
 ## Erwartetes Ergebnis
 
-Nach diesen Änderungen:
+| Aspekt | Vorher | Nachher |
+|--------|--------|---------|
+| Zeilenhöhe (Labels an) | 120px | 160px |
+| Stagger-Mindestabstand | 6% (~10 Tage) | 12% (~22 Tage) |
+| Label-Breite max | 120px | 100px |
+| Titel-Umbruch | `whitespace-nowrap` | 2-zeilig mit wrap |
 
-1. **Labels am Rand** (wie Wafon 27. Feb) werden nach innen ausgerichtet statt abgeschnitten
-2. **Verbindungslinien** zeigen immer korrekt zum Icon (egal ob above/below)
-3. **Export** erfasst alle Labels vollständig mit sauberem weißem Hintergrund
-4. **Lesbarkeit** verbessert durch größere Schrift und mehr Platz
+Das Ergebnis: **Keine Überlappungen mehr**, auch bei eng beieinanderliegenden Meilensteinen, weil:
+1. Das Stagger-System früher greift (12% statt 6%)
+2. Mehr vertikaler Raum für above/below Labels (160px)
+3. Labels umbrechen statt horizontal zu überlappen
 
