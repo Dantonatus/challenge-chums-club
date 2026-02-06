@@ -21,7 +21,7 @@ interface HalfYearCalendarProps {
 const MAX_VISIBLE_CLIENTS = 7;
 const ROW_HEIGHT = 80;
 
-export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onClientClick }: HalfYearCalendarProps) {
+export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onClientClick, showLabels = false }: HalfYearCalendarProps) {
   const months = getHalfYearMonths(halfYear);
   const monthDates = months.map(m => new Date(halfYear.year, m, 1));
   const viewRange = getHalfYearDateRange(halfYear);
