@@ -1,164 +1,174 @@
 
+# World-Class Timeline Labels: Investor-Ready Design
 
-# Kunden-Bearbeitung: Edit Sheet für bestehende Kunden
+## Analyse der Probleme
 
-## Zusammenfassung
+### Problem 1: Scroll bei weniger als 7 Kunden
+Das `ScrollArea`-Component wird immer gerendert. Bei `needsScroll = false` wird `className="h-[560px]"` nicht angewendet, aber `style={{ height: 'auto' }}` erzeugt dennoch ungewolltes Scroll-Verhalten wegen der ScrollArea-Wrapper.
 
-Um bestehende Kunden bearbeiten zu können, brauchen wir einen **klickbaren Kundennamen** in der Timeline, der ein Edit-Sheet öffnet - analog zum MilestoneSheet für Meilensteine.
+**Fix:** ScrollArea nur rendern wenn `needsScroll` true ist, sonst ein einfaches `<div>`.
+
+### Problem 2: Labels sehen unprofessionell aus
+Aktuelle Implementation:
+- 10px Font - viel zu klein
+- Truncated auf 80px - Text wird abgeschnitten  
+- Positioniert unter dem Icon - kollidiert visuell mit Zeilen darunter
+- Separates Popup für jedes Label - wirkt "zusammengestückelt"
+
+### Problem 3: Zeilen brauchen mehr Platz
+80px Row-Height ist zu komprimiert für:
+- Investor-Präsentationen
+- Print/PDF Export
+- Lesbarkeit bei vielen Meilensteinen
 
 ---
 
-## User Experience
+## Design-Lösung: "Connected Label" Pattern
 
-### Interaktion
+Inspiriert von Linear Roadmap, Notion Timeline, und Apple Keynote Timeline-Views.
+
+### Visuelles Konzept
 
 ```text
-Timeline-Ansicht:
-┌─────────────────────────────────────────────────────────────────────────┐
-│ Kunden        │ JANUAR      │ FEBRUAR     │ MÄRZ                       │
-├───────────────┼─────────────┼─────────────┼────────────────────────────│
-│               │             │             │                             │
-│ ● Sensoplast  │ ═══════════════════════════════════════                │
-│   ← klickbar  │                                                         │
-└───────────────┴─────────────────────────────────────────────────────────┘
-                ↓
-        Click auf Kundenname
-                ↓
-┌─────────────────────────────────────────────────────────────────────────┐
-│  ✕                             Kunde bearbeiten                         │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  Name                                                                   │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ Sensoplast                                                        │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-│                                                                         │
-│  Farbe                                                                  │
-│  [ ● ] [ ● ] [ ● ] [ ● ] [ ● ] [ ● ] [ ● ] [ ● ] [ ● ]  ← Farbpalette  │
-│                                                                         │
-│  ─────────────────────────────────────────────────────────────────────  │
-│  Projektzeitraum                                                        │
-│  ─────────────────────────────────────────────────────────────────────  │
-│                                                                         │
-│  ┌─────────────────────┐    ┌─────────────────────┐                    │
-│  │ 📅 Projektstart     │    │ 📅 Projektende      │                    │
-│  │ 13.01.2026          │    │ 17.04.2026          │                    │
-│  └─────────────────────┘    └─────────────────────┘                    │
-│                                                                         │
-│  Kontakt E-Mail                                                         │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ kontakt@sensoplast.de                                             │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-│                                                                         │
-│  Notizen                                                                │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ Wichtige Ansprechpartnerin: Frau Müller                           │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-│                                                                         │
-├─────────────────────────────────────────────────────────────────────────┤
-│  [ Kunde löschen ]                                    [ Speichern ]    │
-└─────────────────────────────────────────────────────────────────────────┘
+Wenn Labels AUS:
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Sensoplast   │████████████●════════════════●═══════════════⚠════════████│
+└──────────────────────────────────────────────────────────────────────────┘
+                             ↑ nur Icons auf dem Balken
+
+Wenn Labels AN:
+┌──────────────────────────────────────────────────────────────────────────┐
+│              │                                                           │
+│              │                                                           │
+│              │             Vertrag           Kick-Off          Deadline  │
+│ Sensoplast   │████████████●═════════════════●══════════════════⚠════████│
+│              │             13. Jan           24. Feb           17. Apr   │
+│              │                                                           │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Design-Spezifikationen
+
+**Row Height Anpassung:**
+- `ROW_HEIGHT` von 80px → **120px** (Labels AN)
+- Dynamic: 80px wenn Labels aus, 120px wenn Labels an
+
+**Label-Styling (world-class):**
+- **Title:** 12px, font-medium, volle Breite (kein truncate)
+- **Date:** 11px, text-muted-foreground
+- **Position:** Labels ÜBER dem Icon (nicht darunter)
+- **Alignment:** Zentriert zum Milestone-Icon
+- **No box/border:** Clean floating text, kein "Popup"-Look
+- **Spacing:** 4px gap zwischen Title und Icon
+
+**Verbindungslinie (optional, ultra-polish):**
+- Dünne vertikale Linie vom Label zum Icon
+- 1px, color: `text-muted-foreground/30`
+- Gibt visuellen Anchor ohne zu dominieren
 
 ---
 
-## Technische Umsetzung
+## Technische Implementation
 
-### 1. Neue Komponente: `ClientEditSheet.tsx`
+### 1. Dynamic Row Height
 
 ```typescript
-interface ClientEditSheetProps {
-  client: Client | null;
-  onClose: () => void;
-}
+// In QuarterCalendar.tsx und HalfYearCalendar.tsx
+const ROW_HEIGHT_COMPACT = 80;
+const ROW_HEIGHT_EXPANDED = 120;
+
+const rowHeight = showLabels ? ROW_HEIGHT_EXPANDED : ROW_HEIGHT_COMPACT;
 ```
 
-**Features:**
-- Alle bestehenden Client-Felder editierbar: `name`, `color`, `contact_email`, `notes`
-- NEU: `start_date` und `end_date` als Date-Picker
-- Farbauswahl als visuelle Palette (wie beim Erstellen)
-- Löschen mit Bestätigungs-Dialog (soft delete via `is_active = false`)
-- Nutzt den bestehenden `updateClient` und `deleteClient` aus `useClients`
-
-### 2. Änderung: `ClientBadge.tsx` klickbar machen
-
-```typescript
-interface ClientBadgeProps {
-  client: Client;
-  size?: 'sm' | 'md';
-  compact?: boolean;
-  className?: string;
-  onClick?: () => void;  // NEU: Optional click handler
-}
-```
-
-**Styling bei klickbar:**
-- `cursor-pointer`
-- `hover:bg-muted/50` Feedback
-- `rounded-md px-2 py-1` als Touch-Target
-
-### 3. Änderung: Kalender-Komponenten
-
-**QuarterCalendar.tsx** und **HalfYearCalendar.tsx:**
-- Neuer Prop: `onClientClick: (client: Client) => void`
-- ClientBadge bekommt den Click-Handler
-
-**PlanningPage.tsx:**
-- Neuer State: `selectedClient: Client | null`
-- Rendert `<ClientEditSheet client={selectedClient} onClose={() => setSelectedClient(null)} />`
-
----
-
-## Dateien
-
-| Datei | Aktion |
-|-------|--------|
-| `src/components/planning/ClientEditSheet.tsx` | Neu erstellen |
-| `src/components/planning/ClientBadge.tsx` | onClick-Prop hinzufügen |
-| `src/components/planning/QuarterCalendar.tsx` | onClientClick durchreichen |
-| `src/components/planning/HalfYearCalendar.tsx` | onClientClick durchreichen |
-| `src/components/planning/MonthView.tsx` | onClientClick durchreichen |
-| `src/pages/app/planning/PlanningPage.tsx` | selectedClient State + Sheet rendern |
-
----
-
-## Details: ClientEditSheet
-
-### Formular-Felder
-
-| Feld | Typ | Validierung |
-|------|-----|-------------|
-| Name | Input text | Required, nicht leer |
-| Farbe | Farbpalette | Aus CLIENT_COLORS |
-| Projektstart | Input date | Optional |
-| Projektende | Input date | Optional, >= Projektstart |
-| E-Mail | Input email | Optional |
-| Notizen | Textarea | Optional |
-
-### Farbpalette
+### 2. Conditional ScrollArea Rendering
 
 ```tsx
-<div className="flex flex-wrap gap-2">
-  {CLIENT_COLORS.map(color => (
-    <button
-      key={color}
-      onClick={() => setColor(color)}
-      className={cn(
-        "w-8 h-8 rounded-full border-2 transition-all",
-        selectedColor === color 
-          ? "border-primary scale-110" 
-          : "border-transparent hover:scale-105"
-      )}
-      style={{ backgroundColor: color }}
-    />
-  ))}
-</div>
+// Anstatt:
+<ScrollArea className={cn(needsScroll && "h-[560px]")} style={{...}}>
+
+// Besser:
+{needsScroll ? (
+  <ScrollArea style={{ height: `${MAX_VISIBLE_CLIENTS * rowHeight}px` }}>
+    {renderClientRows()}
+  </ScrollArea>
+) : (
+  <div>{renderClientRows()}</div>
+)}
 ```
 
-### Löschen-Flow
+### 3. Elegantes Label-Design in ClientPeriodBar
 
-1. "Kunde löschen" Button (destructive variant)
-2. AlertDialog: "Möchtest du [Name] wirklich löschen? Alle zugehörigen Meilensteine werden ebenfalls entfernt."
-3. Bestätigung ruft `deleteClient.mutateAsync(id)` auf
-4. Sheet schließt sich
+```tsx
+{showLabels && (
+  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 flex flex-col items-center pointer-events-none">
+    {/* Connection line */}
+    <div className="w-px h-3 bg-muted-foreground/20" />
+    {/* Label */}
+    <div className="text-center whitespace-nowrap px-1">
+      <div className="text-xs font-medium text-foreground leading-tight">
+        {milestone.title}
+      </div>
+      <div className="text-[11px] text-muted-foreground">
+        {format(new Date(milestone.date), 'd. MMM', { locale: de })}
+      </div>
+    </div>
+  </div>
+)}
+```
 
+### 4. Anti-Overlap für nahe Meilensteine
+
+Wenn Labels sich überlappen würden, alternative Strategien:
+- **Stagger:** Jedes zweite Label nach oben/unten versetzt
+- **Smart grouping:** Nahe Labels in einer Zeile zusammenfassen
+- **Priority:** Nur wichtigste Labels zeigen (Deadlines > andere)
+
+Für Phase 1: Labels immer oben, bei Overlap tolerieren (User kann zoomen/Halbjahr wechseln)
+
+---
+
+## Dateien & Änderungen
+
+| Datei | Änderungen |
+|-------|------------|
+| `src/components/planning/QuarterCalendar.tsx` | Dynamic row height, conditional ScrollArea |
+| `src/components/planning/HalfYearCalendar.tsx` | Dynamic row height, conditional ScrollArea |
+| `src/components/planning/ClientPeriodBar.tsx` | Elegantes Label-Design über Icons |
+
+---
+
+## Visual Polish Details
+
+### Header-Toggle Upgrade
+Der aktuelle Tag-Icon + Switch sieht okay aus, könnte aber cleaner sein:
+
+```text
+Aktuell:   [🏷] [o]  ← Etwas unklar was es macht
+           
+Besser:    [🏷 Labels] [toggle]  ← Text-Label für Klarheit
+```
+
+Oder als Button mit Icon-State:
+```text
+[ Labels ]  ← Outline wenn aus
+[■ Labels]  ← Filled wenn an
+```
+
+### Zeilen-Hover Effekt
+Bei mehr Höhe wirkt der Hover-Effekt stärker:
+- `hover:bg-muted/5` statt `hover:bg-muted/10`
+- Subtiler für professionellen Look
+
+---
+
+## Erwartetes Ergebnis
+
+| Aspekt | Vorher | Nachher |
+|--------|--------|---------|
+| Row Height | 80px (starr) | 80px/120px (dynamisch) |
+| Label-Position | Unter Icon, Box | Über Icon, floating |
+| Label-Größe | 10px, truncated | 12px, vollständig |
+| Scroll | Immer vorhanden | Nur ab 7+ Clients |
+| Investor-Ready | ❌ | ✅ |
+
+Das Ergebnis wird wie eine Linear/Notion Timeline aussehen - clean, professionell, sofort verständlich auf den ersten Blick.
