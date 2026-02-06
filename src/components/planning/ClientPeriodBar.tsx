@@ -45,6 +45,13 @@ function formatDateCompact(date: Date): string {
   return format(date, 'd. MMM', { locale: de });
 }
 
+// Edge-safe label alignment to prevent clipping
+function getLabelAlignment(leftPercent: number): 'left' | 'center' | 'right' {
+  if (leftPercent > 85) return 'right';
+  if (leftPercent < 15) return 'left';
+  return 'center';
+}
+
 interface EnrichedPosition {
   milestone: MilestoneWithClient;
   left: number;
