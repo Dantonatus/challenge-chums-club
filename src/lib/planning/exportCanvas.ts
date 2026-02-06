@@ -37,6 +37,12 @@ export async function exportPlanningCanvas({
   clone.style.top = '0';
   clone.style.backgroundColor = '#ffffff';
   clone.style.overflow = 'visible';
+  
+  // Remove any animations for static export
+  clone.querySelectorAll('.animate-pulse').forEach(el => {
+    (el as HTMLElement).classList.remove('animate-pulse');
+  });
+  
   document.body.appendChild(clone);
 
   // Fix CSS variables that html2canvas cannot resolve
@@ -50,8 +56,8 @@ export async function exportPlanningCanvas({
     logging: false,
     scrollX: 0,
     scrollY: 0,
-    windowWidth: clone.scrollWidth + 100,
-    windowHeight: clone.scrollHeight + 100,
+    windowWidth: clone.scrollWidth + 200, // Extra padding for labels
+    windowHeight: clone.scrollHeight + 200,
   });
 
   // Cleanup clone
