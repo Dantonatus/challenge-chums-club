@@ -222,13 +222,16 @@ export function ClientPeriodBar({
                 </Tooltip>
               </TooltipProvider>
               {showLabels && (
-                <div 
-                  className="absolute left-1/2 -translate-x-1/2 top-full mt-0.5 whitespace-nowrap z-20 pointer-events-none"
-                >
-                  <div className="bg-background/95 backdrop-blur-sm border rounded px-1.5 py-0.5 shadow-sm text-[10px] leading-tight">
-                    <div className="font-medium truncate max-w-[80px]">{milestone.title}</div>
-                    <div className="text-muted-foreground">{format(new Date(milestone.date), 'd.M.', { locale: de })}</div>
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 flex flex-col items-center pointer-events-none z-20">
+                  <div className="text-center whitespace-nowrap">
+                    <div className="text-xs font-medium text-foreground leading-tight">
+                      {milestone.title}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {format(new Date(milestone.date), 'd. MMM', { locale: de })}
+                    </div>
                   </div>
+                  <div className="w-px h-2 bg-muted-foreground/30" />
                 </div>
               )}
             </div>

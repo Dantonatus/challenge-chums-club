@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Quarter, getQuarterMonths, getQuarterDateRange, MilestoneWithClient, Client } from '@/lib/planning/types';
 import { ClientBadge } from './ClientBadge';
 import { ClientPeriodBar } from './ClientPeriodBar';
@@ -22,6 +21,70 @@ const MAX_VISIBLE_CLIENTS = 7;
 const ROW_HEIGHT_COMPACT = 80;
 const ROW_HEIGHT_EXPANDED = 120;
 
+interface ClientRowProps {
+  client: Client;
+  milestones: MilestoneWithClient[];
+  rowHeight: number;
+  monthDates: Date[];
+  viewRange: { start: Date; end: Date };
+  onClientClick: (client: Client) => void;
+  onMilestoneClick: (milestone: MilestoneWithClient) => void;
+  showLabels: boolean;
+}
+
+function ClientRow({ 
+  client, 
+  milestones, 
+  rowHeight, 
+  monthDates, 
+  viewRange, 
+  onClientClick, 
+  onMilestoneClick,
+  showLabels 
+}: ClientRowProps) {
+  return (
+    <div 
+      className="grid grid-cols-[180px_1fr] border-b last:border-b-0 group hover:bg-muted/5 transition-colors"
+      style={{ height: `${rowHeight}px` }}
+    >
+      {/* Client column */}
+      <div 
+        className="p-3 border-r flex items-center"
+        style={{ borderLeftColor: client.color, borderLeftWidth: '4px' }}
+      >
+        <ClientBadge client={client} onClick={() => onClientClick(client)} />
+      </div>
+
+      {/* Timeline area */}
+      <div className="relative">
+        {/* Month grid lines */}
+        <div className="absolute inset-0 grid grid-cols-3">
+          {monthDates.map((date, i) => (
+            <div 
+              key={i} 
+              className={cn(
+                "border-r last:border-r-0",
+                isSameMonth(date, new Date()) && "bg-primary/5"
+              )}
+            />
+          ))}
+        </div>
+
+        {/* Client period bar with milestones */}
+        <div className="relative h-full flex items-center px-2">
+          <ClientPeriodBar
+            client={client}
+            milestones={milestones}
+            viewRange={viewRange}
+            onMilestoneClick={onMilestoneClick}
+            showLabels={showLabels}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClientClick, showLabels = false }: QuarterCalendarProps) {
   const months = getQuarterMonths(quarter);
   const monthDates = months.map(m => new Date(quarter.year, m, 1));
@@ -33,6 +96,24 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
   if (clientData.length === 0) {
     return null;
   }
+
+  const renderClientRows = () => (
+    <>
+      {clientData.map(({ client, milestones }) => (
+        <ClientRow 
+          key={client.id}
+          client={client}
+          milestones={milestones}
+          rowHeight={rowHeight}
+          monthDates={monthDates}
+          viewRange={viewRange}
+          onClientClick={onClientClick}
+          onMilestoneClick={onMilestoneClick}
+          showLabels={showLabels}
+        />
+      ))}
+    </>
+  );
 
   return (
     <div className="border rounded-xl overflow-hidden bg-card relative">
@@ -55,71 +136,11 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
       {/* Client rows */}
       {needsScroll ? (
         <ScrollArea style={{ height: `${MAX_VISIBLE_CLIENTS * rowHeight}px` }}>
-          {clientData.map(({ client, milestones }) => (
-            <ClientRow 
-              key={client.id}
-              client={client}
-              milestones={milestones}
-              rowHeight={rowHeight}
-              monthDates={monthDates}
-              viewRange={viewRange}
-              onClientClick={onClientClick}
-              onMilestoneClick={onMilestoneClick}
-              showLabels={showLabels}
-            />
-          ))}
+          {renderClientRows()}
         </ScrollArea>
       ) : (
-        <div>
-          {clientData.map(({ client, milestones }) => (
-            <ClientRow 
-              key={client.id}
-              client={client}
-              milestones={milestones}
-              rowHeight={rowHeight}
-              monthDates={monthDates}
-              viewRange={viewRange}
-              onClientClick={onClientClick}
-              onMilestoneClick={onMilestoneClick}
-              showLabels={showLabels}
-            />
-          ))}
-        </div>
+        <div>{renderClientRows()}</div>
       )}
-              style={{ borderLeftColor: client.color, borderLeftWidth: '4px' }}
-            >
-              <ClientBadge client={client} onClick={() => onClientClick(client)} />
-            </div>
-
-            {/* Timeline area */}
-            <div className="relative">
-              {/* Month grid lines */}
-              <div className="absolute inset-0 grid grid-cols-3">
-                {monthDates.map((date, i) => (
-                  <div 
-                    key={i} 
-                    className={cn(
-                      "border-r last:border-r-0",
-                      isSameMonth(date, new Date()) && "bg-primary/5"
-                    )}
-                  />
-                ))}
-              </div>
-
-              {/* Client period bar with milestones */}
-              <div className="relative h-full flex items-center px-2">
-                <ClientPeriodBar
-                  client={client}
-                  milestones={milestones}
-                  viewRange={viewRange}
-                  onMilestoneClick={onMilestoneClick}
-                  showLabels={showLabels}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-      </ScrollArea>
 
       {/* Today indicator line */}
       <TodayLine quarter={quarter} clientColumnWidth={180} />
