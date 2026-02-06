@@ -19,13 +19,15 @@ interface QuarterCalendarProps {
 }
 
 const MAX_VISIBLE_CLIENTS = 7;
-const ROW_HEIGHT = 80;
+const ROW_HEIGHT_COMPACT = 80;
+const ROW_HEIGHT_EXPANDED = 120;
 
 export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClientClick, showLabels = false }: QuarterCalendarProps) {
   const months = getQuarterMonths(quarter);
   const monthDates = months.map(m => new Date(quarter.year, m, 1));
   const viewRange = getQuarterDateRange(quarter);
 
+  const rowHeight = showLabels ? ROW_HEIGHT_EXPANDED : ROW_HEIGHT_COMPACT;
   const needsScroll = clientData.length > MAX_VISIBLE_CLIENTS;
 
   if (clientData.length === 0) {

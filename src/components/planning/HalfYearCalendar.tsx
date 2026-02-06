@@ -19,14 +19,15 @@ interface HalfYearCalendarProps {
 }
 
 const MAX_VISIBLE_CLIENTS = 7;
-const ROW_HEIGHT = 80;
+const ROW_HEIGHT_COMPACT = 80;
+const ROW_HEIGHT_EXPANDED = 120;
 
 export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onClientClick, showLabels = false }: HalfYearCalendarProps) {
   const months = getHalfYearMonths(halfYear);
   const monthDates = months.map(m => new Date(halfYear.year, m, 1));
   const viewRange = getHalfYearDateRange(halfYear);
 
-  const gridHeight = Math.min(clientData.length, MAX_VISIBLE_CLIENTS) * ROW_HEIGHT;
+  const rowHeight = showLabels ? ROW_HEIGHT_EXPANDED : ROW_HEIGHT_COMPACT;
   const needsScroll = clientData.length > MAX_VISIBLE_CLIENTS;
 
   if (clientData.length === 0) {
