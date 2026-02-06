@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Plus, CalendarDays, Download, Tag } from 'lucide-react';
 import { 
@@ -16,7 +17,8 @@ import {
   MilestoneWithClient
 } from '@/lib/planning/types';
 import { ViewModeToggle } from './ViewModeToggle';
-import { exportPlanningPDF } from '@/lib/planning/exportPDF';
+import { ExportDialog, ExportFormat } from './ExportDialog';
+import { exportPlanningCanvas, generateFilename } from '@/lib/planning/exportCanvas';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -55,6 +57,7 @@ export function QuarterHeader({
   onShowLabelsChange
 }: QuarterHeaderProps) {
   const isMobile = useIsMobile();
+  const [showExportDialog, setShowExportDialog] = useState(false);
   
   const isCurrentQuarter = 
     quarter.year === getCurrentQuarter().year && 
@@ -90,12 +93,12 @@ export function QuarterHeader({
     }
   };
 
-  const handleExport = () => {
-    exportPlanningPDF({
-      viewMode,
-      quarter: viewMode === 'quarter' ? quarter : undefined,
-      halfYear: viewMode === 'halfyear' ? halfYear : undefined,
-      clientData,
+  const handleExport = async (format: ExportFormat) => {
+    await exportPlanningCanvas({
+      elementId: 'planning-chart',
+      format,
+      filename: generateFilename(periodLabel),
+      periodLabel,
     });
   };
 
@@ -173,10 +176,10 @@ export function QuarterHeader({
         <Button
           variant="outline"
           size="sm"
-          onClick={handleExport}
+          onClick={() => setShowExportDialog(true)}
         >
           <Download className="h-4 w-4 mr-1" />
-          PDF
+          Export
         </Button>
         
         <Button onClick={onAddClick} size="sm">
@@ -184,6 +187,13 @@ export function QuarterHeader({
           Meilenstein
         </Button>
       </div>
+
+      <ExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        onExport={handleExport}
+        periodLabel={periodLabel}
+      />
     </div>
   );
 }
