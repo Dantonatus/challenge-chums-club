@@ -116,8 +116,8 @@ export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onCli
   );
 
   return (
-    <div id="planning-chart-export-wrapper" className="p-6 -m-6" style={{ backgroundColor: '#ffffff' }}>
-      <div id="planning-chart" className="border rounded-xl bg-card relative" style={{ overflow: 'visible', backgroundColor: '#ffffff' }}>
+    <div id="planning-chart-export-wrapper" className="p-6 -m-6 bg-background">
+      <div id="planning-chart" className="border rounded-xl bg-card relative overflow-visible">
       {/* Month headers - sticky */}
       <div className="grid grid-cols-[160px_repeat(6,1fr)] border-b bg-muted/30 sticky top-0 z-20">
         <div className="p-2 border-r text-xs font-medium text-muted-foreground">
