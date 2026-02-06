@@ -89,6 +89,7 @@ export default function PlanningPage() {
           clientData={byClient}
           onMilestoneClick={setSelectedMilestone}
           onClientClick={setSelectedClient}
+          showLabels={showLabels}
         />
       ) : (
         <QuarterCalendar
@@ -96,6 +97,7 @@ export default function PlanningPage() {
           clientData={byClient}
           onMilestoneClick={setSelectedMilestone}
           onClientClick={setSelectedClient}
+          showLabels={showLabels}
         />
       )}
 

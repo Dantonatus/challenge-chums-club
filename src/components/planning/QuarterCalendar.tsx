@@ -91,6 +91,7 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
                   milestones={milestones}
                   viewRange={viewRange}
                   onMilestoneClick={onMilestoneClick}
+                  showLabels={showLabels}
                 />
               </div>
             </div>
