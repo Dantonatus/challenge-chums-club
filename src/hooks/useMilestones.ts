@@ -1,15 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Milestone, MilestoneWithClient, MilestoneFormData, Quarter, getQuarterDateRange } from '@/lib/planning/types';
+import { Milestone, MilestoneWithClient, MilestoneFormData, Quarter, HalfYear, getQuarterDateRange, getHalfYearDateRange } from '@/lib/planning/types';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
-export function useMilestones(quarter?: Quarter) {
+interface UseMilestonesOptions {
+  quarter?: Quarter;
+  halfYear?: HalfYear;
+}
+
+export function useMilestones(options?: UseMilestonesOptions) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['milestones', quarter?.year, quarter?.quarter],
+    queryKey: ['milestones', options?.quarter?.year, options?.quarter?.quarter, options?.halfYear?.year, options?.halfYear?.half],
     queryFn: async (): Promise<MilestoneWithClient[]> => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -23,9 +28,14 @@ export function useMilestones(quarter?: Quarter) {
         .eq('user_id', user.id)
         .order('date', { ascending: true });
 
-      // Filter by quarter if provided
-      if (quarter) {
-        const { start, end } = getQuarterDateRange(quarter);
+      // Filter by quarter or half year if provided
+      if (options?.halfYear) {
+        const { start, end } = getHalfYearDateRange(options.halfYear);
+        queryBuilder = queryBuilder
+          .gte('date', format(start, 'yyyy-MM-dd'))
+          .lte('date', format(end, 'yyyy-MM-dd'));
+      } else if (options?.quarter) {
+        const { start, end } = getQuarterDateRange(options.quarter);
         queryBuilder = queryBuilder
           .gte('date', format(start, 'yyyy-MM-dd'))
           .lte('date', format(end, 'yyyy-MM-dd'));
