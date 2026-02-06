@@ -1,358 +1,351 @@
 
 
-# Pixel-Perfekte Analyse & Behebungsplan: Export-Qualität
+# Detaillierte UX/UI-Fehleranalyse: Planungsansicht & Export
 
-## Detaillierte Problem-Analyse
+## Visuelles Audit – Identifizierte Probleme (Pixel-für-Pixel)
 
-### Aus dem PNG-Export identifizierte Fehler
+Ich habe sowohl den PNG-Export als auch den PDF-Export im Detail analysiert. Hier sind alle identifizierten Fehler aus Sicht eines anspruchsvollen Anwenders:
 
-```
-VISUELLES AUDIT - Identifizierte Probleme:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
-PROBLEM 1: Label-Text wird ABGESCHNITTEN
-├─ Beispiele: "Datenanforderung CIO Wa..." (Wagon), "Kick-off & technische..." (Wein Wolf)
-├─ Root Cause: line-clamp-2 + maxWidth: 100px schneidet zu aggressiv ab
-└─ Impact: Kritische Information geht verloren - unbrauchbar für Präsentationen
+## KRITISCHE PROBLEME (Funktionalität beeinträchtigt)
 
-PROBLEM 2: Text-ÜBERLAPPUNG bei nahen Meilensteinen
-├─ Beispiele: "5. Feb." & "27. Feb." bei Wagon überlappen horizontal
-├─ Root Cause: 12% Threshold greift nicht, weil Abstand 22 Tage bei 180 = 12.2%
-└─ Impact: Unleserlich, unprofessionell
-
-PROBLEM 3: Verbindungslinien FEHLEN KOMPLETT im Export
-├─ Beobachtung: Im PNG/PDF sind keine vertikalen Striche zwischen Label und Icon sichtbar
-├─ Root Cause: `bg-muted-foreground/40` (rgba mit Opacity) wird von html2canvas nicht korrekt erfasst
-└─ Impact: Keine visuelle Verbindung zwischen Text und Meilenstein
-
-PROBLEM 4: Labels sind nicht auf gleicher Höhe bei BELOW-Position
-├─ Beispiele: "16. Apr." bei Wein Wolf, "30. Apr." bei Wolman sind unterschiedlich positioniert
-├─ Root Cause: Stagger-Logik wechselt above/below, aber Titel-Höhe variiert (1 vs 2 Zeilen)
-└─ Impact: Unregelmäßiges, chaotisches Erscheinungsbild
-
-PROBLEM 5: PDF-Tabellen-Artefakte
-├─ Beobachtung: PDF zeigt kaputte Tabellenstruktur mit wirrem Text
-├─ Root Cause: jsPDF-Rendering + html2canvas erfasst Grid nicht korrekt
-└─ Impact: PDF ist KOMPLETT unbrauchbar
-
-PROBLEM 6: Fehlende MONATS-HEADER im Export
-├─ Beobachtung: "Jan. Feb. März Apr. Mai Juni" Header fehlen oder sind kaum lesbar
-├─ Root Cause: Grid-Struktur wird nicht korrekt erfasst
-└─ Impact: Keine Zeitachsen-Orientierung im Export
-
-PROBLEM 7: Kunde-Names werden abgeschnitten
-├─ Beispiele: "Wein Wolf", "Sensoplast" sind teilweise abgeschnitten
-├─ Root Cause: 140px Spaltenbreite + overflow: hidden auf Container
-└─ Impact: Kundendaten nicht identifizierbar
-```
-
-## Root Cause Hierarchie
+### Problem 1: Label-Text wird ABGESCHNITTEN
+**Schweregrad:** Kritisch | **Betroffene Elemente:** Alle Milestone-Labels
 
 ```
-TECHNISCHE ROOT CAUSES:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. HTML2CANVAS LIMITATIONS
-   ├─ CSS Grid wird nicht vollständig unterstützt
-   ├─ rgba/opacity-Werte werden inkonsistent erfasst
-   ├─ transform/translate können Sub-Pixel-Artefakte erzeugen
-   └─ Sticky-Elemente werden manchmal dupliziert oder ignoriert
-
-2. LABEL-SYSTEM ZU RESTRIKTIV
-   ├─ 100px maxWidth ist für deutsche Texte zu eng
-   ├─ line-clamp-2 schneidet oft nach 1.5 Zeilen ab
-   └─ Stagger-Threshold berücksichtigt nicht Label-BREITE, nur Position
-
-3. VERBINDUNGSLINIEN-FARBE
-   └─ `bg-muted-foreground/40` = CSS Variable mit Opacity
-       → html2canvas kann CSS Variables nicht immer auflösen
-
-4. EXPORT-CONTAINER SETUP
-   ├─ Wrapper hat `p-4 -m-4` was negative Margins = komplexes Clipping
-   └─ overflow-visible wird nicht respektiert beim Capture
+BEOBACHTUNG im PNG/PDF:
+├─ "Datenanforderung CIO Wa..." (Wagon) – "Wacon" abgeschnitten
+├─ "Kick-off & technische..." (Wein Wolf) – unvollständig
+├─ "PoV - Deliver..." – fehlt "Delivery"
+├─ "Regelmäßige Ahstimmung" – TIPPFEHLER "Abstimmung" → "Ahstimmung"
+├─ "Vor-Ort-Workshon" – TIPPFEHLER "Workshop" → "Workshon"
+└─ "Deadine PoV" – TIPPFEHLER "Deadline" → "Deadine"
 ```
 
-## Architektur-Entscheidung: Canvas-First Rendering
+**Root Cause:** 
+- `maxWidth: 140px` mit `WebkitLineClamp: 2` schneidet Text ab
+- Die 2-Zeilen-Begrenzung reicht für lange deutsche Texte nicht aus
 
-Da html2canvas zu viele Limitationen hat, implementiere ich eine **hybride Lösung**:
+**Fix:**
+- `maxWidth` auf **160px** erhöhen
+- Alternative: Tooltip bei Hover mit vollem Text
 
-1. **Für PNG**: Direktes Canvas-Rendering mit expliziten Farben (keine CSS-Variables)
-2. **Für PDF**: Sauberes jsPDF-Rendering ohne html2canvas-Abhängigkeit
+---
+
+### Problem 2: Label-ÜBERLAPPUNG bei nahen Meilensteinen
+**Schweregrad:** Kritisch | **Position:** Wagon-Zeile (5. Feb & 27. Feb)
+
+```
+BEOBACHTUNG:
+├─ "5. Feb. Datenanforderung" und "27. Feb. PoV -" überlappen HORIZONTAL
+├─ Beide Labels sind "above" positioniert (kein Stagger ausgelöst)
+└─ Abstand ~22 Tage bei 180 Tagen = 12.2% → knapp über 15%-Threshold
+```
+
+**Root Cause:**
+- `MIN_LABEL_DISTANCE_PERCENT = 15%` greift nicht, weil Abstand 22/180 = ~12.2% ist
+- WAIT – das ist UNTER 15%, also SOLLTE Stagger greifen!
+- **Echter Bug:** Die Stagger-Logik funktioniert, aber die Labels sind zu BREIT (140px + 80px Mindestbreite)
+
+**Fix:**
+- Dynamischen Stagger-Threshold basierend auf tatsächlicher Label-Breite berechnen
+- ODER: Threshold auf **18%** erhöhen für 6-Monats-Ansicht
+
+---
+
+### Problem 3: Verbindungslinien sind FAST UNSICHTBAR
+**Schweregrad:** Mittel | **Betroffene Elemente:** Alle Label-zu-Icon-Linien
+
+```
+BEOBACHTUNG im PNG/PDF:
+├─ Verbindungslinien zwischen Label und Icon sind kaum sichtbar
+├─ Farbe rgba(100,100,100,0.4) ist zu hell auf weißem Hintergrund
+└─ Linienstärke 1px ist bei 2x-Export zu dünn
+```
+
+**Root Cause:**
+- `w-px` = 1px ist bei Retina-Export nur 0.5 "visuelle Pixel"
+- Opacity 0.4 ist zu transparent
+
+**Fix:**
+- Linienstärke auf `w-0.5` (2px) erhöhen
+- Farbe auf `rgba(80, 80, 80, 0.6)` verstärken
+
+---
+
+## DESIGN-PROBLEME (Ästhetik & Professionalität)
+
+### Problem 4: Kunden-Namen werden abgeschnitten
+**Schweregrad:** Mittel | **Position:** Linke Spalte
+
+```
+BEOBACHTUNG:
+├─ "Wein Wolf" ist vollständig
+├─ "Sensoplast" wird zu "Sensonlast" (OCR-Fehler oder Font-Rendering)
+├─ Bei längeren Namen würde "truncate" greifen
+└─ Spaltenbreite 140px ist knapp
+```
+
+**Root Cause:**
+- `max-w-[100px]` in ClientBadge bei `compact=true`
+- Kombiniert mit Font-Rendering kann Text unleserlich werden
+
+**Fix:**
+- `max-w-[120px]` für kompakte Badges
+- Oder Spaltenbreite auf **160px** erhöhen
+
+---
+
+### Problem 5: Inkonsistente Label-Höhen bei BELOW-Position
+**Schweregrad:** Mittel | **Position:** Labels unter der Timeline
+
+```
+BEOBACHTUNG:
+├─ "16. Apr. Vor-Ort-Workshop" hat 3 Zeilen
+├─ "30. Apr. PoV-Ende" hat 2 Zeilen
+└─ Unterschiedliche vertikale Positionen wirken unruhig
+```
+
+**Root Cause:**
+- `minHeight: 24px` reicht nicht für einheitliche Höhe
+- Wenn Text 3 Zeilen braucht, verschiebt sich alles
+
+**Fix:**
+- Feste Höhe `height: 36px` für Label-Container
+- `overflow: hidden` statt `line-clamp` für striktere Kontrolle
+
+---
+
+### Problem 6: Monats-Header-Rendering im Export
+**Schweregrad:** Niedrig | **Position:** Header-Zeile
+
+```
+BEOBACHTUNG im PDF:
+├─ Monatsnamen sind korrekt: Jan. Feb. März Apr. Mai Juni
+├─ ABER: "Kunden"-Label in erster Spalte ist sehr klein/dünn
+└─ Schriftgröße wirkt im PDF kleiner als im Browser
+```
+
+**Root Cause:**
+- Font-Size `text-xs` (12px) wird bei html2canvas manchmal inkorrekt erfasst
+- Browser-Font und Export-Font können unterschiedlich rendern
+
+**Fix:**
+- Explizite `fontSize: 12px` als Inline-Style im Export-Kontext
+- Font-Weight explizit setzen für Konsistenz
+
+---
+
+### Problem 7: "Heute"-Linie (Today-Indicator) Position
+**Schweregrad:** Niedrig | **Betroffene Komponente:** TodayLine
+
+```
+BEOBACHTUNG:
+├─ Die grüne vertikale Linie für "Heute" ist korrekt positioniert
+├─ ABER: Der pulsierende Punkt oben ist im Export statisch (kein animate-pulse)
+└─ Der Punkt wirkt im Export wie ein Fehler, da er "schwebt"
+```
+
+**Root Cause:**
+- CSS-Animationen werden von html2canvas nicht erfasst
+- Der Punkt sollte im Export anders gestyled werden
+
+**Fix:**
+- Animation nur im Browser, nicht im Export-Clone anzeigen
+- Oder: Punkt größer machen und als Dreieck/Pfeil gestalten
+
+---
+
+### Problem 8: Period-Bar Ecken bei Extend-Beyond-View
+**Schweregrad:** Niedrig | **Position:** Sensoplast-Zeile
+
+```
+BEOBACHTUNG:
+├─ Sensoplast-Bar beginnt am linken Rand (startsBeforeView)
+├─ Die linke Ecke ist korrekt "eckig" (rounded-l-none)
+├─ Der Fade-Gradient ist kaum sichtbar (nur bei genauem Hinsehen)
+```
+
+**Root Cause:**
+- `${client.color}40` ist zu subtil
+- Gradient von 40% auf transparent ist zu sanft
+
+**Fix:**
+- Stärkerer Gradient: `${client.color}60` auf transparent
+- Oder: Dezentes Chevron-Icon am Rand als visueller Hinweis
+
+---
+
+### Problem 9: PDF-Skalierung nicht optimal
+**Schweregrad:** Mittel | **Format:** PDF-Export
+
+```
+BEOBACHTUNG:
+├─ Chart nutzt nicht die volle Seitenbreite
+├─ Viel Leerraum links und rechts
+├─ Header "Projektplanung H1 2026" ist redundant (bereits im Dateinamen)
+```
+
+**Root Cause:**
+- `margin = 8mm` beidseitig = 16mm weniger
+- Chart wird proportional skaliert, nicht auf Breite optimiert
+
+**Fix:**
+- Margins auf **5mm** reduzieren
+- Chart auf volle `contentWidth` strecken (Aspect-Ratio anpassen)
+
+---
+
+### Problem 10: Farbige Client-Dots zu klein im Export
+**Schweregrad:** Niedrig | **Position:** Linke Spalte
+
+```
+BEOBACHTUNG:
+├─ Die farbigen Punkte vor Kundennamen sind sehr klein (2x2px bei compact)
+├─ Farben sind schwer zu unterscheiden bei ähnlichen Tönen
+└─ Punkte sollten prominenter sein für schnelles Scannen
+```
+
+**Root Cause:**
+- `w-2 h-2` (8px) ist bei Print/Export grenzwertig
+
+**Fix:**
+- Auf `w-2.5 h-2.5` (10px) erhöhen
+- Alternativ: Farbigen Left-Border nutzen (wie bereits vorhanden, aber dicker)
+
+---
+
+## VERBESSERUNGS-POTENZIALE
+
+### Enhancement 1: Stagger-Logik verbessern
+
+**Aktuell:**
+```typescript
+const MIN_LABEL_DISTANCE_PERCENT = 15;
+const needsStagger = distance < MIN_LABEL_DISTANCE_PERCENT;
+```
+
+**Besser:**
+```typescript
+// Dynamischer Threshold basierend auf Label-Breite
+const estimatedLabelWidthPercent = 12; // ~140px bei 1200px Breite ≈ 12%
+const MIN_LABEL_DISTANCE_PERCENT = estimatedLabelWidthPercent + 5; // Buffer
+
+// Zusätzlich: Titel-Länge berücksichtigen
+const titleIsLong = milestone.title.length > 15;
+const adjustedThreshold = titleIsLong ? MIN_LABEL_DISTANCE_PERCENT + 3 : MIN_LABEL_DISTANCE_PERCENT;
+```
+
+---
+
+### Enhancement 2: Export-Vorschau
+
+**Feature:** Vor dem Export eine Vorschau anzeigen
+- Modal mit verkleinerter Ansicht des Exports
+- Hinweis wenn Labels überlappen
+- Option "Ohne Labels" für saubereren Export
+
+---
+
+### Enhancement 3: Responsive Label-Sizing
+
+**Feature:** Label-Größe an verfügbaren Platz anpassen
+- Bei wenig Meilensteinen: größere Labels, mehr Text
+- Bei vielen Meilensteinen: kompaktere Labels, mehr Stagger
+
+---
 
 ## Implementierungs-Plan
 
-### Phase 1: Verbindungslinien-Fix (Sofort-Wirkung)
+### Phase 1: Kritische Fixes (Sofort)
 
-**Datei: `ClientPeriodBar.tsx`**
+| Datei | Änderung |
+|-------|----------|
+| `ClientPeriodBar.tsx` | Label maxWidth 160px, Linienfarbe verstärken, Threshold 18% |
+| `ClientBadge.tsx` | max-w-[120px] statt 100px bei compact |
+| `exportCanvas.ts` | Margins 5mm, bessere Font-Fixes |
 
-```tsx
-// VORHER: CSS Variable mit Opacity - wird nicht erfasst
-<div className="w-px h-3 bg-muted-foreground/40" />
+### Phase 2: Design-Polish
 
-// NACHHER: Explizite Farbe für Export-Kompatibilität
-<div className="w-px h-3" style={{ backgroundColor: 'rgba(100, 100, 100, 0.4)' }} />
-```
+| Datei | Änderung |
+|-------|----------|
+| `ClientPeriodBar.tsx` | Feste Label-Höhe 36px, Linie 2px |
+| `HalfYearCalendar.tsx` | Spaltenbreite 160px |
+| `TodayLine` | Export-spezifisches Styling (kein Pulse) |
 
-### Phase 2: Label-Text nicht abschneiden
+### Phase 3: Enhancements
 
-**Datei: `ClientPeriodBar.tsx`**
+| Feature | Beschreibung |
+|---------|-------------|
+| Export-Vorschau | Preview-Modal vor Download |
+| Dynamisches Stagger | Titel-Länge berücksichtigen |
+| "Ohne Labels" Option | Checkbox im Export-Dialog |
 
-Änderungen:
-1. `maxWidth` von 100px auf **140px** erhöhen
-2. `line-clamp-2` behalten, aber mit `word-break: break-word`
-3. Datum und Titel zusammen in fester Höhe, damit Stagger konsistent ist
+---
 
-```tsx
-// Label-Text Container
+## Code-Änderungen (Detailliert)
+
+### 1. ClientPeriodBar.tsx
+
+```typescript
+// Zeile 41: Threshold erhöhen
+const MIN_LABEL_DISTANCE_PERCENT = 18; // War: 15
+
+// Zeile 205-208: Linie verstärken
 <div 
-  className={cn(
-    alignment === 'center' && "text-center",
-    alignment === 'left' && "text-left",
-    alignment === 'right' && "text-right"
-  )} 
-  style={{ maxWidth: '140px', minWidth: '80px' }}
->
-  <div className="text-[11px] font-bold text-foreground leading-tight whitespace-nowrap">
-    {formatDateCompact(new Date(milestone.date))}
-  </div>
-  <div 
-    className="text-[10px] text-muted-foreground leading-snug" 
-    style={{ 
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical',
-      overflow: 'hidden',
-      wordBreak: 'break-word',
-      minHeight: '24px' // Feste Höhe für 2 Zeilen
-    }}
-  >
-    {milestone.title}
-  </div>
-</div>
-```
+  className="order-last w-0.5 h-4" 
+  style={{ backgroundColor: 'rgba(80, 80, 80, 0.6)' }} 
+/>
 
-### Phase 3: Stagger-Threshold dynamisch
+// Zeile 218: Label breiter
+style={{ maxWidth: '160px', minWidth: '90px' }}
 
-Der aktuelle Threshold von 12% reicht nicht, weil er die Label-Breite nicht berücksichtigt.
-
-**Datei: `ClientPeriodBar.tsx`**
-
-```tsx
-// Neue intelligentere Stagger-Logik
-const MIN_LABEL_DISTANCE_PERCENT = 15; // Erhöht von 12% auf 15%
-
-// Zusätzlich: Wenn zwei Labels nahe beieinander UND beide lang sind
-function needsStagger(currentLeft: number, lastLeft: number, currentTitle: string): boolean {
-  const distance = currentLeft - lastLeft;
-  const titleIsLong = currentTitle.length > 20;
-  
-  // Enger Abstand ODER beides lange Titel bei mittlerem Abstand
-  if (distance < 15) return true;
-  if (distance < 20 && titleIsLong) return true;
-  
-  return false;
-}
-```
-
-### Phase 4: Export-Engine komplett neu
-
-**Datei: `exportCanvas.ts`**
-
-Neue Strategie: Vor dem Capture alle CSS-Variables durch explizite Werte ersetzen.
-
-```tsx
-export async function exportPlanningCanvas({
-  elementId,
-  format,
-  filename,
-  periodLabel,
-}: ExportOptions): Promise<void> {
-  const wrapperElement = document.getElementById(`${elementId}-export-wrapper`);
-  const element = wrapperElement || document.getElementById(elementId);
-  
-  if (!element) {
-    throw new Error(`Element with id "${elementId}" not found`);
-  }
-
-  // Speichere Original-Styles
-  const originalStyles = new Map<HTMLElement, string>();
-  
-  // Ersetze alle CSS-Variable Farben durch explizite Werte
-  const allElements = element.querySelectorAll('*');
-  allElements.forEach((el) => {
-    if (el instanceof HTMLElement) {
-      originalStyles.set(el, el.style.cssText);
-      
-      // Fix für muted-foreground opacity
-      const computedStyle = window.getComputedStyle(el);
-      if (computedStyle.backgroundColor.includes('var(')) {
-        el.style.backgroundColor = computedStyle.backgroundColor;
-      }
-    }
-  });
-
-  // Temporär Overflow visible
-  const originalOverflow = element.style.overflow;
-  element.style.overflow = 'visible';
-  
-  // Clone für sauberes Rendering
-  const clone = element.cloneNode(true) as HTMLElement;
-  clone.style.position = 'absolute';
-  clone.style.left = '-9999px';
-  clone.style.top = '0';
-  clone.style.backgroundColor = '#ffffff';
-  document.body.appendChild(clone);
-
-  const canvas = await html2canvas(clone, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-    logging: false,
-    scrollX: 0,
-    scrollY: 0,
-    windowWidth: clone.scrollWidth + 100,
-    windowHeight: clone.scrollHeight + 100,
-    onclone: (clonedDoc, clonedElement) => {
-      // Alle Opacity-basierte Farben in explizite RGBA umwandeln
-      clonedElement.querySelectorAll('[class*="bg-muted"]').forEach((el) => {
-        if (el instanceof HTMLElement) {
-          el.style.backgroundColor = 'rgba(100, 100, 100, 0.4)';
-        }
-      });
-    }
-  });
-
-  // Cleanup
-  document.body.removeChild(clone);
-  element.style.overflow = originalOverflow;
-  
-  // Restore original styles
-  originalStyles.forEach((cssText, el) => {
-    el.style.cssText = cssText;
-  });
-
-  if (format === 'png') {
-    downloadPNG(canvas, filename);
-  } else {
-    downloadPDF(canvas, filename, periodLabel);
-  }
-}
-```
-
-### Phase 5: PDF-Rendering verbessern
-
-**Datei: `exportCanvas.ts`**
-
-Das PDF sollte das Chart größer darstellen:
-
-```tsx
-function downloadPDF(canvas: HTMLCanvasElement, filename: string, periodLabel: string): void {
-  const imgData = canvas.toDataURL('image/png', 1.0);
-  
-  // IMMER Landscape für Gantt-Charts
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: 'a4',
-  });
-
-  const pageWidth = 297;
-  const pageHeight = 210;
-  const margin = 8; // Reduziert von 10mm
-  const headerHeight = 15; // Reduziert von 20mm
-  const footerHeight = 8; // Reduziert von 10mm
-  
-  const contentWidth = pageWidth - 2 * margin;
-  const contentHeight = pageHeight - headerHeight - footerHeight - margin;
-
-  // Minimalistischer Header
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 30, 30);
-  doc.text('Projektplanung', margin, margin + 6);
-  
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text(periodLabel, margin + 55, margin + 6);
-  
-  doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  const dateStr = format(new Date(), 'd.MM.yyyy', { locale: de });
-  doc.text(dateStr, pageWidth - margin, margin + 6, { align: 'right' });
-
-  // Dezente Linie
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(0.2);
-  doc.line(margin, headerHeight - 2, pageWidth - margin, headerHeight - 2);
-
-  // Bild maximal groß
-  const imgWidth = canvas.width / 2;
-  const imgHeight = canvas.height / 2;
-  const imgAspect = imgWidth / imgHeight;
-  
-  let finalWidth = contentWidth;
-  let finalHeight = finalWidth / imgAspect;
-  
-  if (finalHeight > contentHeight) {
-    finalHeight = contentHeight;
-    finalWidth = finalHeight * imgAspect;
-  }
-
-  const x = margin + (contentWidth - finalWidth) / 2;
-  const y = headerHeight;
-
-  doc.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
-
-  // Dezenter Footer
-  doc.setFontSize(6);
-  doc.setTextColor(180, 180, 180);
-  doc.text('habitbattle.lovable.app', pageWidth / 2, pageHeight - 4, { align: 'center' });
-
-  doc.save(`${filename}.pdf`);
-}
-```
-
-### Phase 6: Calendar-Container für sauberen Export
-
-**Dateien: `HalfYearCalendar.tsx` & `QuarterCalendar.tsx`**
-
-Der Export-Wrapper muss explizit weiß sein:
-
-```tsx
-// Wrapper mit explizitem weißen Hintergrund
+// Zeile 223-233: Feste Höhe für Konsistenz
 <div 
-  id="planning-chart-export-wrapper" 
-  className="p-6 -m-6"
-  style={{ backgroundColor: '#ffffff' }}
+  className="text-[10px] text-muted-foreground leading-snug"
+  style={{ 
+    height: '32px', // Feste Höhe für 2-3 Zeilen
+    overflow: 'hidden',
+    wordBreak: 'break-word',
+  }}
 >
-  <div 
-    id="planning-chart" 
-    className="border rounded-xl bg-card relative"
-    style={{ overflow: 'visible', backgroundColor: '#ffffff' }}
-  >
-    ...
-  </div>
-</div>
 ```
 
-## Zusammenfassung der Änderungen
+### 2. ClientBadge.tsx
 
-| Datei | Änderung | Effekt |
-|-------|----------|--------|
-| `ClientPeriodBar.tsx` | Verbindungslinie mit expliziter Farbe | Linien erscheinen im Export |
-| `ClientPeriodBar.tsx` | Label maxWidth 140px + minHeight | Vollständiger Text, konsistente Höhe |
-| `ClientPeriodBar.tsx` | Stagger-Threshold 15% | Weniger Überlappungen |
-| `exportCanvas.ts` | Clone-Strategie mit CSS-Fix | Sauberes Capturing |
-| `exportCanvas.ts` | PDF immer Landscape, minimaler Header | Größeres Chart |
-| `HalfYearCalendar.tsx` | Expliziter weißer Background | Kein transparenter Hintergrund |
-| `QuarterCalendar.tsx` | Expliziter weißer Background | Konsistenz |
+```typescript
+// Zeile 39: Mehr Platz für Namen
+compact && "text-xs max-w-[120px]" // War: 100px
+```
 
-## Erwartetes Ergebnis nach Implementierung
+### 3. HalfYearCalendar.tsx
 
-1. **Labels**: Vollständig lesbarer Text ohne Abschneiden
-2. **Verbindungslinien**: Klar sichtbar zwischen Label und Icon
-3. **Keine Überlappung**: Stagger greift früher, Labels weichen aus
-4. **PDF**: Professionelles A4-Landscape mit maximaler Chart-Größe
-5. **PNG**: Retina-Qualität mit allen Details sichtbar
+```typescript
+// Zeile 47: Breitere Kundenspalte
+className="grid grid-cols-[160px_1fr]" // War: 140px
+```
+
+### 4. exportCanvas.ts
+
+```typescript
+// Zeile 122: Kleinere Margins
+const margin = 5; // War: 8
+
+// Zeile 123-124: Mehr Platz für Content
+const headerHeight = 12;
+const footerHeight = 6;
+```
+
+---
+
+## Erwartetes Ergebnis
+
+Nach Implementierung aller Fixes:
+
+1. **Labels**: Vollständig lesbar, keine Überlappung
+2. **Linien**: Klar sichtbar (2px, 60% Opacity)
+3. **Stagger**: Greift früher (18% Threshold)
+4. **PDF**: Maximale Chartgröße durch reduzierte Margins
+5. **Konsistenz**: Einheitliche Label-Höhen
 
