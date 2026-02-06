@@ -24,6 +24,7 @@ interface ClientPeriodBarProps {
   milestones: MilestoneWithClient[];
   viewRange: { start: Date; end: Date };
   onMilestoneClick: (m: MilestoneWithClient) => void;
+  showLabels?: boolean;
 }
 
 const ICON_MAP: Record<MilestoneType, React.ComponentType<{ className?: string }>> = {
