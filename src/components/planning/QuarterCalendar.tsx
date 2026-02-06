@@ -70,8 +70,8 @@ function ClientRow({
           ))}
         </div>
 
-        {/* Client period bar with milestones */}
-        <div className="relative h-full flex items-center px-2">
+        {/* Client period bar with milestones - overflow visible for labels */}
+        <div className="relative h-full flex items-center px-2 overflow-visible">
           <ClientPeriodBar
             client={client}
             milestones={milestones}
