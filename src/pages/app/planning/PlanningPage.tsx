@@ -78,18 +78,21 @@ export default function PlanningPage() {
           quarter={quarter}
           milestones={milestones}
           onMilestoneClick={setSelectedMilestone}
+          onClientClick={setSelectedClient}
         />
       ) : viewMode === 'halfyear' ? (
         <HalfYearCalendar
           halfYear={halfYear}
           clientData={byClient}
           onMilestoneClick={setSelectedMilestone}
+          onClientClick={setSelectedClient}
         />
       ) : (
         <QuarterCalendar
           quarter={quarter}
           clientData={byClient}
           onMilestoneClick={setSelectedMilestone}
+          onClientClick={setSelectedClient}
         />
       )}
 
