@@ -105,6 +105,11 @@ export default function PlanningPage() {
         milestone={selectedMilestone}
         onClose={() => setSelectedMilestone(null)}
       />
+
+      <ClientEditSheet
+        client={selectedClient}
+        onClose={() => setSelectedMilestone(null)}
+      />
     </div>
   );
 }
