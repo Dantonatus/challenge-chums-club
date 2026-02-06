@@ -145,8 +145,9 @@ export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onCli
         <div>{renderClientRows()}</div>
       )}
 
-      {/* Today indicator */}
-      <TodayLine halfYear={halfYear} clientColumnWidth={140} />
+        {/* Today indicator */}
+        <TodayLine halfYear={halfYear} clientColumnWidth={140} />
+      </div>
     </div>
   );
 }

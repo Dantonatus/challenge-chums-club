@@ -21,25 +21,33 @@ export async function exportPlanningCanvas({
   filename,
   periodLabel,
 }: ExportOptions): Promise<void> {
-  const element = document.getElementById(elementId);
+  // Try export wrapper first (includes padding for label overflow), then fall back to chart
+  const wrapperElement = document.getElementById(`${elementId}-export-wrapper`);
+  const element = wrapperElement || document.getElementById(elementId);
+  
   if (!element) {
     throw new Error(`Element with id "${elementId}" not found`);
   }
+
+  // Temporarily ensure overflow is visible for correct label capturing
+  const originalOverflow = element.style.overflow;
+  element.style.overflow = 'visible';
 
   // Capture at 2x scale for retina quality
   const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
-    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--background').trim()
-      ? `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--background').trim()})`
-      : '#ffffff',
+    backgroundColor: '#ffffff', // Explicit white for clean export
     logging: false,
-    // Ensure scrollable content is fully captured
+    // Ensure scrollable content is fully captured with extra padding for labels
     scrollX: 0,
     scrollY: 0,
-    windowWidth: element.scrollWidth,
-    windowHeight: element.scrollHeight,
+    windowWidth: element.scrollWidth + 60,
+    windowHeight: element.scrollHeight + 60,
   });
+
+  // Restore original overflow
+  element.style.overflow = originalOverflow;
 
   if (format === 'png') {
     downloadPNG(canvas, filename);

@@ -143,8 +143,9 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
         <div>{renderClientRows()}</div>
       )}
 
-      {/* Today indicator line */}
-      <TodayLine quarter={quarter} clientColumnWidth={180} />
+        {/* Today indicator line */}
+        <TodayLine quarter={quarter} clientColumnWidth={180} />
+      </div>
     </div>
   );
 }
