@@ -39,6 +39,8 @@ export function MilestoneQuickAdd({ open, onOpenChange }: MilestoneQuickAddProps
   const [title, setTitle] = useState('');
   const [clientId, setClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
+  const [newClientStartDate, setNewClientStartDate] = useState('');
+  const [newClientEndDate, setNewClientEndDate] = useState('');
   const [showNewClient, setShowNewClient] = useState(false);
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [time, setTime] = useState('');
@@ -49,6 +51,8 @@ export function MilestoneQuickAdd({ open, onOpenChange }: MilestoneQuickAddProps
     setTitle('');
     setClientId('');
     setNewClientName('');
+    setNewClientStartDate('');
+    setNewClientEndDate('');
     setShowNewClient(false);
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setTime('');
@@ -69,6 +73,8 @@ export function MilestoneQuickAdd({ open, onOpenChange }: MilestoneQuickAddProps
       const newClient = await createClient.mutateAsync({
         name: newClientName.trim(),
         color: availableColor,
+        start_date: newClientStartDate || undefined,
+        end_date: newClientEndDate || undefined,
       });
       finalClientId = newClient.id;
     }
@@ -143,24 +149,49 @@ export function MilestoneQuickAdd({ open, onOpenChange }: MilestoneQuickAddProps
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-2">
-                <Input
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  placeholder="Neuer Kundenname"
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowNewClient(false);
-                    setNewClientName('');
-                  }}
-                >
-                  Abbrechen
-                </Button>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="Neuer Kundenname"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowNewClient(false);
+                      setNewClientName('');
+                      setNewClientStartDate('');
+                      setNewClientEndDate('');
+                    }}
+                  >
+                    Abbrechen
+                  </Button>
+                </div>
+                {/* Client period dates */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Projektstart</Label>
+                    <Input
+                      type="date"
+                      value={newClientStartDate}
+                      onChange={(e) => setNewClientStartDate(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Projektende</Label>
+                    <Input
+                      type="date"
+                      value={newClientEndDate}
+                      onChange={(e) => setNewClientEndDate(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -42,6 +42,8 @@ export function useClients() {
           color: formData.color || availableColor,
           contact_email: formData.contact_email || null,
           notes: formData.notes || null,
+          start_date: formData.start_date || null,
+          end_date: formData.end_date || null,
         })
         .select()
         .single();
@@ -67,6 +69,8 @@ export function useClients() {
           color: formData.color,
           contact_email: formData.contact_email,
           notes: formData.notes,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
         })
         .eq('id', id)
         .select()
