@@ -173,8 +173,8 @@ export function useMilestones(options?: UseMilestonesOptions) {
 }
 
 // Hook to get milestones grouped by client
-export function useMilestonesByClient(quarter: Quarter) {
-  const { milestones, ...rest } = useMilestones(quarter);
+export function useMilestonesByClient(options: { quarter?: Quarter; halfYear?: HalfYear }) {
+  const { milestones, ...rest } = useMilestones(options);
 
   const byClient = milestones.reduce((acc, milestone) => {
     const clientId = milestone.client_id;
