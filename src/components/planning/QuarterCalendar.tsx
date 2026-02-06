@@ -116,8 +116,8 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
   );
 
   return (
-    <div id="planning-chart-export-wrapper" className="p-6 -m-6" style={{ backgroundColor: '#ffffff' }}>
-      <div id="planning-chart" className="border rounded-xl bg-card relative" style={{ overflow: 'visible', backgroundColor: '#ffffff' }}>
+    <div id="planning-chart-export-wrapper" className="p-6 -m-6 bg-background">
+      <div id="planning-chart" className="border rounded-xl bg-card relative overflow-visible">
       {/* Month headers */}
       <div className="grid grid-cols-[180px_1fr_1fr_1fr] border-b bg-muted/30 sticky top-0 z-20">
         <div className="p-3 border-r text-sm font-medium text-muted-foreground" />

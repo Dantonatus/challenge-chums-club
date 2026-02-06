@@ -13,15 +13,13 @@ interface ExportOptions {
 }
 
 /**
- * Exports the planning view as a high-quality 1:1 screenshot (PNG) or as a PDF containing that screenshot.
- *
- * Design goal: the export must look like what the user sees on screen.
- *
- * Implementation notes:
- * - Uses `html-to-image` (foreignObject-based) which is typically closer to 1:1 than html2canvas for modern CSS.
- * - Clones the node to avoid flicker / layout jumps.
- * - Flattens Radix ScrollArea viewports so offscreen content is included.
- * - Resolves CSS variables into explicit computed values for consistent capture.
+ * Exports the planning view as a high-quality screenshot (PNG) or PDF.
+ * 
+ * Key features:
+ * - Works directly on the original element (no offscreen clone issues)
+ * - Temporarily expands ScrollAreas to include all content
+ * - Theme-aware: exports exactly what's on screen (light/dark mode)
+ * - Retina quality (2x pixel ratio)
  */
 export async function exportPlanningCanvas({
   elementId,
@@ -37,96 +35,70 @@ export async function exportPlanningCanvas({
     throw new Error(`Element with id "${elementId}" not found`);
   }
 
-  const clone = element.cloneNode(true) as HTMLElement;
-  clone.style.position = 'absolute';
-  clone.style.left = '-9999px';
-  clone.style.top = '0';
-  clone.style.backgroundColor = '#ffffff';
-  clone.style.overflow = 'visible';
+  // Wait for fonts to be ready
+  if (document.fonts?.ready) {
+    await document.fonts.ready;
+  }
 
-  // Ensure deterministic export (no animations)
-  clone.querySelectorAll('.animate-pulse').forEach((el) => {
-    (el as HTMLElement).classList.remove('animate-pulse');
-  });
+  // Temporarily expand ScrollAreas to include all content
+  const scrollAreas = element.querySelectorAll('[data-radix-scroll-area-viewport]');
+  const originalStyles = new Map<HTMLElement, { overflow: string; height: string; maxHeight: string }>();
 
-  // If the UI uses Radix ScrollArea, flatten it so exports include the real content.
-  // (Otherwise we'd export only the visible viewport.)
-  clone.querySelectorAll('[data-radix-scroll-area-viewport]').forEach((el) => {
+  scrollAreas.forEach((el) => {
     const viewport = el as HTMLElement;
+    originalStyles.set(viewport, {
+      overflow: viewport.style.overflow,
+      height: viewport.style.height,
+      maxHeight: viewport.style.maxHeight,
+    });
     viewport.style.overflow = 'visible';
     viewport.style.height = 'auto';
     viewport.style.maxHeight = 'none';
   });
 
-  document.body.appendChild(clone);
-
-  // Wait for fonts to be ready (prevents "fallback font" exports)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fonts = (document as any).fonts;
-  if (fonts?.ready) {
-    await fonts.ready;
-  }
-
-  // Fix CSS variables that capture engines cannot always resolve
-  fixCSSVariablesForExport(clone);
-
-  const rect = element.getBoundingClientRect();
-  const exportWidth = Math.max(Math.ceil(rect.width), clone.scrollWidth);
-  const exportHeight = Math.max(Math.ceil(rect.height), clone.scrollHeight);
-
-  const dataUrl = await toPng(clone, {
-    cacheBust: true,
-    backgroundColor: '#ffffff',
-    pixelRatio: 2,
-    width: exportWidth,
-    height: exportHeight,
+  // Wait for layout recalculation
+  await new Promise<void>(resolve => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
   });
 
-  document.body.removeChild(clone);
+  try {
+    // Export directly on original element - html-to-image handles cloning internally
+    const dataUrl = await toPng(element, {
+      cacheBust: true,
+      pixelRatio: 2, // Retina quality
+      // No backgroundColor - captures exactly what's on screen (theme-aware)
+      style: {
+        // Disable animations for static export
+        animation: 'none',
+        transition: 'none',
+      },
+      filter: (node) => {
+        // Filter out pulsing animation elements (today indicator dot)
+        if (node instanceof HTMLElement) {
+          if (node.classList.contains('animate-pulse')) {
+            return false;
+          }
+        }
+        return true;
+      },
+    });
 
-  const canvas = await dataUrlToCanvas(dataUrl);
-
-  if (format === 'png') {
-    downloadPNGFromDataUrl(dataUrl, filename);
-  } else {
-    downloadPDFFromCanvas(canvas, filename, periodLabel);
-  }
-}
-
-/**
- * Replace CSS variables with explicit colors for html2canvas compatibility
- */
-function fixCSSVariablesForExport(element: HTMLElement): void {
-  const allElements = element.querySelectorAll('*');
-  
-  allElements.forEach((el) => {
-    if (el instanceof HTMLElement) {
-      const computedStyle = window.getComputedStyle(el);
-      
-      // Fix background colors that use CSS variables
-      const bgColor = computedStyle.backgroundColor;
-      if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
-        el.style.backgroundColor = bgColor;
-      }
-      
-      // Fix text colors
-      const color = computedStyle.color;
-      if (color) {
-        el.style.color = color;
-      }
-      
-      // Fix border colors
-      const borderColor = computedStyle.borderColor;
-      if (borderColor) {
-        el.style.borderColor = borderColor;
-      }
-      
-      // Ensure overflow visible for labels
-      if (el.classList.contains('overflow-visible')) {
-        el.style.overflow = 'visible';
-      }
+    if (format === 'png') {
+      downloadPNGFromDataUrl(dataUrl, filename);
+    } else {
+      const canvas = await dataUrlToCanvas(dataUrl);
+      downloadPDFFromCanvas(canvas, filename, periodLabel);
     }
-  });
+  } finally {
+    // Restore original ScrollArea styles
+    originalStyles.forEach((styles, el) => {
+      el.style.overflow = styles.overflow;
+      el.style.height = styles.height;
+      el.style.maxHeight = styles.maxHeight;
+    });
+  }
 }
 
 async function dataUrlToCanvas(dataUrl: string): Promise<HTMLCanvasElement> {
