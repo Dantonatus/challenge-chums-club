@@ -39,6 +39,8 @@ export function MilestoneQuickAdd({ open, onOpenChange }: MilestoneQuickAddProps
   const [title, setTitle] = useState('');
   const [clientId, setClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
+  const [newClientStartDate, setNewClientStartDate] = useState('');
+  const [newClientEndDate, setNewClientEndDate] = useState('');
   const [showNewClient, setShowNewClient] = useState(false);
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [time, setTime] = useState('');
@@ -49,6 +51,8 @@ export function MilestoneQuickAdd({ open, onOpenChange }: MilestoneQuickAddProps
     setTitle('');
     setClientId('');
     setNewClientName('');
+    setNewClientStartDate('');
+    setNewClientEndDate('');
     setShowNewClient(false);
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setTime('');
