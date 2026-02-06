@@ -11,6 +11,8 @@ export type MilestoneType =
 
 export type MilestonePriority = 'low' | 'medium' | 'high' | 'critical';
 
+export type ViewMode = 'quarter' | 'halfyear';
+
 export interface Client {
   id: string;
   user_id: string;
@@ -20,6 +22,8 @@ export interface Client {
   contact_email: string | null;
   notes: string | null;
   is_active: boolean;
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +58,8 @@ export interface ClientFormData {
   color: string;
   contact_email?: string;
   notes?: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface MilestoneFormData {
@@ -74,13 +80,29 @@ export interface Quarter {
   quarter: 1 | 2 | 3 | 4;
 }
 
+// Half-year navigation
+export interface HalfYear {
+  year: number;
+  half: 1 | 2;
+}
+
 export function getQuarterMonths(q: Quarter): [number, number, number] {
   const startMonth = (q.quarter - 1) * 3;
   return [startMonth, startMonth + 1, startMonth + 2];
 }
 
+export function getHalfYearMonths(h: HalfYear): number[] {
+  return h.half === 1 
+    ? [0, 1, 2, 3, 4, 5] 
+    : [6, 7, 8, 9, 10, 11];
+}
+
 export function getQuarterLabel(q: Quarter): string {
   return `Q${q.quarter} ${q.year}`;
+}
+
+export function getHalfYearLabel(h: HalfYear): string {
+  return `H${h.half} ${h.year}`;
 }
 
 export function getQuarterDateRange(q: Quarter): { start: Date; end: Date } {
@@ -90,10 +112,26 @@ export function getQuarterDateRange(q: Quarter): { start: Date; end: Date } {
   return { start, end };
 }
 
+export function getHalfYearDateRange(h: HalfYear): { start: Date; end: Date } {
+  const startMonth = h.half === 1 ? 0 : 6;
+  return {
+    start: new Date(h.year, startMonth, 1),
+    end: new Date(h.year, startMonth + 6, 0)
+  };
+}
+
 export function getCurrentQuarter(): Quarter {
   const now = new Date();
   const quarter = Math.floor(now.getMonth() / 3) + 1;
   return { year: now.getFullYear(), quarter: quarter as 1 | 2 | 3 | 4 };
+}
+
+export function getCurrentHalfYear(): HalfYear {
+  const now = new Date();
+  return { 
+    year: now.getFullYear(), 
+    half: now.getMonth() < 6 ? 1 : 2 
+  };
 }
 
 export function getPreviousQuarter(q: Quarter): Quarter {
@@ -108,6 +146,34 @@ export function getNextQuarter(q: Quarter): Quarter {
     return { year: q.year + 1, quarter: 1 };
   }
   return { year: q.year, quarter: (q.quarter + 1) as 1 | 2 | 3 | 4 };
+}
+
+export function getPreviousHalfYear(h: HalfYear): HalfYear {
+  if (h.half === 1) {
+    return { year: h.year - 1, half: 2 };
+  }
+  return { year: h.year, half: 1 };
+}
+
+export function getNextHalfYear(h: HalfYear): HalfYear {
+  if (h.half === 2) {
+    return { year: h.year + 1, half: 1 };
+  }
+  return { year: h.year, half: 2 };
+}
+
+export function quarterToHalfYear(q: Quarter): HalfYear {
+  return {
+    year: q.year,
+    half: q.quarter <= 2 ? 1 : 2
+  };
+}
+
+export function halfYearToQuarter(h: HalfYear): Quarter {
+  return {
+    year: h.year,
+    quarter: h.half === 1 ? 1 : 3
+  };
 }
 
 // Milestone type config
