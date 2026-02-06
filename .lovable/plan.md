@@ -1,450 +1,336 @@
 
-# Projektplanung: Quartalskalender mit AI-Copilot
+# Projektplanung Pro: Halbjahres-Ansicht + Kundenperioden + HQ-Export
 
 ## Executive Summary
 
-Ein neuer Tab "Projektplanung" nach Tasks, der einen immersiven Quartalskalender für Kunden-Meilensteine bietet. Focus auf **Klarheit, Scanbarkeit und schnelle Erfassung** - keine Feature-Bloat, sondern ein Tool das du jeden Morgen aufmachst um zu wissen "Was steht an?".
+Du brauchst drei signifikante Erweiterungen, die das Planning-Tool von einem Meilenstein-Tracker zu einem vollwertigen **Project Timeline Tool** upgraden:
+
+1. **Halbjahres-Ansicht (6 Monate)** - Toggle zwischen 3-Monat und 6-Monat View
+2. **Kunden-Betreuungsperioden** - Visuelle Darstellung der Projektlaufzeit als durchgehender Balken
+3. **HQ PDF-Export** - Screenshot-artige Qualität der aktuellen Ansicht
+
+Diese Änderungen transformieren das Tool von "Termine verwalten" zu "Projektpipeline visualisieren".
 
 ---
 
-## 1. Design-Philosophie
+## 1. Datenmodell-Erweiterung
 
-### Jobs-to-be-Done
-
-| Job | Lösung |
-|-----|--------|
-| "Ich will auf einen Blick sehen, was dieses Quartal ansteht" | Ganzes Quartal sichtbar, visuelle Gruppierung nach Kunde |
-| "Ich will schnell einen Meilenstein erfassen" | Inline-Add oder AI-Chat |
-| "Ich will verstehen welche Deadlines kritisch sind" | Color-Coding, Countdown-Badges |
-| "Ich will Details sehen wenn nötig" | Click-to-Expand Sheet |
-
-### Design-Prinzipien
-
-1. **Information Density richtig**: Viel auf einen Blick, aber nicht chaotisch
-2. **Kunden-First**: Einträge sind immer einem Kunden zugeordnet - der Kunde ist das visuelle Anker-Element
-3. **Temporal Clarity**: Heute ist IMMER klar erkennbar, Vergangenheit gedimmt
-4. **Progressive Disclosure**: Übersicht = minimal, Detail-Sheet = komplett
-
----
-
-## 2. Datenmodell
-
-### Neue Tabelle: `clients`
+### Migration: Clients-Tabelle erweitern
 
 ```sql
-CREATE TABLE clients (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users NOT NULL,
-  name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#3B82F6',
-  logo_url TEXT,
-  contact_email TEXT,
-  notes TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_clients_user ON clients(user_id);
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clients
+  ADD COLUMN start_date DATE,
+  ADD COLUMN end_date DATE;
 ```
 
-### Neue Tabelle: `milestones`
+**Warum start_date/end_date auf Client-Ebene?**
+- Kunden haben eine Betreuungsperiode (z.B. Sensoplast: 13.01 - 17.04)
+- Meilensteine sind Ereignisse INNERHALB dieser Periode
+- Visualisierung: Der "Projektbalken" zeigt die gesamte Laufzeit, Meilensteine sind Marker auf diesem Balken
 
-```sql
-CREATE TABLE milestones (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users NOT NULL,
-  client_id UUID REFERENCES clients(id) ON DELETE CASCADE NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  milestone_type TEXT NOT NULL DEFAULT 'general',
-  -- Types: 'contract' | 'kickoff' | 'deadline' | 'meeting' | 'delivery' | 'payment' | 'general'
-  date DATE NOT NULL,
-  time TIME,
-  is_completed BOOLEAN DEFAULT false,
-  completed_at TIMESTAMPTZ,
-  priority TEXT DEFAULT 'medium',
-  -- Priority: 'low' | 'medium' | 'high' | 'critical'
-  location TEXT,
-  attendees TEXT[],
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_milestones_user ON milestones(user_id);
-CREATE INDEX idx_milestones_client ON milestones(client_id);
-CREATE INDEX idx_milestones_date ON milestones(date);
-ALTER TABLE milestones ENABLE ROW LEVEL SECURITY;
-```
-
-### RLS Policies
-
-```sql
--- Clients
-CREATE POLICY "Users can CRUD own clients" ON clients
-  FOR ALL USING (auth.uid() = user_id);
-
--- Milestones  
-CREATE POLICY "Users can CRUD own milestones" ON milestones
-  FOR ALL USING (auth.uid() = user_id);
-```
-
----
-
-## 3. UI-Konzept: "Horizon View"
-
-### Layout-Raster
-
-```text
- ┌─────────────────────────────────────────────────────────────────────────────────┐
- │  ← Q4 2025    ┃   Q1 2026   ┃   Q2 →                [+ Meilenstein] [AI Chat]  │
- ├───────────────╋─────────────╋─────────────────────────────────────────────────────┤
- │               ┃ JANUAR      ┃ FEBRUAR              ┃ MÄRZ                        │
- │               ┃─────────────┃──────────────────────┃─────────────────────────────│
- │               ┃     13      ┃     24               ┃     17                      │
- │   Sensoplast  ┃  ● Vertrag  ┃  ● Kick-Off (vor Ort)┃  ⚠ Deadline                │
- │   ━━━━━━━━━━━ ┃             ┃                      ┃                             │
- │               ┃             ┃                      ┃                             │
- │               ┃     28      ┃                      ┃                             │
- │   Acme Corp   ┃  ● Start    ┃                      ┃     05  ● Lieferung        │
- │   ━━━━━━━━━━━ ┃             ┃                      ┃                             │
- │               ┃             ┃                      ┃                             │
- └───────────────┴─────────────┴──────────────────────┴─────────────────────────────┘
-```
-
-### Visual Design Tokens
-
-**Milestone-Type Icons + Colors:**
-
-| Type | Icon | Default Color | Semantic |
-|------|------|---------------|----------|
-| contract | FileSignature | Blue | Formal, legal |
-| kickoff | Rocket | Green | Start, energy |
-| deadline | AlertTriangle | Red/Orange | Urgency |
-| meeting | Users | Purple | Collaboration |
-| delivery | Package | Teal | Handoff |
-| payment | CreditCard | Emerald | Money |
-| general | Circle | Gray | Neutral |
-
-**Kunden-Farben:**
-- Jeder Kunde bekommt eine Farbe (aus 12 vordefinierten + Custom)
-- Farbe wird als linke Border + dezenter Hintergrund auf der Zeile verwendet
-- Ermöglicht sofortige visuelle Zuordnung
-
-**Temporal States:**
-
-| State | Styling |
-|-------|---------|
-| Past | `opacity-50`, gedimmt |
-| Today | `ring-2 ring-primary`, pulsierender Dot |
-| Future | Volle Opacity |
-| Overdue | `bg-destructive/10`, rote Border |
-
-### Interaktionen
-
-**1. Meilenstein-Karte (Compact)**
-```text
-┌─────────────────────────────┐
-│ 13                          │ ← Tag gross
-│ ● Vertragsschluss           │ ← Icon + Titel
-│   Sensoplast                │ ← Kunde (klein)
-└─────────────────────────────┘
-```
-
-**2. Click → Detail Sheet (Bottom Sheet, 60vh)**
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  ✕                          Meilenstein bearbeiten                  │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Vertragsschluss                                    [● Erledigt]   │
-│  ───────────────────────────────────────                           │
-│                                                                     │
-│  📅 13. Januar 2026, 14:00                                         │
-│  🏢 Sensoplast                                                     │
-│  📍 Vor Ort, München                                               │
-│                                                                     │
-│  ──────────────────────────────────────────────────────────────── │
-│  Beschreibung                                                       │
-│  Lorem ipsum dolor sit amet, consectetur adipiscing elit.          │
-│                                                                     │
-│  Teilnehmer: Max Mustermann, Anna Schmidt                          │
-│                                                                     │
-│  ──────────────────────────────────────────────────────────────── │
-│                                                                     │
-│  [ Löschen ]                                    [ Speichern ]      │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**3. Quick-Add (Floating Button → Modal)**
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  Neuer Meilenstein                                                  │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Titel *                                                            │
-│  ┌────────────────────────────────────────────────────────────┐    │
-│  │ Deadline Website-Launch                                     │    │
-│  └────────────────────────────────────────────────────────────┘    │
-│                                                                     │
-│  ┌────────────────┐  ┌───────────────┐  ┌────────────────────┐     │
-│  │ 📅 17.04.26    │  │ 🕐 Optional   │  │ 🏢 Sensoplast ▼   │     │
-│  └────────────────┘  └───────────────┘  └────────────────────┘     │
-│                                                                     │
-│  Typ                                                                │
-│  [ ● Deadline ] [ Kickoff ] [ Vertrag ] [ Meeting ] [ ... ]        │
-│                                                                     │
-│  [ Abbrechen ]                                    [ Erstellen ]    │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 4. AI-Chat Integration
-
-### AI-Copilot Konzept
-
-**Kein separater Chat-Screen**, sondern ein **Command-Palette-Style Input** der am oberen Rand schwebt:
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  🤖 "Sensoplast Deadline am 17. April"                              [Enter ↵]  │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
-
-**AI versteht natürliche Sprache:**
-- "Kick-Off mit Acme Corp am 24. Februar, 10 Uhr, vor Ort"
-- "Sensoplast Deadline nächsten Freitag"
-- "Meeting mit Müller GmbH in 2 Wochen"
-
-**AI Parsing Response (Preview vor Bestätigung):**
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  🤖 Erkannt:                                                                    │
-│                                                                                 │
-│  ┌─────────────────────────────────────────────────────────────────────────┐   │
-│  │  📅 24. Februar 2026, 10:00                                              │   │
-│  │  🏢 Acme Corp (neuer Kunde)                                             │   │
-│  │  📍 Vor Ort                                                              │   │
-│  │  Typ: Kick-Off                                                           │   │
-│  └─────────────────────────────────────────────────────────────────────────┘   │
-│                                                                                 │
-│  [ ✕ Abbrechen ]  [ ✎ Anpassen ]                      [ ✓ Erstellen ]         │
-│                                                                                 │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Edge Function für AI-Parsing:**
+### TypeScript-Erweiterung
 
 ```typescript
-// supabase/functions/parse-milestone/index.ts
-// Input: { text: string, existingClients: string[] }
-// Output: { title, client, date, time?, location?, type }
+// src/lib/planning/types.ts
+export interface Client {
+  // ... existing fields
+  start_date: string | null;  // NEW
+  end_date: string | null;    // NEW
+}
 
-// Nutzt Lovable AI / Gemini für Natural Language Understanding
-// Matcht Kundennamen fuzzy gegen existierende Kunden
-// Erkennt relative Datums-Ausdrücke ("nächste Woche", "in 2 Wochen")
+export interface ClientFormData {
+  // ... existing fields
+  start_date?: string;  // NEW
+  end_date?: string;    // NEW
+}
 ```
 
 ---
 
-## 5. Quartal-Navigation
+## 2. View-Mode: Quartal vs. Halbjahr
 
-### Header-Component
+### Neue Types
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  [←]   Q1 2026   [→]                                          [Heute] [+ Neu]  │
-│        Jan – Mär                                                               │
-└─────────────────────────────────────────────────────────────────────────────────┘
+```typescript
+export type ViewMode = 'quarter' | 'halfyear';
+
+export interface HalfYear {
+  year: number;
+  half: 1 | 2; // H1: Jan-Jun, H2: Jul-Dec
+}
+
+// Helper functions
+export function getHalfYearMonths(h: HalfYear): number[] {
+  return h.half === 1 
+    ? [0, 1, 2, 3, 4, 5] 
+    : [6, 7, 8, 9, 10, 11];
+}
+
+export function getHalfYearDateRange(h: HalfYear): { start: Date; end: Date } {
+  const startMonth = h.half === 1 ? 0 : 6;
+  return {
+    start: new Date(h.year, startMonth, 1),
+    end: new Date(h.year, startMonth + 6, 0)
+  };
+}
+
+export function getCurrentHalfYear(): HalfYear {
+  const now = new Date();
+  return { 
+    year: now.getFullYear(), 
+    half: now.getMonth() < 6 ? 1 : 2 
+  };
+}
 ```
 
-**Logik:**
-- Start: Aktuelles Quartal
-- Navigation: Prev/Next Quartal
-- "Heute"-Button: Springt zum aktuellen Quartal, scrollt zur heutigen Position
-- Quartale: Q1 (Jan-Mär), Q2 (Apr-Jun), Q3 (Jul-Sep), Q4 (Okt-Dez)
-
-### Mobile View
-
-Auf Mobile: **Monat-by-Monat** statt 3 Monate nebeneinander:
+### Header-Component Update
 
 ```text
-┌─────────────────────────────────────────────┐
-│  [← Jan]   FEBRUAR 2026   [Mär →]          │
-├─────────────────────────────────────────────┤
-│                                             │
-│  24                                         │
-│  ──────────────────────────────────────    │
-│  ● Kick-Off (vor Ort)                      │
-│    Sensoplast                              │
-│                                             │
-│  28                                         │
-│  ──────────────────────────────────────    │
-│  ● Review-Meeting                          │
-│    Acme Corp                               │
-│                                             │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│  [←] H1 2026 [→]         [Quartal ▾ | Halbjahr]        [PDF ↓] [Heute] [+ Meilenstein] │
+│       Jan – Jun                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Verhalten:**
+- Toggle zwischen Quartal (3 Monate) und Halbjahr (6 Monate)
+- Navigation passt sich automatisch an (Q1→Q2 vs H1→H2)
+- State im URL-Parameter für Bookmarkability: `/app/planning?view=halfyear&h=1&year=2026`
+
+---
+
+## 3. Kunden-Betreuungsperioden: Visual Design
+
+### Gantt-artige Darstellung
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ Kunden      │ JANUAR      │ FEBRUAR     │ MÄRZ        │ APRIL       │ MAI │ JUNI        │
+├─────────────┼─────────────┼─────────────┼─────────────┼─────────────┼─────┼─────────────┤
+│             │             │             │             │             │     │             │
+│ Sensoplast  │ ┌───────────┴─────────────┴─────────────┐             │     │             │
+│ ━━━━━━━━━   │ │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│             │     │             │
+│             │ │ ● 13.01    ● 24.02           ⚠ 17.04 │             │     │             │
+│             │ │ Vertrag    Kick-Off          Deadline│             │     │             │
+│             │ └───────────────────────────────────────┘             │     │             │
+│             │             │             │             │             │     │             │
+│ Acme Corp   │             │ ┌───────────┴─────────────┴─────────────┴─────┐             │
+│ ━━━━━━━━━   │             │ │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│             │
+│             │             │ │ ● 15.02                              ● 30.05│             │
+│             │             │ │ Start                                Finish │             │
+│             │             │ └────────────────────────────────────────────┘             │
+└─────────────┴─────────────┴─────────────────────────────────────────────────────────────┘
+```
+
+### Design-Spezifikation
+
+**Projektbalken (Client Period Bar):**
+- **Höhe:** 48px (genug Platz für Meilenstein-Marker + Labels)
+- **Farbe:** Client-Farbe mit 20% Opacity als Background, 100% für den Border-Top
+- **Border-Radius:** 8px
+- **Position:** Exakt von start_date bis end_date auf der Timeline
+
+**Meilenstein-Marker auf dem Balken:**
+- **Icons:** Kleine (16px) Type-Icons positioniert auf dem Balken
+- **Tooltip on Hover:** Zeigt Titel + Datum
+- **Click:** Öffnet Detail-Sheet (wie bisher)
+
+**Edge Cases:**
+- Client ohne start_date/end_date: Zeige nur die Meilensteine als einzelne Karten (wie aktuell)
+- start_date/end_date außerhalb des View-Range: Balken "überläuft" am Rand mit Fade
+
+### Implementation: ClientPeriodBar Component
+
+```typescript
+interface ClientPeriodBarProps {
+  client: ClientWithPeriod;
+  milestones: MilestoneWithClient[];
+  viewRange: { start: Date; end: Date };
+  monthColumns: Date[];
+  onMilestoneClick: (m: MilestoneWithClient) => void;
+}
+```
+
+**Berechnungslogik:**
+- `leftPercent`: Position des Start-Datums relativ zur View
+- `widthPercent`: Breite basierend auf Dauer relativ zur View
+- Milestones werden als absolute Positionen innerhalb des Balkens platziert
+
+---
+
+## 4. 7-Kunden-Limit + Scrolling
+
+### Layout-Logik
+
+```typescript
+const MAX_VISIBLE_CLIENTS = 7;
+const ROW_HEIGHT = 100; // px pro Kundenzeile (inkl. Padding)
+const VISIBLE_HEIGHT = MAX_VISIBLE_CLIENTS * ROW_HEIGHT; // 700px
+```
+
+**Behavior:**
+- Erste 7 Kunden sofort sichtbar
+- ScrollArea mit smooth scrolling für weitere Kunden
+- Sticky Header (Monate bleiben oben fixiert beim Scrollen)
+- Optional: Alphabetische Sortierung oder nach "nächster Deadline"
+
+### ScrollArea Integration
+
+```tsx
+<ScrollArea className="h-[700px]">
+  <div className="divide-y">
+    {clientData.map(client => (
+      <ClientPeriodRow key={client.id} ... />
+    ))}
+  </div>
+</ScrollArea>
 ```
 
 ---
 
-## 6. Empty State + Onboarding
+## 5. HQ PDF Export
 
-### Erster Besuch
+### Technologie-Entscheidung
+
+**Option A: html2canvas + jsPDF** 
+- Screenshot des DOM → Canvas → PDF
+- Pro: Exakt wie auf Screen
+- Con: Schlechte Text-Qualität, keine Vektoren
+
+**Option B: Custom jsPDF Rendering** (EMPFOHLEN)
+- Programmatische PDF-Erstellung mit jsPDF + jspdf-autotable
+- Pro: Vektorgrafiken, scharfe Texte, kleinere Dateigröße
+- Con: Mehr Aufwand, muss manuell gerendert werden
+
+**Recommendation: Option B mit Custom Rendering**
+
+### PDF Layout Design
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                                                                                 │
-│                              📅                                                 │
-│                                                                                 │
-│                    Deine Projektübersicht                                       │
-│                                                                                 │
-│     Behalte alle wichtigen Meilensteine im Blick.                              │
-│     Verträge, Kick-Offs, Deadlines - alles auf einen Blick.                    │
-│                                                                                 │
-│                                                                                 │
-│     ┌──────────────────────────────────────────────────────────────────────┐   │
-│     │ 🤖 "Sensoplast Kick-Off am 15. März"                           [↵]  │   │
-│     └──────────────────────────────────────────────────────────────────────┘   │
-│                                                                                 │
-│                     oder   [ + Manuell hinzufügen ]                            │
-│                                                                                 │
-│                                                                                 │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│  [Logo]    PROJEKTPLANUNG                            Q1 2026 (Jan-Mär) │
+│            Generiert: 06.02.2026                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌────────────────────────────────────────────────────────────────────┐│
+│  │ Sensoplast  ████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░││
+│  │             13.01           24.02                    17.04         ││
+│  │             Vertrag         Kick-Off                 Deadline      ││
+│  └────────────────────────────────────────────────────────────────────┘│
+│                                                                         │
+│  ┌────────────────────────────────────────────────────────────────────┐│
+│  │ Acme Corp   ░░░░░░░░░████████████████████████████████████████████░░││
+│  │                      15.02                                  30.05  ││
+│  │                      Start                                  Finish ││
+│  └────────────────────────────────────────────────────────────────────┘│
+│                                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Seite 1/1                        habitbattle.lovable.app               │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Export-Button Integration
+
+```tsx
+// In QuarterHeader.tsx
+<Button variant="outline" size="sm" onClick={handleExport}>
+  <Download className="h-4 w-4 mr-1" />
+  PDF
+</Button>
+```
+
+**Export-Funktion:**
+1. Sammle alle sichtbaren Clients + Milestones
+2. Berechne Positionen für jeden Projektbalken
+3. Rendere mit jsPDF:
+   - Header mit Titel + Zeitraum
+   - Pro Client: Farbiger Balken + Meilenstein-Marker
+   - Footer mit Timestamp
 
 ---
 
-## 7. Datei-Struktur
+## 6. Dateien & Änderungen
 
 ### Neue Dateien
 
-```text
-src/
-├── pages/app/planning/
-│   └── PlanningPage.tsx          # Hauptseite
-│
-├── components/planning/
-│   ├── QuarterCalendar.tsx       # Quartals-Grid (Desktop)
-│   ├── MonthView.tsx             # Monats-Ansicht (Mobile)
-│   ├── MilestoneCard.tsx         # Kompakte Meilenstein-Karte
-│   ├── MilestoneSheet.tsx        # Detail-Sheet
-│   ├── MilestoneQuickAdd.tsx     # Quick-Add Modal
-│   ├── AICommandInput.tsx        # AI-Eingabe-Feld
-│   ├── AIParsePreview.tsx        # AI-Vorschau vor Bestätigung
-│   ├── ClientBadge.tsx           # Kunden-Chip mit Farbe
-│   ├── QuarterHeader.tsx         # Navigation Header
-│   └── PlanningEmptyState.tsx    # Empty State
-│
-├── hooks/
-│   ├── useClients.ts             # CRUD für Kunden
-│   ├── useMilestones.ts          # CRUD für Meilensteine
-│   └── useQuarterData.ts         # Meilensteine pro Quartal laden
-│
-├── lib/planning/
-│   └── types.ts                  # Client, Milestone Types
-│
-└── supabase/functions/
-    └── parse-milestone/
-        └── index.ts              # AI-Parser Edge Function
-```
+| Datei | Zweck |
+|-------|-------|
+| `src/components/planning/ClientPeriodBar.tsx` | Gantt-artiger Projektbalken |
+| `src/components/planning/HalfYearCalendar.tsx` | 6-Monats-Grid-Ansicht |
+| `src/components/planning/ViewModeToggle.tsx` | Quartal/Halbjahr Toggle |
+| `src/lib/planning/exportPDF.ts` | HQ PDF Export Logik |
 
-### Änderungen
+### Geänderte Dateien
 
-```text
-src/
-├── App.tsx                       # Route /app/planning hinzufügen
-├── components/layout/AppLayout.tsx  # Nav-Link "Planung" hinzufügen
-└── integrations/supabase/types.ts   # (nach Migration automatisch)
+| Datei | Änderungen |
+|-------|------------|
+| `src/lib/planning/types.ts` | + HalfYear type, + ViewMode, + Client start/end_date |
+| `src/hooks/useClients.ts` | + start_date/end_date CRUD |
+| `src/hooks/useMilestones.ts` | + HalfYear Support für Queries |
+| `src/components/planning/QuarterHeader.tsx` | + ViewMode Toggle, + Export Button |
+| `src/components/planning/QuarterCalendar.tsx` | + ClientPeriodBar, + ScrollArea mit 7-Client-Limit |
+| `src/components/planning/MilestoneQuickAdd.tsx` | + Client start/end_date Felder |
+| `src/pages/app/planning/PlanningPage.tsx` | + ViewMode State, + HalfYear Support |
+
+### Migration
+
+```sql
+-- 20260206_add_client_period.sql
+ALTER TABLE public.clients
+  ADD COLUMN start_date DATE,
+  ADD COLUMN end_date DATE;
+
+-- Optionaler Check-Constraint
+ALTER TABLE public.clients
+  ADD CONSTRAINT chk_client_period CHECK (start_date IS NULL OR end_date IS NULL OR start_date <= end_date);
 ```
 
 ---
 
-## 8. Migrations
+## 7. Implementierungs-Reihenfolge
 
-### 001_create_clients.sql
-
-```sql
-CREATE TABLE public.clients (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#3B82F6',
-  logo_url TEXT,
-  contact_email TEXT,
-  notes TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_clients_user ON public.clients(user_id);
-ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can CRUD own clients" ON public.clients
-  FOR ALL USING (auth.uid() = user_id);
-```
-
-### 002_create_milestones.sql
-
-```sql
-CREATE TABLE public.milestones (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  milestone_type TEXT NOT NULL DEFAULT 'general',
-  date DATE NOT NULL,
-  time TIME,
-  is_completed BOOLEAN DEFAULT false,
-  completed_at TIMESTAMPTZ,
-  priority TEXT DEFAULT 'medium',
-  location TEXT,
-  attendees TEXT[],
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_milestones_user ON public.milestones(user_id);
-CREATE INDEX idx_milestones_client ON public.milestones(client_id);
-CREATE INDEX idx_milestones_date ON public.milestones(date);
-
-ALTER TABLE public.milestones ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can CRUD own milestones" ON public.milestones
-  FOR ALL USING (auth.uid() = user_id);
-```
-
----
-
-## 9. Implementierungs-Reihenfolge
-
-| Phase | Scope | Dateien |
+| Phase | Scope | Aufwand |
 |-------|-------|---------|
-| 1 | DB-Schema + Types | Migrations, types.ts |
-| 2 | Hooks + Basic CRUD | useClients.ts, useMilestones.ts |
-| 3 | Routing + Layout | App.tsx, AppLayout.tsx, PlanningPage.tsx |
-| 4 | Quartal-View (Desktop) | QuarterCalendar.tsx, QuarterHeader.tsx |
-| 5 | Meilenstein-Karten | MilestoneCard.tsx, ClientBadge.tsx |
-| 6 | Detail-Sheet | MilestoneSheet.tsx |
-| 7 | Quick-Add Modal | MilestoneQuickAdd.tsx |
-| 8 | Mobile View | MonthView.tsx |
-| 9 | Empty State | PlanningEmptyState.tsx |
-| 10 | AI-Integration | Edge Function, AICommandInput, AIParsePreview |
+| 1 | DB Migration + Types | 10min |
+| 2 | ViewMode Toggle (Quartal/Halbjahr) | 30min |
+| 3 | HalfYearCalendar Grid | 45min |
+| 4 | useMilestones HalfYear Support | 15min |
+| 5 | ClientPeriodBar mit Gantt-Visualization | 60min |
+| 6 | ScrollArea + 7-Client-Limit | 15min |
+| 7 | MilestoneQuickAdd + Client Period Fields | 20min |
+| 8 | PDF Export (jsPDF custom rendering) | 45min |
+| 9 | Polish: Animations, Edge Cases | 30min |
+
+**Gesamt: ~4.5 Stunden**
 
 ---
 
-## 10. Design-Referenzen (Benchmark)
+## 8. Edge Cases & Polish
 
-- **Linear Roadmap View** - Horizontale Timeline, Client-Grouping
-- **Notion Calendar** - Clean Grid, dezente Farben
-- **Stripe Dashboard** - Information Density done right
-- **Superhuman** - Command Palette AI Input
+### Bedacht:
+- **Client ohne Period:** Zeige nur Meilensteine (kein Balken)
+- **Period überlappt View-Grenzen:** Balken mit gradient fade am Rand
+- **Mobile:** Halbjahres-View nicht sinnvoll → Force Quartal/Monat auf Mobile
+- **Empty State:** "Füge einen Kunden mit Betreuungszeitraum hinzu"
+- **PDF auf Halbjahr:** Querformat für bessere Lesbarkeit
 
-Das Ergebnis: Ein Tool das du jeden Morgen mit einem Kaffee öffnest, 3 Sekunden draufschaust und sofort weisst was diese Woche ansteht. **Keine Klicks nötig um den Überblick zu bekommen.**
+### Animations:
+- View-Mode Switch: Smooth transition mit `framer-motion`
+- Projektbalken: Fade-in beim ersten Render
+- Today-Line: Subtle pulse animation
 
+---
+
+## 9. Erwartetes Ergebnis
+
+Nach Implementierung hast du:
+
+| Feature | Vorher | Nachher |
+|---------|--------|---------|
+| Zeitraum-View | 3 Monate | 3 oder 6 Monate wählbar |
+| Kunden-Darstellung | Zeile mit Meilensteine | Projektbalken + Meilensteine |
+| Sichtbare Kunden | Alle (ggf. unübersichtlich) | 7 sofort, Rest scrollbar |
+| Export | Keiner | HQ PDF mit Gantt-ähnlicher Ansicht |
+| Planungsverständnis | "Was passiert wann?" | "Wie lang dauern Projekte + was sind die Key-Events?" |
+
+Das Tool wird von einem **Kalender** zu einer **Projektpipeline-Visualization** - ähnlich wie Linear Roadmap oder Notion Timeline, aber fokussiert auf Client-Betreuung.
