@@ -66,7 +66,7 @@ export function MilestoneCard({ milestone, onClick, compact = false }: Milestone
                 {milestone.title}
               </span>
               {milestone.is_completed && (
-                <Check className="h-3 w-3 text-green-500 shrink-0" />
+                <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
               )}
             </div>
             {milestone.location && (
