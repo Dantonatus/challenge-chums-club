@@ -14,6 +14,7 @@ interface ExportOptions {
 
 /**
  * Captures the planning view as a high-quality image and exports as PNG or PDF
+ * Uses clone strategy with explicit colors for reliable html2canvas capture
  */
 export async function exportPlanningCanvas({
   elementId,
@@ -29,31 +30,74 @@ export async function exportPlanningCanvas({
     throw new Error(`Element with id "${elementId}" not found`);
   }
 
-  // Temporarily ensure overflow is visible for correct label capturing
-  const originalOverflow = element.style.overflow;
-  element.style.overflow = 'visible';
+  // Clone the element for clean capture without affecting the DOM
+  const clone = element.cloneNode(true) as HTMLElement;
+  clone.style.position = 'absolute';
+  clone.style.left = '-9999px';
+  clone.style.top = '0';
+  clone.style.backgroundColor = '#ffffff';
+  clone.style.overflow = 'visible';
+  document.body.appendChild(clone);
+
+  // Fix CSS variables that html2canvas cannot resolve
+  fixCSSVariablesForExport(clone);
 
   // Capture at 2x scale for retina quality
-  const canvas = await html2canvas(element, {
+  const canvas = await html2canvas(clone, {
     scale: 2,
     useCORS: true,
-    backgroundColor: '#ffffff', // Explicit white for clean export
+    backgroundColor: '#ffffff',
     logging: false,
-    // Ensure scrollable content is fully captured with extra padding for labels
     scrollX: 0,
     scrollY: 0,
-    windowWidth: element.scrollWidth + 60,
-    windowHeight: element.scrollHeight + 60,
+    windowWidth: clone.scrollWidth + 100,
+    windowHeight: clone.scrollHeight + 100,
   });
 
-  // Restore original overflow
-  element.style.overflow = originalOverflow;
+  // Cleanup clone
+  document.body.removeChild(clone);
 
   if (format === 'png') {
     downloadPNG(canvas, filename);
   } else {
     downloadPDF(canvas, filename, periodLabel);
   }
+}
+
+/**
+ * Replace CSS variables with explicit colors for html2canvas compatibility
+ */
+function fixCSSVariablesForExport(element: HTMLElement): void {
+  const allElements = element.querySelectorAll('*');
+  
+  allElements.forEach((el) => {
+    if (el instanceof HTMLElement) {
+      const computedStyle = window.getComputedStyle(el);
+      
+      // Fix background colors that use CSS variables
+      const bgColor = computedStyle.backgroundColor;
+      if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+        el.style.backgroundColor = bgColor;
+      }
+      
+      // Fix text colors
+      const color = computedStyle.color;
+      if (color) {
+        el.style.color = color;
+      }
+      
+      // Fix border colors
+      const borderColor = computedStyle.borderColor;
+      if (borderColor) {
+        el.style.borderColor = borderColor;
+      }
+      
+      // Ensure overflow visible for labels
+      if (el.classList.contains('overflow-visible')) {
+        el.style.overflow = 'visible';
+      }
+    }
+  });
 }
 
 function downloadPNG(canvas: HTMLCanvasElement, filename: string): void {
@@ -66,74 +110,65 @@ function downloadPNG(canvas: HTMLCanvasElement, filename: string): void {
 function downloadPDF(canvas: HTMLCanvasElement, filename: string, periodLabel: string): void {
   const imgData = canvas.toDataURL('image/png', 1.0);
   
-  // Determine orientation based on aspect ratio
-  const aspectRatio = canvas.width / canvas.height;
-  const isLandscape = aspectRatio > 1;
-  
+  // Always use landscape for Gantt charts
   const doc = new jsPDF({
-    orientation: isLandscape ? 'landscape' : 'portrait',
+    orientation: 'landscape',
     unit: 'mm',
     format: 'a4',
   });
 
-  const pageWidth = isLandscape ? 297 : 210;
-  const pageHeight = isLandscape ? 210 : 297;
-  const margin = 10;
-  const headerHeight = 20;
-  const footerHeight = 10;
+  const pageWidth = 297;
+  const pageHeight = 210;
+  const margin = 8;
+  const headerHeight = 15;
+  const footerHeight = 8;
   
   const contentWidth = pageWidth - 2 * margin;
-  const contentHeight = pageHeight - headerHeight - footerHeight - 2 * margin;
+  const contentHeight = pageHeight - headerHeight - footerHeight - margin;
 
-  // Header
-  doc.setFontSize(16);
+  // Minimalist header
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 30, 30);
-  doc.text('Projektplanung', margin, margin + 8);
+  doc.text('Projektplanung', margin, margin + 6);
   
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text(periodLabel, margin + 70, margin + 8);
+  doc.text(periodLabel, margin + 55, margin + 6);
   
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  const dateStr = format(new Date(), 'd. MMMM yyyy', { locale: de });
-  doc.text(dateStr, pageWidth - margin, margin + 8, { align: 'right' });
+  const dateStr = format(new Date(), 'd.MM.yyyy', { locale: de });
+  doc.text(dateStr, pageWidth - margin, margin + 6, { align: 'right' });
 
-  // Separator line
-  doc.setDrawColor(230, 230, 230);
-  doc.setLineWidth(0.3);
-  doc.line(margin, headerHeight, pageWidth - margin, headerHeight);
+  // Subtle separator line
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.2);
+  doc.line(margin, headerHeight - 2, pageWidth - margin, headerHeight - 2);
 
   // Calculate image dimensions to fit content area while maintaining aspect ratio
   const imgWidth = canvas.width / 2; // Because we captured at 2x
   const imgHeight = canvas.height / 2;
   const imgAspect = imgWidth / imgHeight;
-  const contentAspect = contentWidth / contentHeight;
-
-  let finalWidth: number;
-  let finalHeight: number;
-
-  if (imgAspect > contentAspect) {
-    // Image is wider than content area
-    finalWidth = contentWidth;
-    finalHeight = contentWidth / imgAspect;
-  } else {
-    // Image is taller than content area
+  
+  let finalWidth = contentWidth;
+  let finalHeight = finalWidth / imgAspect;
+  
+  if (finalHeight > contentHeight) {
     finalHeight = contentHeight;
-    finalWidth = contentHeight * imgAspect;
+    finalWidth = finalHeight * imgAspect;
   }
 
   const x = margin + (contentWidth - finalWidth) / 2;
-  const y = headerHeight + margin;
+  const y = headerHeight;
 
   doc.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
 
-  // Footer
-  doc.setFontSize(7);
+  // Subtle footer
+  doc.setFontSize(6);
   doc.setTextColor(180, 180, 180);
-  doc.text('habitbattle.lovable.app', pageWidth / 2, pageHeight - 5, { align: 'center' });
+  doc.text('habitbattle.lovable.app', pageWidth / 2, pageHeight - 4, { align: 'center' });
 
   doc.save(`${filename}.pdf`);
 }

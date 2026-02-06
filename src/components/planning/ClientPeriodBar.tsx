@@ -38,7 +38,7 @@ const ICON_MAP: Record<MilestoneType, React.ComponentType<{ className?: string }
 };
 
 // Compact label constants - no truncation, allow 2 lines
-const MIN_LABEL_DISTANCE_PERCENT = 12; // 12% of total width - prevents overlap on 6-month view
+const MIN_LABEL_DISTANCE_PERCENT = 15; // 15% of total width - prevents overlap on 6-month view
 
 // Format date compact: "5. Mär" 
 function formatDateCompact(date: Date): string {
@@ -200,12 +200,12 @@ export function ClientPeriodBar({
                 alignment === 'right' && "right-0"
               )}
             >
-              {/* Connection line - always points toward the icon */}
+              {/* Connection line - always points toward the icon - explicit color for export */}
               {labelPosition === 'above' && (
-                <div className="order-last w-px h-3 bg-muted-foreground/40" />
+                <div className="order-last w-px h-3" style={{ backgroundColor: 'rgba(100, 100, 100, 0.4)' }} />
               )}
               {labelPosition === 'below' && (
-                <div className="order-first w-px h-3 bg-muted-foreground/40" />
+                <div className="order-first w-px h-3" style={{ backgroundColor: 'rgba(100, 100, 100, 0.4)' }} />
               )}
               
               {/* Text content */}
@@ -215,12 +215,22 @@ export function ClientPeriodBar({
                   alignment === 'left' && "text-left",
                   alignment === 'right' && "text-right"
                 )} 
-                style={{ maxWidth: '100px' }}
+                style={{ maxWidth: '140px', minWidth: '80px' }}
               >
                 <div className="text-[11px] font-bold text-foreground leading-tight whitespace-nowrap">
                   {formatDateCompact(new Date(milestone.date))}
                 </div>
-                <div className="text-[10px] text-muted-foreground leading-snug line-clamp-2">
+                <div 
+                  className="text-[10px] text-muted-foreground leading-snug"
+                  style={{ 
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    wordBreak: 'break-word',
+                    minHeight: '24px'
+                  }}
+                >
                   {milestone.title}
                 </div>
               </div>
