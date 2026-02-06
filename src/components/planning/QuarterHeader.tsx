@@ -57,6 +57,7 @@ export function QuarterHeader({
   onShowLabelsChange
 }: QuarterHeaderProps) {
   const isMobile = useIsMobile();
+  const [showExportDialog, setShowExportDialog] = useState(false);
   
   const isCurrentQuarter = 
     quarter.year === getCurrentQuarter().year && 
@@ -92,12 +93,12 @@ export function QuarterHeader({
     }
   };
 
-  const handleExport = () => {
-    exportPlanningPDF({
-      viewMode,
-      quarter: viewMode === 'quarter' ? quarter : undefined,
-      halfYear: viewMode === 'halfyear' ? halfYear : undefined,
-      clientData,
+  const handleExport = async (format: ExportFormat) => {
+    await exportPlanningCanvas({
+      elementId: 'planning-chart',
+      format,
+      filename: generateFilename(periodLabel),
+      periodLabel,
     });
   };
 
