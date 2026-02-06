@@ -1,351 +1,169 @@
 
+# Fix: Export zeigt leere weiße Fläche
 
-# Detaillierte UX/UI-Fehleranalyse: Planungsansicht & Export
+## Root Cause Analyse
 
-## Visuelles Audit – Identifizierte Probleme (Pixel-für-Pixel)
+Der aktuelle Export-Code hat einen fundamentalen Bug:
 
-Ich habe sowohl den PNG-Export als auch den PDF-Export im Detail analysiert. Hier sind alle identifizierten Fehler aus Sicht eines anspruchsvollen Anwenders:
-
----
-
-## KRITISCHE PROBLEME (Funktionalität beeinträchtigt)
-
-### Problem 1: Label-Text wird ABGESCHNITTEN
-**Schweregrad:** Kritisch | **Betroffene Elemente:** Alle Milestone-Labels
-
-```
-BEOBACHTUNG im PNG/PDF:
-├─ "Datenanforderung CIO Wa..." (Wagon) – "Wacon" abgeschnitten
-├─ "Kick-off & technische..." (Wein Wolf) – unvollständig
-├─ "PoV - Deliver..." – fehlt "Delivery"
-├─ "Regelmäßige Ahstimmung" – TIPPFEHLER "Abstimmung" → "Ahstimmung"
-├─ "Vor-Ort-Workshon" – TIPPFEHLER "Workshop" → "Workshon"
-└─ "Deadine PoV" – TIPPFEHLER "Deadline" → "Deadine"
-```
-
-**Root Cause:** 
-- `maxWidth: 140px` mit `WebkitLineClamp: 2` schneidet Text ab
-- Die 2-Zeilen-Begrenzung reicht für lange deutsche Texte nicht aus
-
-**Fix:**
-- `maxWidth` auf **160px** erhöhen
-- Alternative: Tooltip bei Hover mit vollem Text
-
----
-
-### Problem 2: Label-ÜBERLAPPUNG bei nahen Meilensteinen
-**Schweregrad:** Kritisch | **Position:** Wagon-Zeile (5. Feb & 27. Feb)
-
-```
-BEOBACHTUNG:
-├─ "5. Feb. Datenanforderung" und "27. Feb. PoV -" überlappen HORIZONTAL
-├─ Beide Labels sind "above" positioniert (kein Stagger ausgelöst)
-└─ Abstand ~22 Tage bei 180 Tagen = 12.2% → knapp über 15%-Threshold
-```
-
-**Root Cause:**
-- `MIN_LABEL_DISTANCE_PERCENT = 15%` greift nicht, weil Abstand 22/180 = ~12.2% ist
-- WAIT – das ist UNTER 15%, also SOLLTE Stagger greifen!
-- **Echter Bug:** Die Stagger-Logik funktioniert, aber die Labels sind zu BREIT (140px + 80px Mindestbreite)
-
-**Fix:**
-- Dynamischen Stagger-Threshold basierend auf tatsächlicher Label-Breite berechnen
-- ODER: Threshold auf **18%** erhöhen für 6-Monats-Ansicht
-
----
-
-### Problem 3: Verbindungslinien sind FAST UNSICHTBAR
-**Schweregrad:** Mittel | **Betroffene Elemente:** Alle Label-zu-Icon-Linien
-
-```
-BEOBACHTUNG im PNG/PDF:
-├─ Verbindungslinien zwischen Label und Icon sind kaum sichtbar
-├─ Farbe rgba(100,100,100,0.4) ist zu hell auf weißem Hintergrund
-└─ Linienstärke 1px ist bei 2x-Export zu dünn
-```
-
-**Root Cause:**
-- `w-px` = 1px ist bei Retina-Export nur 0.5 "visuelle Pixel"
-- Opacity 0.4 ist zu transparent
-
-**Fix:**
-- Linienstärke auf `w-0.5` (2px) erhöhen
-- Farbe auf `rgba(80, 80, 80, 0.6)` verstärken
-
----
-
-## DESIGN-PROBLEME (Ästhetik & Professionalität)
-
-### Problem 4: Kunden-Namen werden abgeschnitten
-**Schweregrad:** Mittel | **Position:** Linke Spalte
-
-```
-BEOBACHTUNG:
-├─ "Wein Wolf" ist vollständig
-├─ "Sensoplast" wird zu "Sensonlast" (OCR-Fehler oder Font-Rendering)
-├─ Bei längeren Namen würde "truncate" greifen
-└─ Spaltenbreite 140px ist knapp
-```
-
-**Root Cause:**
-- `max-w-[100px]` in ClientBadge bei `compact=true`
-- Kombiniert mit Font-Rendering kann Text unleserlich werden
-
-**Fix:**
-- `max-w-[120px]` für kompakte Badges
-- Oder Spaltenbreite auf **160px** erhöhen
-
----
-
-### Problem 5: Inkonsistente Label-Höhen bei BELOW-Position
-**Schweregrad:** Mittel | **Position:** Labels unter der Timeline
-
-```
-BEOBACHTUNG:
-├─ "16. Apr. Vor-Ort-Workshop" hat 3 Zeilen
-├─ "30. Apr. PoV-Ende" hat 2 Zeilen
-└─ Unterschiedliche vertikale Positionen wirken unruhig
-```
-
-**Root Cause:**
-- `minHeight: 24px` reicht nicht für einheitliche Höhe
-- Wenn Text 3 Zeilen braucht, verschiebt sich alles
-
-**Fix:**
-- Feste Höhe `height: 36px` für Label-Container
-- `overflow: hidden` statt `line-clamp` für striktere Kontrolle
-
----
-
-### Problem 6: Monats-Header-Rendering im Export
-**Schweregrad:** Niedrig | **Position:** Header-Zeile
-
-```
-BEOBACHTUNG im PDF:
-├─ Monatsnamen sind korrekt: Jan. Feb. März Apr. Mai Juni
-├─ ABER: "Kunden"-Label in erster Spalte ist sehr klein/dünn
-└─ Schriftgröße wirkt im PDF kleiner als im Browser
-```
-
-**Root Cause:**
-- Font-Size `text-xs` (12px) wird bei html2canvas manchmal inkorrekt erfasst
-- Browser-Font und Export-Font können unterschiedlich rendern
-
-**Fix:**
-- Explizite `fontSize: 12px` als Inline-Style im Export-Kontext
-- Font-Weight explizit setzen für Konsistenz
-
----
-
-### Problem 7: "Heute"-Linie (Today-Indicator) Position
-**Schweregrad:** Niedrig | **Betroffene Komponente:** TodayLine
-
-```
-BEOBACHTUNG:
-├─ Die grüne vertikale Linie für "Heute" ist korrekt positioniert
-├─ ABER: Der pulsierende Punkt oben ist im Export statisch (kein animate-pulse)
-└─ Der Punkt wirkt im Export wie ein Fehler, da er "schwebt"
-```
-
-**Root Cause:**
-- CSS-Animationen werden von html2canvas nicht erfasst
-- Der Punkt sollte im Export anders gestyled werden
-
-**Fix:**
-- Animation nur im Browser, nicht im Export-Clone anzeigen
-- Oder: Punkt größer machen und als Dreieck/Pfeil gestalten
-
----
-
-### Problem 8: Period-Bar Ecken bei Extend-Beyond-View
-**Schweregrad:** Niedrig | **Position:** Sensoplast-Zeile
-
-```
-BEOBACHTUNG:
-├─ Sensoplast-Bar beginnt am linken Rand (startsBeforeView)
-├─ Die linke Ecke ist korrekt "eckig" (rounded-l-none)
-├─ Der Fade-Gradient ist kaum sichtbar (nur bei genauem Hinsehen)
-```
-
-**Root Cause:**
-- `${client.color}40` ist zu subtil
-- Gradient von 40% auf transparent ist zu sanft
-
-**Fix:**
-- Stärkerer Gradient: `${client.color}60` auf transparent
-- Oder: Dezentes Chevron-Icon am Rand als visueller Hinweis
-
----
-
-### Problem 9: PDF-Skalierung nicht optimal
-**Schweregrad:** Mittel | **Format:** PDF-Export
-
-```
-BEOBACHTUNG:
-├─ Chart nutzt nicht die volle Seitenbreite
-├─ Viel Leerraum links und rechts
-├─ Header "Projektplanung H1 2026" ist redundant (bereits im Dateinamen)
-```
-
-**Root Cause:**
-- `margin = 8mm` beidseitig = 16mm weniger
-- Chart wird proportional skaliert, nicht auf Breite optimiert
-
-**Fix:**
-- Margins auf **5mm** reduzieren
-- Chart auf volle `contentWidth` strecken (Aspect-Ratio anpassen)
-
----
-
-### Problem 10: Farbige Client-Dots zu klein im Export
-**Schweregrad:** Niedrig | **Position:** Linke Spalte
-
-```
-BEOBACHTUNG:
-├─ Die farbigen Punkte vor Kundennamen sind sehr klein (2x2px bei compact)
-├─ Farben sind schwer zu unterscheiden bei ähnlichen Tönen
-└─ Punkte sollten prominenter sein für schnelles Scannen
-```
-
-**Root Cause:**
-- `w-2 h-2` (8px) ist bei Print/Export grenzwertig
-
-**Fix:**
-- Auf `w-2.5 h-2.5` (10px) erhöhen
-- Alternativ: Farbigen Left-Border nutzen (wie bereits vorhanden, aber dicker)
-
----
-
-## VERBESSERUNGS-POTENZIALE
-
-### Enhancement 1: Stagger-Logik verbessern
-
-**Aktuell:**
 ```typescript
-const MIN_LABEL_DISTANCE_PERCENT = 15;
-const needsStagger = distance < MIN_LABEL_DISTANCE_PERCENT;
+// PROBLEM: Clone wird erstellt und offscreen platziert
+const clone = element.cloneNode(true) as HTMLElement;
+clone.style.position = 'absolute';
+clone.style.left = '-9999px';  // <-- Offscreen!
+
+// toPng wird auf dem Clone aufgerufen
+const dataUrl = await toPng(clone, { ... });
 ```
 
-**Besser:**
+**Warum das nicht funktioniert:**
+1. `html-to-image` verwendet `foreignObject` in einem SVG, das dann zu Canvas konvertiert wird
+2. Der Clone ist bei `-9999px` und wird vom Browser **nicht gerendert** (Paint wird übersprungen)
+3. CSS Variables (`var(--background)` etc.) werden im Clone nicht aufgelöst, weil er nicht im sichtbaren DOM-Kontext ist
+4. Das Ergebnis: Weißes/leeres Bild
+
+## Lösung
+
+**Strategie ändern: Direkt auf dem Original-Element arbeiten, NICHT auf einem Clone.**
+
+Die `toPng`-Funktion aus `html-to-image` erstellt intern bereits einen Clone. Wir müssen einfach das Original-Element übergeben und die Bibliothek ihre Arbeit machen lassen.
+
+## Implementierungsplan
+
+### Schritt 1: exportCanvas.ts komplett vereinfachen
+
 ```typescript
-// Dynamischer Threshold basierend auf Label-Breite
-const estimatedLabelWidthPercent = 12; // ~140px bei 1200px Breite ≈ 12%
-const MIN_LABEL_DISTANCE_PERCENT = estimatedLabelWidthPercent + 5; // Buffer
+export async function exportPlanningCanvas({
+  elementId,
+  format,
+  filename,
+  periodLabel,
+}: ExportOptions): Promise<void> {
+  // 1. Element finden (Wrapper first für Label-Overflow)
+  const wrapperElement = document.getElementById(`${elementId}-export-wrapper`);
+  const element = wrapperElement || document.getElementById(elementId);
 
-// Zusätzlich: Titel-Länge berücksichtigen
-const titleIsLong = milestone.title.length > 15;
-const adjustedThreshold = titleIsLong ? MIN_LABEL_DISTANCE_PERCENT + 3 : MIN_LABEL_DISTANCE_PERCENT;
+  if (!element) {
+    throw new Error(`Element with id "${elementId}" not found`);
+  }
+
+  // 2. Fonts laden (wichtig für korrektes Rendering)
+  await document.fonts?.ready;
+
+  // 3. DIREKT toPng auf dem Original-Element aufrufen
+  //    html-to-image klont intern und handhabt CSS korrekt
+  const dataUrl = await toPng(element, {
+    cacheBust: true,
+    pixelRatio: 2,  // Retina-Qualität
+    // KEIN backgroundColor - übernimm exakt was auf Screen ist
+    style: {
+      // Entferne Animationen für statisches Bild
+      animation: 'none',
+      transition: 'none',
+    },
+    filter: (node) => {
+      // Entferne animate-pulse Elemente (pulsierender Punkt)
+      if (node instanceof HTMLElement) {
+        return !node.classList.contains('animate-pulse');
+      }
+      return true;
+    },
+  });
+
+  if (format === 'png') {
+    downloadPNGFromDataUrl(dataUrl, filename);
+  } else {
+    const canvas = await dataUrlToCanvas(dataUrl);
+    downloadPDFFromCanvas(canvas, filename, periodLabel);
+  }
+}
 ```
 
----
+### Schritt 2: Scroll-Bereich Flatten (für "Gesamte Liste")
 
-### Enhancement 2: Export-Vorschau
+Da der User "Gesamte Liste" will, müssen wir die ScrollArea temporär expandieren:
 
-**Feature:** Vor dem Export eine Vorschau anzeigen
-- Modal mit verkleinerter Ansicht des Exports
-- Hinweis wenn Labels überlappen
-- Option "Ohne Labels" für saubereren Export
+```typescript
+export async function exportPlanningCanvas({ ... }): Promise<void> {
+  const element = ... // wie oben
 
----
+  // ScrollArea temporär expandieren für vollständigen Export
+  const scrollAreas = element.querySelectorAll('[data-radix-scroll-area-viewport]');
+  const originalStyles = new Map<HTMLElement, { overflow: string; height: string; maxHeight: string }>();
+  
+  scrollAreas.forEach((el) => {
+    const viewport = el as HTMLElement;
+    originalStyles.set(viewport, {
+      overflow: viewport.style.overflow,
+      height: viewport.style.height,
+      maxHeight: viewport.style.maxHeight,
+    });
+    viewport.style.overflow = 'visible';
+    viewport.style.height = 'auto';
+    viewport.style.maxHeight = 'none';
+  });
 
-### Enhancement 3: Responsive Label-Sizing
+  // Warten bis Layout recalculated wurde
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-**Feature:** Label-Größe an verfügbaren Platz anpassen
-- Bei wenig Meilensteinen: größere Labels, mehr Text
-- Bei vielen Meilensteinen: kompaktere Labels, mehr Stagger
+  try {
+    const dataUrl = await toPng(element, { ... });
+    // ... export
+  } finally {
+    // Original-Styles wiederherstellen
+    originalStyles.forEach((styles, el) => {
+      el.style.overflow = styles.overflow;
+      el.style.height = styles.height;
+      el.style.maxHeight = styles.maxHeight;
+    });
+  }
+}
+```
 
----
+### Schritt 3: Theme-Aware Export
 
-## Implementierungs-Plan
+Da der User "Wie Bildschirm" will, entfernen wir die erzwungene `backgroundColor: '#ffffff'`:
 
-### Phase 1: Kritische Fixes (Sofort)
+```typescript
+const dataUrl = await toPng(element, {
+  cacheBust: true,
+  pixelRatio: 2,
+  // Kein backgroundColor - übernimmt automatisch den Theme-Hintergrund
+  filter: (node) => {
+    if (node instanceof HTMLElement) {
+      // Filter: Keine pulsierenden Elemente
+      if (node.classList.contains('animate-pulse')) return false;
+    }
+    return true;
+  },
+});
+```
+
+### Schritt 4: Calendar-Wrapper anpassen
+
+Die Calendar-Komponenten haben einen Wrapper mit erzwungenem weißen Hintergrund. Das muss entfernt werden:
+
+**HalfYearCalendar.tsx & QuarterCalendar.tsx:**
+```tsx
+// VORHER:
+<div id="planning-chart-export-wrapper" className="p-6 -m-6" style={{ backgroundColor: '#ffffff' }}>
+
+// NACHHER: Kein erzwungener Hintergrund
+<div id="planning-chart-export-wrapper" className="p-6 -m-6">
+```
+
+Das `bg-card` auf dem inneren Element übernimmt automatisch das korrekte Theme.
+
+## Zusammenfassung der Änderungen
 
 | Datei | Änderung |
 |-------|----------|
-| `ClientPeriodBar.tsx` | Label maxWidth 160px, Linienfarbe verstärken, Threshold 18% |
-| `ClientBadge.tsx` | max-w-[120px] statt 100px bei compact |
-| `exportCanvas.ts` | Margins 5mm, bessere Font-Fixes |
-
-### Phase 2: Design-Polish
-
-| Datei | Änderung |
-|-------|----------|
-| `ClientPeriodBar.tsx` | Feste Label-Höhe 36px, Linie 2px |
-| `HalfYearCalendar.tsx` | Spaltenbreite 160px |
-| `TodayLine` | Export-spezifisches Styling (kein Pulse) |
-
-### Phase 3: Enhancements
-
-| Feature | Beschreibung |
-|---------|-------------|
-| Export-Vorschau | Preview-Modal vor Download |
-| Dynamisches Stagger | Titel-Länge berücksichtigen |
-| "Ohne Labels" Option | Checkbox im Export-Dialog |
-
----
-
-## Code-Änderungen (Detailliert)
-
-### 1. ClientPeriodBar.tsx
-
-```typescript
-// Zeile 41: Threshold erhöhen
-const MIN_LABEL_DISTANCE_PERCENT = 18; // War: 15
-
-// Zeile 205-208: Linie verstärken
-<div 
-  className="order-last w-0.5 h-4" 
-  style={{ backgroundColor: 'rgba(80, 80, 80, 0.6)' }} 
-/>
-
-// Zeile 218: Label breiter
-style={{ maxWidth: '160px', minWidth: '90px' }}
-
-// Zeile 223-233: Feste Höhe für Konsistenz
-<div 
-  className="text-[10px] text-muted-foreground leading-snug"
-  style={{ 
-    height: '32px', // Feste Höhe für 2-3 Zeilen
-    overflow: 'hidden',
-    wordBreak: 'break-word',
-  }}
->
-```
-
-### 2. ClientBadge.tsx
-
-```typescript
-// Zeile 39: Mehr Platz für Namen
-compact && "text-xs max-w-[120px]" // War: 100px
-```
-
-### 3. HalfYearCalendar.tsx
-
-```typescript
-// Zeile 47: Breitere Kundenspalte
-className="grid grid-cols-[160px_1fr]" // War: 140px
-```
-
-### 4. exportCanvas.ts
-
-```typescript
-// Zeile 122: Kleinere Margins
-const margin = 5; // War: 8
-
-// Zeile 123-124: Mehr Platz für Content
-const headerHeight = 12;
-const footerHeight = 6;
-```
-
----
+| `exportCanvas.ts` | Komplett neu: Kein manueller Clone, direkt `toPng` auf Original, ScrollArea temporär flatten, Theme-aware |
+| `HalfYearCalendar.tsx` | Entferne `style={{ backgroundColor: '#ffffff' }}` vom Wrapper |
+| `QuarterCalendar.tsx` | Entferne `style={{ backgroundColor: '#ffffff' }}` vom Wrapper |
 
 ## Erwartetes Ergebnis
 
-Nach Implementierung aller Fixes:
-
-1. **Labels**: Vollständig lesbar, keine Überlappung
-2. **Linien**: Klar sichtbar (2px, 60% Opacity)
-3. **Stagger**: Greift früher (18% Threshold)
-4. **PDF**: Maximale Chartgröße durch reduzierte Margins
-5. **Konsistenz**: Einheitliche Label-Höhen
-
+1. **PNG-Export**: Exakt 1:1 wie auf dem Bildschirm (inkl. Dark/Light Mode)
+2. **PDF-Export**: Das PNG im A4-Landscape mit minimalem Header
+3. **Gesamte Liste**: Alle Clients werden exportiert, auch gescrollte
+4. **Theme-Aware**: Dark Mode = Dark Export, Light Mode = Light Export
