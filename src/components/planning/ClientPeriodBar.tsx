@@ -187,40 +187,27 @@ export function ClientPeriodBar({
           </Tooltip>
         </TooltipProvider>
         
-        {/* Smart Label - only for critical milestone types */}
+        {/* Compact Label - date + title for all milestones */}
         {showLabels && mpShowLabel && (
           <div 
             className={cn(
               "absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-20",
-              labelPosition === 'above' ? "bottom-full mb-1" : "top-full mt-1",
+              labelPosition === 'above' ? "bottom-full mb-0.5" : "top-full mt-0.5",
               labelPosition === 'below' && "flex-col-reverse"
             )}
           >
-            {labelPosition === 'above' ? (
-              <>
-                <div className="text-center">
-                  <div className="text-[11px] font-medium text-foreground leading-tight max-w-[100px] truncate">
-                    {truncateLabel(milestone.title)}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground/80">
-                    {format(new Date(milestone.date), 'd. MMM', { locale: de })}
-                  </div>
-                </div>
-                <div className="w-px h-1.5 bg-muted-foreground/25" />
-              </>
-            ) : (
-              <>
-                <div className="w-px h-1.5 bg-muted-foreground/25" />
-                <div className="text-center">
-                  <div className="text-[10px] text-muted-foreground/80">
-                    {format(new Date(milestone.date), 'd. MMM', { locale: de })}
-                  </div>
-                  <div className="text-[11px] font-medium text-foreground leading-tight max-w-[100px] truncate">
-                    {truncateLabel(milestone.title)}
-                  </div>
-                </div>
-              </>
-            )}
+            <div className="w-px h-1 bg-muted-foreground/20" />
+            <div 
+              className="px-1.5 py-0.5 rounded bg-background/95 border border-border/50 shadow-sm"
+              style={{ maxWidth: '90px' }}
+            >
+              <div className="text-[10px] font-medium text-foreground leading-tight truncate">
+                {formatDateCompact(new Date(milestone.date))}
+              </div>
+              <div className="text-[9px] text-muted-foreground leading-tight truncate">
+                {truncateLabel(milestone.title)}
+              </div>
+            </div>
           </div>
         )}
       </div>
