@@ -29,6 +29,8 @@ import AllTasksZen from "./pages/app/tasks/AllTasksZen";
 import TasksProjects from "./pages/app/tasks/Projects";
 import ProjectDetail from "./pages/app/tasks/ProjectDetail";
 import TasksCalendar from "./pages/app/tasks/Calendar";
+// Planning
+import PlanningPage from "./pages/app/planning/PlanningPage";
 import TasksArchive from "./pages/app/tasks/Archive";
 // Recipes
 import RecipesLayout from "./pages/app/recipes/RecipesLayout";
