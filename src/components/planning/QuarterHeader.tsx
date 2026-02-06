@@ -50,7 +50,9 @@ export function QuarterHeader({
   onQuarterChange, 
   onHalfYearChange,
   onAddClick,
-  clientData
+  clientData,
+  showLabels,
+  onShowLabelsChange
 }: QuarterHeaderProps) {
   const isMobile = useIsMobile();
   
