@@ -4,6 +4,7 @@ import { QuarterCalendar } from '@/components/planning/QuarterCalendar';
 import { HalfYearCalendar } from '@/components/planning/HalfYearCalendar';
 import { MilestoneQuickAdd } from '@/components/planning/MilestoneQuickAdd';
 import { MilestoneSheet } from '@/components/planning/MilestoneSheet';
+import { ClientEditSheet } from '@/components/planning/ClientEditSheet';
 import { PlanningEmptyState } from '@/components/planning/PlanningEmptyState';
 import { useMilestonesByClient } from '@/hooks/useMilestones';
 import { useClients } from '@/hooks/useClients';
@@ -14,6 +15,7 @@ import {
   HalfYear,
   ViewMode,
   MilestoneWithClient,
+  Client,
   quarterToHalfYear,
   halfYearToQuarter
 } from '@/lib/planning/types';
@@ -27,6 +29,7 @@ export default function PlanningPage() {
   const [halfYear, setHalfYear] = useState<HalfYear>(getCurrentHalfYear);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<MilestoneWithClient | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   
   const { byClient, milestones, isLoading } = useMilestonesByClient(
     viewMode === 'halfyear' ? { halfYear } : { quarter }
@@ -75,18 +78,21 @@ export default function PlanningPage() {
           quarter={quarter}
           milestones={milestones}
           onMilestoneClick={setSelectedMilestone}
+          onClientClick={setSelectedClient}
         />
       ) : viewMode === 'halfyear' ? (
         <HalfYearCalendar
           halfYear={halfYear}
           clientData={byClient}
           onMilestoneClick={setSelectedMilestone}
+          onClientClick={setSelectedClient}
         />
       ) : (
         <QuarterCalendar
           quarter={quarter}
           clientData={byClient}
           onMilestoneClick={setSelectedMilestone}
+          onClientClick={setSelectedClient}
         />
       )}
 
@@ -98,6 +104,11 @@ export default function PlanningPage() {
       <MilestoneSheet
         milestone={selectedMilestone}
         onClose={() => setSelectedMilestone(null)}
+      />
+
+      <ClientEditSheet
+        client={selectedClient}
+        onClose={() => setSelectedClient(null)}
       />
     </div>
   );

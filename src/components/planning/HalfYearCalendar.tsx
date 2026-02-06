@@ -14,12 +14,13 @@ interface HalfYearCalendarProps {
     milestones: MilestoneWithClient[];
   }>;
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
+  onClientClick: (client: Client) => void;
 }
 
 const MAX_VISIBLE_CLIENTS = 7;
 const ROW_HEIGHT = 80;
 
-export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick }: HalfYearCalendarProps) {
+export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onClientClick }: HalfYearCalendarProps) {
   const months = getHalfYearMonths(halfYear);
   const monthDates = months.map(m => new Date(halfYear.year, m, 1));
   const viewRange = getHalfYearDateRange(halfYear);
@@ -67,7 +68,7 @@ export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick }: Hal
               className="p-2 border-r flex items-center"
               style={{ borderLeftColor: client.color, borderLeftWidth: '4px' }}
             >
-              <ClientBadge client={client} compact />
+              <ClientBadge client={client} compact onClick={() => onClientClick(client)} />
             </div>
 
             {/* Timeline area */}

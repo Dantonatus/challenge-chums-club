@@ -14,12 +14,13 @@ interface QuarterCalendarProps {
     milestones: MilestoneWithClient[];
   }>;
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
+  onClientClick: (client: Client) => void;
 }
 
 const MAX_VISIBLE_CLIENTS = 7;
 const ROW_HEIGHT = 80;
 
-export function QuarterCalendar({ quarter, clientData, onMilestoneClick }: QuarterCalendarProps) {
+export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClientClick }: QuarterCalendarProps) {
   const months = getQuarterMonths(quarter);
   const monthDates = months.map(m => new Date(quarter.year, m, 1));
   const viewRange = getQuarterDateRange(quarter);
@@ -64,7 +65,7 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick }: Quart
               className="p-3 border-r flex items-center"
               style={{ borderLeftColor: client.color, borderLeftWidth: '4px' }}
             >
-              <ClientBadge client={client} />
+              <ClientBadge client={client} onClick={() => onClientClick(client)} />
             </div>
 
             {/* Timeline area */}
