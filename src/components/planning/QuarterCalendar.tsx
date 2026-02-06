@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
-import { Quarter, getQuarterMonths, MilestoneWithClient, Client } from '@/lib/planning/types';
-import { MilestoneCard } from './MilestoneCard';
+import { Quarter, getQuarterMonths, getQuarterDateRange, MilestoneWithClient, Client } from '@/lib/planning/types';
 import { ClientBadge } from './ClientBadge';
-import { format, isToday, isPast, isSameMonth } from 'date-fns';
+import { ClientPeriodBar } from './ClientPeriodBar';
+import { format, isSameMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface QuarterCalendarProps {
   quarter: Quarter;
@@ -15,29 +16,25 @@ interface QuarterCalendarProps {
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
 }
 
+const MAX_VISIBLE_CLIENTS = 7;
+const ROW_HEIGHT = 80;
+
 export function QuarterCalendar({ quarter, clientData, onMilestoneClick }: QuarterCalendarProps) {
   const months = getQuarterMonths(quarter);
   const monthDates = months.map(m => new Date(quarter.year, m, 1));
+  const viewRange = getQuarterDateRange(quarter);
 
-  // Group milestones by client and month
-  const grid = useMemo(() => {
-    return clientData.map(({ client, milestones }) => ({
-      client,
-      monthMilestones: monthDates.map(monthDate => 
-        milestones.filter(m => isSameMonth(new Date(m.date), monthDate))
-      ),
-    }));
-  }, [clientData, monthDates]);
+  const needsScroll = clientData.length > MAX_VISIBLE_CLIENTS;
 
   if (clientData.length === 0) {
     return null;
   }
 
   return (
-    <div className="border rounded-xl overflow-hidden bg-card">
+    <div className="border rounded-xl overflow-hidden bg-card relative">
       {/* Month headers */}
-      <div className="grid grid-cols-[180px_1fr_1fr_1fr] border-b bg-muted/30">
-        <div className="p-3 border-r" />
+      <div className="grid grid-cols-[180px_1fr_1fr_1fr] border-b bg-muted/30 sticky top-0 z-20">
+        <div className="p-3 border-r text-sm font-medium text-muted-foreground" />
         {monthDates.map((date, i) => (
           <div 
             key={i} 
@@ -52,51 +49,60 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick }: Quart
       </div>
 
       {/* Client rows */}
-      {grid.map(({ client, monthMilestones }) => (
-        <div 
-          key={client.id} 
-          className="grid grid-cols-[180px_1fr_1fr_1fr] border-b last:border-b-0 group hover:bg-muted/20 transition-colors"
-        >
-          {/* Client column */}
+      <ScrollArea 
+        className={cn(needsScroll && "h-[560px]")}
+        style={{ height: needsScroll ? `${MAX_VISIBLE_CLIENTS * ROW_HEIGHT}px` : 'auto' }}
+      >
+        {clientData.map(({ client, milestones }) => (
           <div 
-            className="p-3 border-r flex items-start"
-            style={{ borderLeftColor: client.color, borderLeftWidth: '4px' }}
+            key={client.id} 
+            className="grid grid-cols-[180px_1fr] border-b last:border-b-0 group hover:bg-muted/10 transition-colors"
+            style={{ height: `${ROW_HEIGHT}px` }}
           >
-            <ClientBadge client={client} />
-          </div>
-
-          {/* Month columns */}
-          {monthMilestones.map((milestones, monthIndex) => (
+            {/* Client column */}
             <div 
-              key={monthIndex} 
-              className={cn(
-                "p-2 border-r last:border-r-0 min-h-[80px] space-y-2",
-                isSameMonth(monthDates[monthIndex], new Date()) && "bg-primary/5"
-              )}
+              className="p-3 border-r flex items-center"
+              style={{ borderLeftColor: client.color, borderLeftWidth: '4px' }}
             >
-              {milestones
-                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                .map(milestone => (
-                  <MilestoneCard
-                    key={milestone.id}
-                    milestone={milestone}
-                    onClick={() => onMilestoneClick(milestone)}
-                    compact
-                  />
-                ))
-              }
+              <ClientBadge client={client} />
             </div>
-          ))}
-        </div>
-      ))}
+
+            {/* Timeline area */}
+            <div className="relative">
+              {/* Month grid lines */}
+              <div className="absolute inset-0 grid grid-cols-3">
+                {monthDates.map((date, i) => (
+                  <div 
+                    key={i} 
+                    className={cn(
+                      "border-r last:border-r-0",
+                      isSameMonth(date, new Date()) && "bg-primary/5"
+                    )}
+                  />
+                ))}
+              </div>
+
+              {/* Client period bar with milestones */}
+              <div className="relative h-full flex items-center px-2">
+                <ClientPeriodBar
+                  client={client}
+                  milestones={milestones}
+                  viewRange={viewRange}
+                  onMilestoneClick={onMilestoneClick}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </ScrollArea>
 
       {/* Today indicator line */}
-      <TodayLine quarter={quarter} />
+      <TodayLine quarter={quarter} clientColumnWidth={180} />
     </div>
   );
 }
 
-function TodayLine({ quarter }: { quarter: Quarter }) {
+function TodayLine({ quarter, clientColumnWidth }: { quarter: Quarter; clientColumnWidth: number }) {
   const today = new Date();
   const months = getQuarterMonths(quarter);
   
@@ -115,15 +121,16 @@ function TodayLine({ quarter }: { quarter: Quarter }) {
   const daysInMonth = new Date(quarter.year, today.getMonth() + 1, 0).getDate();
   const percentInMonth = (dayOfMonth / daysInMonth) * 100;
 
-  // Position calculation: 180px for client col + (monthIndex * colWidth) + percentInMonth of colWidth
-  const leftPercent = `calc(180px + ${monthIndex * 33.33}% + ${percentInMonth * 0.3333}%)`;
+  // Position: (monthIndex * columnWidth) + percentInMonth of columnWidth
+  const monthWidth = 100 / 3; // 3 months
+  const leftPercent = (monthIndex * monthWidth) + (percentInMonth * monthWidth / 100);
 
   return (
     <div 
       className="absolute top-0 bottom-0 w-0.5 bg-primary z-10 pointer-events-none"
-      style={{ left: leftPercent }}
+      style={{ left: `calc(${clientColumnWidth}px + ${leftPercent}%)` }}
     >
-      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary" />
+      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary animate-pulse" />
     </div>
   );
 }
