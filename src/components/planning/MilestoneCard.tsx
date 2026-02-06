@@ -133,7 +133,7 @@ export function MilestoneCard({ milestone, onClick, compact = false }: Milestone
         </div>
 
         {milestone.is_completed && (
-          <Check className="h-5 w-5 text-green-500 shrink-0" />
+          <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
         )}
       </div>
     </button>
