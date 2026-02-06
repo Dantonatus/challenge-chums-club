@@ -1,174 +1,265 @@
 
-# World-Class Timeline Labels: Investor-Ready Design
 
-## Analyse der Probleme
+# Multi-Projekt Architektur: Elegante, nicht-erschlagende UI
 
-### Problem 1: Scroll bei weniger als 7 Kunden
-Das `ScrollArea`-Component wird immer gerendert. Bei `needsScroll = false` wird `className="h-[560px]"` nicht angewendet, aber `style={{ height: 'auto' }}` erzeugt dennoch ungewolltes Scroll-Verhalten wegen der ScrollArea-Wrapper.
+## Kernprinzip: Progressive Disclosure
 
-**Fix:** ScrollArea nur rendern wenn `needsScroll` true ist, sonst ein einfaches `<div>`.
-
-### Problem 2: Labels sehen unprofessionell aus
-Aktuelle Implementation:
-- 10px Font - viel zu klein
-- Truncated auf 80px - Text wird abgeschnitten  
-- Positioniert unter dem Icon - kollidiert visuell mit Zeilen darunter
-- Separates Popup für jedes Label - wirkt "zusammengestückelt"
-
-### Problem 3: Zeilen brauchen mehr Platz
-80px Row-Height ist zu komprimiert für:
-- Investor-Präsentationen
-- Print/PDF Export
-- Lesbarkeit bei vielen Meilensteinen
+Der Schlüssel zu einer UI, die nicht erschlägt: **Zeige Komplexität erst, wenn sie gebraucht wird.** Die meisten Kunden haben 1 Projekt. Manche 2-3. Nur Power-User haben 5+.
 
 ---
 
-## Design-Lösung: "Connected Label" Pattern
+## Phase 1: Datenmodell-Erweiterung
 
-Inspiriert von Linear Roadmap, Notion Timeline, und Apple Keynote Timeline-Views.
+### Neue `projects` Tabelle
 
-### Visuelles Konzept
+```sql
+CREATE TABLE public.projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE NOT NULL,
+  
+  name TEXT NOT NULL,
+  description TEXT,
+  
+  start_date DATE NOT NULL,
+  end_date DATE,
+  
+  status TEXT NOT NULL DEFAULT 'active'
+    CHECK (status IN ('planned', 'active', 'completed', 'on_hold', 'cancelled')),
+  
+  color TEXT,  -- Optional: überschreibt Client-Color
+  sort_order INTEGER DEFAULT 0,
+  
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+### Migration bestehender Daten
+
+Für jeden Client mit `start_date`/`end_date` wird automatisch ein **Default-Projekt** erstellt. Bestehende Meilensteine werden diesem zugeordnet.
+
+---
+
+## Phase 2: UI-Konzept - "Erschlagungsfrei"
+
+### Prinzip: Inline-Projekt-Erstellung
+
+Statt eines separaten Projekt-Dialogs → **Projekt wird direkt beim Meilenstein-Erstellen angelegt**, wenn gewünscht.
 
 ```text
-Wenn Labels AUS:
-┌──────────────────────────────────────────────────────────────────────────┐
-│ Sensoplast   │████████████●════════════════●═══════════════⚠════════████│
-└──────────────────────────────────────────────────────────────────────────┘
-                             ↑ nur Icons auf dem Balken
-
-Wenn Labels AN:
-┌──────────────────────────────────────────────────────────────────────────┐
-│              │                                                           │
-│              │                                                           │
-│              │             Vertrag           Kick-Off          Deadline  │
-│ Sensoplast   │████████████●═════════════════●══════════════════⚠════████│
-│              │             13. Jan           24. Feb           17. Apr   │
-│              │                                                           │
-└──────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  Neuer Meilenstein                                                ✕   │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  Titel *                                                               │
+│  ┌────────────────────────────────────────────────────────────────┐   │
+│  │ Go-Live                                                         │   │
+│  └────────────────────────────────────────────────────────────────┘   │
+│                                                                        │
+│  Kunde *                                                               │
+│  ┌────────────────────────────────────────────────────────────────┐   │
+│  │ ● Wolman                                                    ▼  │   │
+│  └────────────────────────────────────────────────────────────────┘   │
+│                                                                        │
+│  Projekt                                                      [+ Neu] │
+│  ┌────────────────────────────────────────────────────────────────┐   │
+│  │   Website Relaunch (Jan - Apr)                              ▼  │   │
+│  │   E-Commerce Integration (Mai - Sep)                           │   │
+│  └────────────────────────────────────────────────────────────────┘   │
+│      ↑ Erscheint erst NACHDEM Kunde ausgewählt wurde                  │
+│      ↑ Dropdown zeigt bestehende Projekte + "Neues Projekt..."        │
+│                                                                        │
+│  Datum *               Uhrzeit                                         │
+│  ┌────────────────┐    ┌────────────────┐                             │
+│  │ 17.04.2025     │    │ 10:00          │                             │
+│  └────────────────┘    └────────────────┘                             │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Design-Spezifikationen
+### Inline "Neues Projekt" Flow
 
-**Row Height Anpassung:**
-- `ROW_HEIGHT` von 80px → **120px** (Labels AN)
-- Dynamic: 80px wenn Labels aus, 120px wenn Labels an
+Wenn User "Neues Projekt..." wählt, expandiert ein kompaktes Inline-Formular:
 
-**Label-Styling (world-class):**
-- **Title:** 12px, font-medium, volle Breite (kein truncate)
-- **Date:** 11px, text-muted-foreground
-- **Position:** Labels ÜBER dem Icon (nicht darunter)
-- **Alignment:** Zentriert zum Milestone-Icon
-- **No box/border:** Clean floating text, kein "Popup"-Look
-- **Spacing:** 4px gap zwischen Title und Icon
-
-**Verbindungslinie (optional, ultra-polish):**
-- Dünne vertikale Linie vom Label zum Icon
-- 1px, color: `text-muted-foreground/30`
-- Gibt visuellen Anchor ohne zu dominieren
+```text
+│  Projekt                                                               │
+│  ┌────────────────────────────────────────────────────────────────────┤
+│  │  Neues Projekt                                                     │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  │ Projektname...                                                │  │
+│  │  └──────────────────────────────────────────────────────────────┘  │
+│  │                                                                    │
+│  │  ┌────────────────┐  ┌────────────────┐                           │
+│  │  │ 📅 Start       │  │ 📅 Ende        │                           │
+│  │  └────────────────┘  └────────────────┘                           │
+│  │                                                                    │
+│  │  [Abbrechen]                                       [Erstellen]    │
+│  └────────────────────────────────────────────────────────────────────┤
+```
 
 ---
 
-## Technische Implementation
+## Phase 3: Timeline-Darstellung
 
-### 1. Dynamic Row Height
+### Sequentielle Projekt-Balken (empfohlen)
 
-```typescript
-// In QuarterCalendar.tsx und HalfYearCalendar.tsx
-const ROW_HEIGHT_COMPACT = 80;
-const ROW_HEIGHT_EXPANDED = 120;
+Für eine **kompakte, investor-ready Ansicht**: Projekte sequentiell in einer Zeile pro Kunde.
 
-const rowHeight = showLabels ? ROW_HEIGHT_EXPANDED : ROW_HEIGHT_COMPACT;
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Wolman       │ JAN  │ FEB  │ MRZ  │ APR  │ MAI  │ JUN  │ JUL  │ AUG  │ SEP  │
+│              │                                                              │
+│              │███ Website Relaunch ███│░░░ E-Commerce ░░░░░░░░░░░░░░░░░░░░░│
+│              │ ● ──────────────── ● ✓ │ ● ────────────────────── ● ─── ⚠  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Conditional ScrollArea Rendering
+### Visuelle Differenzierung
 
-```tsx
-// Anstatt:
-<ScrollArea className={cn(needsScroll && "h-[560px]")} style={{...}}>
+| Status | Darstellung |
+|--------|-------------|
+| `completed` | Volle Opacity, ✓ am Ende |
+| `active` | 20% Opacity (wie bisher) |
+| `planned` | Gestrichelt, 10% Opacity |
+| `on_hold` | Grau, gepunktet |
 
-// Besser:
-{needsScroll ? (
-  <ScrollArea style={{ height: `${MAX_VISIBLE_CLIENTS * rowHeight}px` }}>
-    {renderClientRows()}
-  </ScrollArea>
-) : (
-  <div>{renderClientRows()}</div>
-)}
+### Projekt-Labels auf dem Balken
+
+Bei ausreichend Breite: Projektname direkt auf dem Balken (12px, truncated mit ellipsis).
+
+---
+
+## Phase 4: Client Edit Sheet erweitern
+
+### Projekt-Liste im ClientEditSheet
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Kunde bearbeiten                                                      ✕   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Name                                                                       │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Wolman                                                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  Farbe                                                                      │
+│  [ ● ] [ ● ] [ ● ] [ ● ] [ ● ] ...                                         │
+│                                                                             │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  Projekte                                                          [+ Neu] │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ ✓ Website Relaunch                            Jan 25 - Apr 25  [✏] │   │
+│  ├─────────────────────────────────────────────────────────────────────┤   │
+│  │ ◐ E-Commerce Integration                      Mai 25 - Sep 25  [✏] │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  Kontakt E-Mail                                                            │
+│  ...                                                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3. Elegantes Label-Design in ClientPeriodBar
+- **Kompakte Liste**: Projektname + Zeitraum + Status-Icon
+- **Edit-Icon** öffnet Inline-Editing oder separates Mini-Sheet
+- **"+ Neu"** Button für weitere Projekte
+- **Max 5 sichtbar**, dann ScrollArea
 
-```tsx
-{showLabels && (
-  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 flex flex-col items-center pointer-events-none">
-    {/* Connection line */}
-    <div className="w-px h-3 bg-muted-foreground/20" />
-    {/* Label */}
-    <div className="text-center whitespace-nowrap px-1">
-      <div className="text-xs font-medium text-foreground leading-tight">
-        {milestone.title}
-      </div>
-      <div className="text-[11px] text-muted-foreground">
-        {format(new Date(milestone.date), 'd. MMM', { locale: de })}
-      </div>
-    </div>
-  </div>
-)}
-```
+---
 
-### 4. Anti-Overlap für nahe Meilensteine
+## Implementierungs-Schritte
 
-Wenn Labels sich überlappen würden, alternative Strategien:
-- **Stagger:** Jedes zweite Label nach oben/unten versetzt
-- **Smart grouping:** Nahe Labels in einer Zeile zusammenfassen
-- **Priority:** Nur wichtigste Labels zeigen (Deadlines > andere)
+### Schritt 1: Database Migration
+- `projects` Tabelle erstellen
+- `milestones.project_id` hinzufügen (nullable für Migration)
+- Migration-Script: bestehende `client.start_date/end_date` → Default-Projekt
 
-Für Phase 1: Labels immer oben, bei Overlap tolerieren (User kann zoomen/Halbjahr wechseln)
+### Schritt 2: TypeScript Types & Hooks
+- `Project` Interface in `types.ts`
+- `useProjects(clientId)` Hook für CRUD
+- `useMilestones` erweitern: `project_id` statt nur `client_id`
+
+### Schritt 3: MilestoneQuickAdd erweitern
+- Projekt-Dropdown (erscheint nach Kunde-Auswahl)
+- Inline "Neues Projekt" Formular
+- Auto-Zuweisung bei nur 1 Projekt
+
+### Schritt 4: ClientPeriodBar → ProjectsTimeline
+- Rendert multiple Projekt-Balken sequentiell
+- Projekt-Labels auf Balken
+- Status-basiertes Styling
+
+### Schritt 5: ClientEditSheet erweitern
+- Projekt-Liste mit CRUD
+- Kompakte Inline-Bearbeitung
 
 ---
 
 ## Dateien & Änderungen
 
-| Datei | Änderungen |
-|-------|------------|
-| `src/components/planning/QuarterCalendar.tsx` | Dynamic row height, conditional ScrollArea |
-| `src/components/planning/HalfYearCalendar.tsx` | Dynamic row height, conditional ScrollArea |
-| `src/components/planning/ClientPeriodBar.tsx` | Elegantes Label-Design über Icons |
+| Datei | Aktion |
+|-------|--------|
+| `supabase/migrations/xxx_create_projects.sql` | Neue Tabelle + Migration |
+| `src/lib/planning/types.ts` | `Project` Interface, Status-Enum |
+| `src/integrations/supabase/types.ts` | Automatisch durch Migration |
+| `src/hooks/useProjects.ts` | Neuer Hook für Planning-Projekte |
+| `src/hooks/useMilestones.ts` | `project_id` Support |
+| `src/components/planning/MilestoneQuickAdd.tsx` | Projekt-Auswahl + Inline-Erstellung |
+| `src/components/planning/ProjectsTimeline.tsx` | Neu: Ersetzt ClientPeriodBar Logik |
+| `src/components/planning/ClientPeriodBar.tsx` | Nutzt ProjectsTimeline intern |
+| `src/components/planning/ClientEditSheet.tsx` | Projekt-Liste hinzufügen |
+| `src/components/planning/ProjectEditSheet.tsx` | Neues Sheet für Projekt-Details |
+| `src/components/planning/QuarterCalendar.tsx` | Neue Datenstruktur nutzen |
+| `src/components/planning/HalfYearCalendar.tsx` | Neue Datenstruktur nutzen |
 
 ---
 
-## Visual Polish Details
+## Technische Details
 
-### Header-Toggle Upgrade
-Der aktuelle Tag-Icon + Switch sieht okay aus, könnte aber cleaner sein:
+### Namenskonflikt vermeiden
 
-```text
-Aktuell:   [🏷] [o]  ← Etwas unklar was es macht
-           
-Besser:    [🏷 Labels] [toggle]  ← Text-Label für Klarheit
+Es existiert bereits `src/hooks/useProjects.ts` für Tasks. Die neue Datei heisst:
+- `src/hooks/usePlanningProjects.ts` (eindeutig)
+
+Oder wir nutzen Namespacing:
+```typescript
+// In usePlanningProjects.ts
+export function usePlanningProjects(clientId?: string) { ... }
 ```
 
-Oder als Button mit Icon-State:
+### Datenfluss
+
 ```text
-[ Labels ]  ← Outline wenn aus
-[■ Labels]  ← Filled wenn an
+PlanningPage
+  └── useMilestonesByClient() 
+        └── Neuer Return-Typ:
+            {
+              client: Client,
+              projects: [{
+                project: Project,
+                milestones: Milestone[]
+              }]
+            }[]
 ```
 
-### Zeilen-Hover Effekt
-Bei mehr Höhe wirkt der Hover-Effekt stärker:
-- `hover:bg-muted/5` statt `hover:bg-muted/10`
-- Subtiler für professionellen Look
+### Progressive Disclosure in Action
+
+1. **Neuer User**: Erstellt Kunde → automatisch 1 Default-Projekt
+2. **Erster Meilenstein**: Projekt-Dropdown zeigt nur 1 Option → auto-selected
+3. **Zweites Projekt nötig**: "+ Neues Projekt" im Dropdown
+4. **Power-User**: Volle Projekt-Verwaltung im ClientEditSheet
 
 ---
 
 ## Erwartetes Ergebnis
 
-| Aspekt | Vorher | Nachher |
-|--------|--------|---------|
-| Row Height | 80px (starr) | 80px/120px (dynamisch) |
-| Label-Position | Unter Icon, Box | Über Icon, floating |
-| Label-Größe | 10px, truncated | 12px, vollständig |
-| Scroll | Immer vorhanden | Nur ab 7+ Clients |
-| Investor-Ready | ❌ | ✅ |
+| Aspekt | Aktuell | Danach |
+|--------|---------|--------|
+| Projekte pro Kunde | 1 (implizit) | Beliebig viele |
+| UI-Komplexität | - | Minimal durch Progressive Disclosure |
+| Timeline-Klarheit | Nur Zeitraum | Projekt-Labels auf Balken |
+| Investor-Readiness | Gut | Exzellent (klare Projektphasen) |
 
-Das Ergebnis wird wie eine Linear/Notion Timeline aussehen - clean, professionell, sofort verständlich auf den ersten Blick.
