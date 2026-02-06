@@ -37,14 +37,19 @@ const ICON_MAP: Record<MilestoneType, React.ComponentType<{ className?: string }
   general: Circle,
 };
 
-// Smart label constants
-const MAX_LABEL_LENGTH = 20;
-const MIN_LABEL_DISTANCE_PERCENT = 8; // 8% of total width
+// Compact label constants
+const MAX_LABEL_LENGTH = 15;
+const MIN_LABEL_DISTANCE_PERCENT = 6; // 6% of total width - tighter packing
 
 function truncateLabel(title: string): string {
   return title.length > MAX_LABEL_LENGTH 
     ? title.slice(0, MAX_LABEL_LENGTH - 1).trim() + '…' 
     : title;
+}
+
+// Format date compact: "5. Mär" 
+function formatDateCompact(date: Date): string {
+  return format(date, 'd. MMM', { locale: de });
 }
 
 interface EnrichedPosition {
