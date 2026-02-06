@@ -73,6 +73,8 @@ export function MilestoneQuickAdd({ open, onOpenChange }: MilestoneQuickAddProps
       const newClient = await createClient.mutateAsync({
         name: newClientName.trim(),
         color: availableColor,
+        start_date: newClientStartDate || undefined,
+        end_date: newClientEndDate || undefined,
       });
       finalClientId = newClient.id;
     }
