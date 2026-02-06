@@ -93,6 +93,7 @@ export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onCli
                 milestones={milestones}
                 viewRange={viewRange}
                 onMilestoneClick={onMilestoneClick}
+                showLabels={showLabels}
               />
             </div>
           </div>
