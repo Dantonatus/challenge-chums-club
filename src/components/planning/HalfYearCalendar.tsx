@@ -175,7 +175,7 @@ function TodayLine({ halfYear, clientColumnWidth }: { halfYear: HalfYear; client
 
   return (
     <div 
-      className="absolute top-0 bottom-0 w-0.5 bg-primary z-10 pointer-events-none"
+      className="absolute top-0 bottom-0 w-0.5 bg-primary z-5 pointer-events-none"
       style={{ left: `calc(${clientColumnWidth}px + ${leftPercent}%)` }}
     >
       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary animate-pulse" />
