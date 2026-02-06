@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus, CalendarDays, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, CalendarDays, Download, Tag } from 'lucide-react';
 import { 
   Quarter, 
   HalfYear,
@@ -20,6 +20,14 @@ import { exportPlanningPDF } from '@/lib/planning/exportPDF';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface QuarterHeaderProps {
   viewMode: ViewMode;
@@ -30,6 +38,8 @@ interface QuarterHeaderProps {
   onHalfYearChange: (halfYear: HalfYear) => void;
   onAddClick: () => void;
   clientData: Array<{ client: Client; milestones: MilestoneWithClient[] }>;
+  showLabels: boolean;
+  onShowLabelsChange: (show: boolean) => void;
 }
 
 export function QuarterHeader({ 
