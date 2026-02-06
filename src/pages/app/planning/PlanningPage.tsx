@@ -28,6 +28,7 @@ export default function PlanningPage() {
   const [quarter, setQuarter] = useState<Quarter>(getCurrentQuarter);
   const [halfYear, setHalfYear] = useState<HalfYear>(getCurrentHalfYear);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showLabels, setShowLabels] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<MilestoneWithClient | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   
