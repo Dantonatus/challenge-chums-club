@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Quarter, getQuarterMonths, MilestoneWithClient } from '@/lib/planning/types';
+import { Quarter, getQuarterMonths, MilestoneWithClient, Client } from '@/lib/planning/types';
 import { MilestoneCard } from './MilestoneCard';
 import { format, isSameMonth, isSameDay } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -11,6 +11,7 @@ interface MonthViewProps {
   quarter: Quarter;
   milestones: MilestoneWithClient[];
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
+  onClientClick?: (client: Client) => void;
 }
 
 export function MonthView({ quarter, milestones, onMilestoneClick }: MonthViewProps) {
