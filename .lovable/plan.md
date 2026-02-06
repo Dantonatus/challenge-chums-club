@@ -1,284 +1,450 @@
 
-# Umfassende Überarbeitung: Habit Dashboard "Übersicht"
+# Projektplanung: Quartalskalender mit AI-Copilot
 
-## Übersicht der Verbesserungen
+## Executive Summary
 
-Basierend auf meiner UI/UX und Habit-Science Analyse werde ich folgende Verbesserungen umsetzen:
-
-1. **Neues "Heute" Widget** - Zeigt ausstehende Habits für heute
-2. **"Never Miss Twice" System** - Motiviert nach verpassten Tagen
-3. **Verbesserter Empty State** - Bessere Value Proposition + Quick-Start Templates
-4. **Personalisierte Insights** - Verhaltensbasierte statt fixe Schwellwerte
-5. **Daten-Korrektur WeeklyHeatmap** - 4 Wochen echte Daten statt 7-Tage-Mapping
-6. **Vereinfachte GlobalBar** - Weniger Clutter für neue Nutzer
-7. **Basis-Gamification** - Einfaches Badge/Achievement-System
+Ein neuer Tab "Projektplanung" nach Tasks, der einen immersiven Quartalskalender für Kunden-Meilensteine bietet. Focus auf **Klarheit, Scanbarkeit und schnelle Erfassung** - keine Feature-Bloat, sondern ein Tool das du jeden Morgen aufmachst um zu wissen "Was steht an?".
 
 ---
 
-## Neue Komponenten
+## 1. Design-Philosophie
 
-### 1. TodayWidget.tsx (Neu)
+### Jobs-to-be-Done
 
-Zeigt auf einen Blick, welche Habits heute noch erledigt werden müssen.
+| Job | Lösung |
+|-----|--------|
+| "Ich will auf einen Blick sehen, was dieses Quartal ansteht" | Ganzes Quartal sichtbar, visuelle Gruppierung nach Kunde |
+| "Ich will schnell einen Meilenstein erfassen" | Inline-Add oder AI-Chat |
+| "Ich will verstehen welche Deadlines kritisch sind" | Color-Coding, Countdown-Badges |
+| "Ich will Details sehen wenn nötig" | Click-to-Expand Sheet |
 
-**Features:**
-- Liste aller aktiven Habits mit Status (erledigt/offen)
-- Visueller Progress-Ring für "X von Y heute erledigt"
-- Quick-Action Button zum Eintragen
-- Priorisierung: Überfällige (gestern nicht gemacht) zuerst
-- Animation wenn alle Habits erledigt sind (Confetti/Celebration)
+### Design-Prinzipien
 
-```text
-┌─────────────────────────────────────────┐
-│  📋 Heute                    2/4 ✓      │
-│  ┌───────────────────────────────────┐  │
-│  │ ● Meditation          [ Erledigt ]│  │
-│  │ ● Sport 30min         [ Offen   ]│  │
-│  │ ⚠ Wasser trinken      [ Gestern ]│  │ ← Never Miss Twice
-│  │ ● Lesen 20 Seiten     [ Erledigt ]│  │
-│  └───────────────────────────────────┘  │
-│         [Jetzt eintragen →]             │
-└─────────────────────────────────────────┘
+1. **Information Density richtig**: Viel auf einen Blick, aber nicht chaotisch
+2. **Kunden-First**: Einträge sind immer einem Kunden zugeordnet - der Kunde ist das visuelle Anker-Element
+3. **Temporal Clarity**: Heute ist IMMER klar erkennbar, Vergangenheit gedimmt
+4. **Progressive Disclosure**: Übersicht = minimal, Detail-Sheet = komplett
+
+---
+
+## 2. Datenmodell
+
+### Neue Tabelle: `clients`
+
+```sql
+CREATE TABLE clients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users NOT NULL,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#3B82F6',
+  logo_url TEXT,
+  contact_email TEXT,
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_clients_user ON clients(user_id);
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+```
+
+### Neue Tabelle: `milestones`
+
+```sql
+CREATE TABLE milestones (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users NOT NULL,
+  client_id UUID REFERENCES clients(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  milestone_type TEXT NOT NULL DEFAULT 'general',
+  -- Types: 'contract' | 'kickoff' | 'deadline' | 'meeting' | 'delivery' | 'payment' | 'general'
+  date DATE NOT NULL,
+  time TIME,
+  is_completed BOOLEAN DEFAULT false,
+  completed_at TIMESTAMPTZ,
+  priority TEXT DEFAULT 'medium',
+  -- Priority: 'low' | 'medium' | 'high' | 'critical'
+  location TEXT,
+  attendees TEXT[],
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_milestones_user ON milestones(user_id);
+CREATE INDEX idx_milestones_client ON milestones(client_id);
+CREATE INDEX idx_milestones_date ON milestones(date);
+ALTER TABLE milestones ENABLE ROW LEVEL SECURITY;
+```
+
+### RLS Policies
+
+```sql
+-- Clients
+CREATE POLICY "Users can CRUD own clients" ON clients
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Milestones  
+CREATE POLICY "Users can CRUD own milestones" ON milestones
+  FOR ALL USING (auth.uid() = user_id);
 ```
 
 ---
 
-### 2. NeverMissTwiceAlert.tsx (Neu)
+## 3. UI-Konzept: "Horizon View"
 
-Motivations-Komponente die erscheint wenn Nutzer gestern einen Habit verpasst hat.
-
-**Psychologie-Prinzip:** "Never miss twice" von James Clear - ein Tag verpassen passiert, aber zwei Tage hintereinander bricht die Gewohnheit.
-
-**Features:**
-- Warnt sanft bei Habits die gestern nicht erledigt wurden
-- Zeigt Streak der "gerettet" werden kann
-- Personalisierte Motivationsnachricht
-- Dismissable aber persistent bis erledigt
+### Layout-Raster
 
 ```text
-┌─────────────────────────────────────────┐
-│ ⚠️ Rette deinen Streak!                 │
-│                                         │
-│ Du hast "Meditation" gestern verpasst.  │
-│ Dein 12-Tage Streak ist in Gefahr!     │
-│                                         │
-│ "Never miss twice - ein Tag ist ok,    │
-│  aber nicht zwei hintereinander."       │
-│                                         │
-│ [Jetzt nachholen →]   [Später erinnern] │
-└─────────────────────────────────────────┘
+ ┌─────────────────────────────────────────────────────────────────────────────────┐
+ │  ← Q4 2025    ┃   Q1 2026   ┃   Q2 →                [+ Meilenstein] [AI Chat]  │
+ ├───────────────╋─────────────╋─────────────────────────────────────────────────────┤
+ │               ┃ JANUAR      ┃ FEBRUAR              ┃ MÄRZ                        │
+ │               ┃─────────────┃──────────────────────┃─────────────────────────────│
+ │               ┃     13      ┃     24               ┃     17                      │
+ │   Sensoplast  ┃  ● Vertrag  ┃  ● Kick-Off (vor Ort)┃  ⚠ Deadline                │
+ │   ━━━━━━━━━━━ ┃             ┃                      ┃                             │
+ │               ┃             ┃                      ┃                             │
+ │               ┃     28      ┃                      ┃                             │
+ │   Acme Corp   ┃  ● Start    ┃                      ┃     05  ● Lieferung        │
+ │   ━━━━━━━━━━━ ┃             ┃                      ┃                             │
+ │               ┃             ┃                      ┃                             │
+ └───────────────┴─────────────┴──────────────────────┴─────────────────────────────┘
+```
+
+### Visual Design Tokens
+
+**Milestone-Type Icons + Colors:**
+
+| Type | Icon | Default Color | Semantic |
+|------|------|---------------|----------|
+| contract | FileSignature | Blue | Formal, legal |
+| kickoff | Rocket | Green | Start, energy |
+| deadline | AlertTriangle | Red/Orange | Urgency |
+| meeting | Users | Purple | Collaboration |
+| delivery | Package | Teal | Handoff |
+| payment | CreditCard | Emerald | Money |
+| general | Circle | Gray | Neutral |
+
+**Kunden-Farben:**
+- Jeder Kunde bekommt eine Farbe (aus 12 vordefinierten + Custom)
+- Farbe wird als linke Border + dezenter Hintergrund auf der Zeile verwendet
+- Ermöglicht sofortige visuelle Zuordnung
+
+**Temporal States:**
+
+| State | Styling |
+|-------|---------|
+| Past | `opacity-50`, gedimmt |
+| Today | `ring-2 ring-primary`, pulsierender Dot |
+| Future | Volle Opacity |
+| Overdue | `bg-destructive/10`, rote Border |
+
+### Interaktionen
+
+**1. Meilenstein-Karte (Compact)**
+```text
+┌─────────────────────────────┐
+│ 13                          │ ← Tag gross
+│ ● Vertragsschluss           │ ← Icon + Titel
+│   Sensoplast                │ ← Kunde (klein)
+└─────────────────────────────┘
+```
+
+**2. Click → Detail Sheet (Bottom Sheet, 60vh)**
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  ✕                          Meilenstein bearbeiten                  │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Vertragsschluss                                    [● Erledigt]   │
+│  ───────────────────────────────────────                           │
+│                                                                     │
+│  📅 13. Januar 2026, 14:00                                         │
+│  🏢 Sensoplast                                                     │
+│  📍 Vor Ort, München                                               │
+│                                                                     │
+│  ──────────────────────────────────────────────────────────────── │
+│  Beschreibung                                                       │
+│  Lorem ipsum dolor sit amet, consectetur adipiscing elit.          │
+│                                                                     │
+│  Teilnehmer: Max Mustermann, Anna Schmidt                          │
+│                                                                     │
+│  ──────────────────────────────────────────────────────────────── │
+│                                                                     │
+│  [ Löschen ]                                    [ Speichern ]      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**3. Quick-Add (Floating Button → Modal)**
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  Neuer Meilenstein                                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Titel *                                                            │
+│  ┌────────────────────────────────────────────────────────────┐    │
+│  │ Deadline Website-Launch                                     │    │
+│  └────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+│  ┌────────────────┐  ┌───────────────┐  ┌────────────────────┐     │
+│  │ 📅 17.04.26    │  │ 🕐 Optional   │  │ 🏢 Sensoplast ▼   │     │
+│  └────────────────┘  └───────────────┘  └────────────────────┘     │
+│                                                                     │
+│  Typ                                                                │
+│  [ ● Deadline ] [ Kickoff ] [ Vertrag ] [ Meeting ] [ ... ]        │
+│                                                                     │
+│  [ Abbrechen ]                                    [ Erstellen ]    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### 3. AchievementBadges.tsx (Neu)
+## 4. AI-Chat Integration
 
-Einfaches Gamification-System mit Badges für erreichte Meilensteine.
+### AI-Copilot Konzept
 
-**Badge-Kategorien:**
-- **Streak-Badges:** 7 Tage, 30 Tage, 100 Tage, 365 Tage
-- **Erfolgsquote-Badges:** 50%, 75%, 90% Erfolgsquote
-- **Starter-Badges:** Erstes Habit erstellt, Erste Woche geschafft
+**Kein separater Chat-Screen**, sondern ein **Command-Palette-Style Input** der am oberen Rand schwebt:
 
 ```text
-┌─────────────────────────────────────────┐
-│ 🏆 Deine Errungenschaften       [Alle] │
-│                                         │
-│  🔥7   🔥30   💯75%   🌟Starter        │
-│  ───   ───    ────    ─────────         │
-│  7d    30d    75%     Erste             │
-│ Streak Streak Quote   Woche             │
-│                                         │
-│ Nächstes Ziel: 🔥100 Tage Streak (88/100)│
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  🤖 "Sensoplast Deadline am 17. April"                              [Enter ↵]  │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+**AI versteht natürliche Sprache:**
+- "Kick-Off mit Acme Corp am 24. Februar, 10 Uhr, vor Ort"
+- "Sensoplast Deadline nächsten Freitag"
+- "Meeting mit Müller GmbH in 2 Wochen"
 
-## Änderungen an bestehenden Komponenten
-
-### 4. Summary.tsx - Neues Layout
-
-**Änderungen:**
-- TodayWidget als erstes Element (höchste Priorität)
-- NeverMissTwiceAlert wenn relevant
-- Verbesserter Empty State mit Templates
-- AchievementBadges Section hinzufügen
-
-**Neues Layout-Reihenfolge:**
+**AI Parsing Response (Preview vor Bestätigung):**
 ```text
-1. [TodayWidget] ← NEU: Was steht heute an?
-2. [NeverMissTwiceAlert] ← NEU: Falls relevant
-3. [HabitStreakCards] - Bestehend
-4. [WeeklyHeatmap + MotivationalInsights] - Bestehend (Grid)
-5. [AchievementBadges] ← NEU: Gamification
-6. [CompletionRings] - Bestehend
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  🤖 Erkannt:                                                                    │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  📅 24. Februar 2026, 10:00                                              │   │
+│  │  🏢 Acme Corp (neuer Kunde)                                             │   │
+│  │  📍 Vor Ort                                                              │   │
+│  │  Typ: Kick-Off                                                           │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  [ ✕ Abbrechen ]  [ ✎ Anpassen ]                      [ ✓ Erstellen ]         │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-### 5. Empty State Verbesserung (in Summary.tsx)
-
-**Aktuell:** Nur "Starte dein erstes Habit" mit einem Button
-
-**Neu:**
-- Klare Value Proposition
-- 3 Quick-Start Templates (vordefinierte Habits)
-- Social Proof Element
-
-```text
-┌─────────────────────────────────────────────────┐
-│              🌱 Deine Habits                    │
-│                                                 │
-│  "Kleine tägliche Verbesserungen führen zu     │
-│   außergewöhnlichen Ergebnissen."              │
-│                                                 │
-│  ┌─────────────┐ ┌─────────────┐ ┌───────────┐ │
-│  │ 🧘          │ │ 💪          │ │ 📚        │ │
-│  │ Meditation  │ │ Bewegung    │ │ Lesen     │ │
-│  │ 10 Min/Tag  │ │ 30 Min/Tag  │ │ 20 Min    │ │
-│  │ [Starten]   │ │ [Starten]   │ │ [Starten] │ │
-│  └─────────────┘ └─────────────┘ └───────────┘ │
-│                                                 │
-│     oder  [+ Eigenes Habit erstellen]           │
-│                                                 │
-│  "12.847 Nutzer haben bereits 2.3M Habits      │
-│   erfolgreich abgeschlossen"                    │
-└─────────────────────────────────────────────────┘
-```
-
----
-
-### 6. useHabitStats.ts - Erweiterte Daten
-
-**Neue Felder die berechnet werden:**
-- `missedYesterday: boolean` - Hat gestern nicht gemacht
-- `streakAtRisk: boolean` - Streak in Gefahr (missedYesterday && currentStreak > 0)
-- `todayStatus: 'done' | 'pending' | 'missed'` - Status für heute
-- `last30Days: DayEntry[]` - Für vollständige Heatmap-Daten
-- `achievements: Achievement[]` - Erreichte Badges
-
----
-
-### 7. WeeklyHeatmap.tsx - Daten-Fix
-
-**Problem:** Bekommt nur `lastSevenDays` aber zeigt 4 Wochen an
-
-**Lösung:** 
-- Hook liefert jetzt `last30Days` statt nur `lastSevenDays`
-- Heatmap mapped korrekt alle 4 Wochen
-
----
-
-### 8. MotivationalInsights.tsx - Personalisierung
-
-**Aktuell:** Fixe Schwellwerte (80%/50%)
-
-**Neu:**
-- Trend-basierte Insights (besser/schlechter als letzte Woche)
-- Tageszeit-bezogene Tipps (morgens vs abends)
-- Habit-spezifische Empfehlungen
-- "Implementation Intentions" Prompts
-
-```text
-Statt: "Du bist auf einem großartigen Weg!"
-Neu:   "Du bist 15% besser als letzte Woche! 
-        Dein 'Sport'-Habit läuft besonders gut 
-        (89%). Tipp: Verbinde 'Meditation' mit 
-        deinem Morgenkaffee für mehr Konsistenz."
-```
-
----
-
-### 9. GlobalBar.tsx - Vereinfachung
-
-**Änderungen für neue Nutzer:**
-- Year Selector und Export nur wenn Daten > 1 Monat
-- Weniger Buttons initial sichtbar
-- Progressive Disclosure: Features erscheinen mit Nutzung
-
----
-
-## Dateien die erstellt/geändert werden
-
-### Neue Dateien:
-1. `src/components/summary/TodayWidget.tsx`
-2. `src/components/summary/NeverMissTwiceAlert.tsx`
-3. `src/components/summary/AchievementBadges.tsx`
-4. `src/lib/achievements.ts` (Achievement-Definitionen & Logik)
-
-### Geänderte Dateien:
-5. `src/hooks/useHabitStats.ts` - Erweiterte Berechnungen
-6. `src/pages/app/Summary.tsx` - Neues Layout
-7. `src/components/summary/WeeklyHeatmap.tsx` - 30-Tage Daten
-8. `src/components/summary/MotivationalInsights.tsx` - Personalisierung
-9. `src/components/summary/GlobalBar.tsx` - Progressive Disclosure
-
----
-
-## Technische Details
-
-### Achievement-System (achievements.ts)
+**Edge Function für AI-Parsing:**
 
 ```typescript
-interface Achievement {
-  id: string;
-  name: { de: string; en: string };
-  description: { de: string; en: string };
-  icon: string;
-  type: 'streak' | 'rate' | 'milestone';
-  threshold: number;
-  unlockedAt?: Date;
-}
+// supabase/functions/parse-milestone/index.ts
+// Input: { text: string, existingClients: string[] }
+// Output: { title, client, date, time?, location?, type }
 
-const ACHIEVEMENTS: Achievement[] = [
-  { id: 'streak_7', threshold: 7, type: 'streak', icon: '🔥', ... },
-  { id: 'streak_30', threshold: 30, type: 'streak', icon: '🔥', ... },
-  { id: 'rate_75', threshold: 75, type: 'rate', icon: '💯', ... },
-  // ...
-];
-```
-
-### TodayWidget Query
-
-```typescript
-// In useHabitStats.ts - neue Berechnungen
-const todayStr = format(new Date(), 'yyyy-MM-dd');
-const yesterdayStr = format(subDays(new Date(), 1), 'yyyy-MM-dd');
-
-// Pro Habit:
-const todayLog = logs.find(l => l.date === todayStr);
-const yesterdayLog = logs.find(l => l.date === yesterdayStr);
-
-return {
-  // ... bestehende Felder
-  todayStatus: todayLog ? (todayLog.success ? 'done' : 'missed') : 'pending',
-  missedYesterday: yesterdayLog === undefined || !yesterdayLog.success,
-  streakAtRisk: currentStreak > 0 && (yesterdayLog === undefined || !yesterdayLog.success),
-};
-```
-
-### Never Miss Twice Logic
-
-```typescript
-// Zeige Alert wenn:
-// 1. Mindestens ein Habit hat streakAtRisk = true
-// 2. Es ist noch nicht zu spät am Tag (vor 22:00)
-// 3. Nutzer hat Alert nicht dismissed
-
-const habitsAtRisk = habitStats.filter(h => h.streakAtRisk);
-const showNeverMissTwice = habitsAtRisk.length > 0 && !isDismissed;
+// Nutzt Lovable AI / Gemini für Natural Language Understanding
+// Matcht Kundennamen fuzzy gegen existierende Kunden
+// Erkennt relative Datums-Ausdrücke ("nächste Woche", "in 2 Wochen")
 ```
 
 ---
 
-## Erwartete Ergebnisse
+## 5. Quartal-Navigation
 
-| Verbesserung | Business Impact | User Experience |
-|--------------|-----------------|-----------------|
-| TodayWidget | +20% Daily Active Users | Klare Tages-Priorität |
-| NeverMissTwice | +15% Streak-Retention | Motivation bei Rückschlägen |
-| Quick Templates | -30% Bounce bei Neuanmeldung | Schneller Start |
-| Achievements | +25% Engagement | Dopamin-Belohnung |
-| Personalisierte Insights | +10% Feature-Usage | Relevante Tipps |
+### Header-Component
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  [←]   Q1 2026   [→]                                          [Heute] [+ Neu]  │
+│        Jan – Mär                                                               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Logik:**
+- Start: Aktuelles Quartal
+- Navigation: Prev/Next Quartal
+- "Heute"-Button: Springt zum aktuellen Quartal, scrollt zur heutigen Position
+- Quartale: Q1 (Jan-Mär), Q2 (Apr-Jun), Q3 (Jul-Sep), Q4 (Okt-Dez)
+
+### Mobile View
+
+Auf Mobile: **Monat-by-Monat** statt 3 Monate nebeneinander:
+
+```text
+┌─────────────────────────────────────────────┐
+│  [← Jan]   FEBRUAR 2026   [Mär →]          │
+├─────────────────────────────────────────────┤
+│                                             │
+│  24                                         │
+│  ──────────────────────────────────────    │
+│  ● Kick-Off (vor Ort)                      │
+│    Sensoplast                              │
+│                                             │
+│  28                                         │
+│  ──────────────────────────────────────    │
+│  ● Review-Meeting                          │
+│    Acme Corp                               │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## 6. Empty State + Onboarding
+
+### Erster Besuch
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│                              📅                                                 │
+│                                                                                 │
+│                    Deine Projektübersicht                                       │
+│                                                                                 │
+│     Behalte alle wichtigen Meilensteine im Blick.                              │
+│     Verträge, Kick-Offs, Deadlines - alles auf einen Blick.                    │
+│                                                                                 │
+│                                                                                 │
+│     ┌──────────────────────────────────────────────────────────────────────┐   │
+│     │ 🤖 "Sensoplast Kick-Off am 15. März"                           [↵]  │   │
+│     └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│                     oder   [ + Manuell hinzufügen ]                            │
+│                                                                                 │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 7. Datei-Struktur
+
+### Neue Dateien
+
+```text
+src/
+├── pages/app/planning/
+│   └── PlanningPage.tsx          # Hauptseite
+│
+├── components/planning/
+│   ├── QuarterCalendar.tsx       # Quartals-Grid (Desktop)
+│   ├── MonthView.tsx             # Monats-Ansicht (Mobile)
+│   ├── MilestoneCard.tsx         # Kompakte Meilenstein-Karte
+│   ├── MilestoneSheet.tsx        # Detail-Sheet
+│   ├── MilestoneQuickAdd.tsx     # Quick-Add Modal
+│   ├── AICommandInput.tsx        # AI-Eingabe-Feld
+│   ├── AIParsePreview.tsx        # AI-Vorschau vor Bestätigung
+│   ├── ClientBadge.tsx           # Kunden-Chip mit Farbe
+│   ├── QuarterHeader.tsx         # Navigation Header
+│   └── PlanningEmptyState.tsx    # Empty State
+│
+├── hooks/
+│   ├── useClients.ts             # CRUD für Kunden
+│   ├── useMilestones.ts          # CRUD für Meilensteine
+│   └── useQuarterData.ts         # Meilensteine pro Quartal laden
+│
+├── lib/planning/
+│   └── types.ts                  # Client, Milestone Types
+│
+└── supabase/functions/
+    └── parse-milestone/
+        └── index.ts              # AI-Parser Edge Function
+```
+
+### Änderungen
+
+```text
+src/
+├── App.tsx                       # Route /app/planning hinzufügen
+├── components/layout/AppLayout.tsx  # Nav-Link "Planung" hinzufügen
+└── integrations/supabase/types.ts   # (nach Migration automatisch)
+```
+
+---
+
+## 8. Migrations
+
+### 001_create_clients.sql
+
+```sql
+CREATE TABLE public.clients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#3B82F6',
+  logo_url TEXT,
+  contact_email TEXT,
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_clients_user ON public.clients(user_id);
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own clients" ON public.clients
+  FOR ALL USING (auth.uid() = user_id);
+```
+
+### 002_create_milestones.sql
+
+```sql
+CREATE TABLE public.milestones (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  milestone_type TEXT NOT NULL DEFAULT 'general',
+  date DATE NOT NULL,
+  time TIME,
+  is_completed BOOLEAN DEFAULT false,
+  completed_at TIMESTAMPTZ,
+  priority TEXT DEFAULT 'medium',
+  location TEXT,
+  attendees TEXT[],
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_milestones_user ON public.milestones(user_id);
+CREATE INDEX idx_milestones_client ON public.milestones(client_id);
+CREATE INDEX idx_milestones_date ON public.milestones(date);
+
+ALTER TABLE public.milestones ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own milestones" ON public.milestones
+  FOR ALL USING (auth.uid() = user_id);
+```
+
+---
+
+## 9. Implementierungs-Reihenfolge
+
+| Phase | Scope | Dateien |
+|-------|-------|---------|
+| 1 | DB-Schema + Types | Migrations, types.ts |
+| 2 | Hooks + Basic CRUD | useClients.ts, useMilestones.ts |
+| 3 | Routing + Layout | App.tsx, AppLayout.tsx, PlanningPage.tsx |
+| 4 | Quartal-View (Desktop) | QuarterCalendar.tsx, QuarterHeader.tsx |
+| 5 | Meilenstein-Karten | MilestoneCard.tsx, ClientBadge.tsx |
+| 6 | Detail-Sheet | MilestoneSheet.tsx |
+| 7 | Quick-Add Modal | MilestoneQuickAdd.tsx |
+| 8 | Mobile View | MonthView.tsx |
+| 9 | Empty State | PlanningEmptyState.tsx |
+| 10 | AI-Integration | Edge Function, AICommandInput, AIParsePreview |
+
+---
+
+## 10. Design-Referenzen (Benchmark)
+
+- **Linear Roadmap View** - Horizontale Timeline, Client-Grouping
+- **Notion Calendar** - Clean Grid, dezente Farben
+- **Stripe Dashboard** - Information Density done right
+- **Superhuman** - Command Palette AI Input
+
+Das Ergebnis: Ein Tool das du jeden Morgen mit einem Kaffee öffnest, 3 Sekunden draufschaust und sofort weisst was diese Woche ansteht. **Keine Klicks nötig um den Überblick zu bekommen.**
 
