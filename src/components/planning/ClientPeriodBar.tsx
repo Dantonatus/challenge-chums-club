@@ -37,15 +37,8 @@ const ICON_MAP: Record<MilestoneType, React.ComponentType<{ className?: string }
   general: Circle,
 };
 
-// Compact label constants
-const MAX_LABEL_LENGTH = 15;
+// Compact label constants - no truncation, allow 2 lines
 const MIN_LABEL_DISTANCE_PERCENT = 6; // 6% of total width - tighter packing
-
-function truncateLabel(title: string): string {
-  return title.length > MAX_LABEL_LENGTH 
-    ? title.slice(0, MAX_LABEL_LENGTH - 1).trim() + '…' 
-    : title;
-}
 
 // Format date compact: "5. Mär" 
 function formatDateCompact(date: Date): string {
@@ -187,7 +180,7 @@ export function ClientPeriodBar({
           </Tooltip>
         </TooltipProvider>
         
-        {/* Compact Label - date + title for all milestones */}
+        {/* Compact Label - plain text, date + full title, 2 lines if needed */}
         {showLabels && mpShowLabel && (
           <div 
             className={cn(
@@ -197,15 +190,12 @@ export function ClientPeriodBar({
             )}
           >
             <div className="w-px h-1 bg-muted-foreground/20" />
-            <div 
-              className="px-1.5 py-0.5 rounded bg-background/95 border border-border/50 shadow-sm"
-              style={{ maxWidth: '90px' }}
-            >
-              <div className="text-[10px] font-medium text-foreground leading-tight truncate">
+            <div className="text-center" style={{ maxWidth: '100px' }}>
+              <div className="text-[9px] font-medium text-foreground/90 leading-tight">
                 {formatDateCompact(new Date(milestone.date))}
               </div>
-              <div className="text-[9px] text-muted-foreground leading-tight truncate">
-                {truncateLabel(milestone.title)}
+              <div className="text-[8px] text-muted-foreground leading-tight line-clamp-2">
+                {milestone.title}
               </div>
             </div>
           </div>
