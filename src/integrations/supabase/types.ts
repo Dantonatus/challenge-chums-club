@@ -183,6 +183,45 @@ export type Database = {
           },
         ]
       }
+      clients: {
+        Row: {
+          color: string
+          contact_email: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          notes: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          contact_email?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          notes?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string
+          contact_email?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          notes?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           created_at: string
@@ -534,6 +573,68 @@ export type Database = {
             columns: ["challenge_id"]
             isOneToOne: false
             referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      milestones: {
+        Row: {
+          attendees: string[] | null
+          client_id: string
+          completed_at: string | null
+          created_at: string | null
+          date: string
+          description: string | null
+          id: string
+          is_completed: boolean | null
+          location: string | null
+          milestone_type: string
+          priority: string | null
+          time: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attendees?: string[] | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          location?: string | null
+          milestone_type?: string
+          priority?: string | null
+          time?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attendees?: string[] | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          location?: string | null
+          milestone_type?: string
+          priority?: string | null
+          time?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestones_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]

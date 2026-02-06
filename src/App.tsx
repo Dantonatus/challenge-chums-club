@@ -29,6 +29,8 @@ import AllTasksZen from "./pages/app/tasks/AllTasksZen";
 import TasksProjects from "./pages/app/tasks/Projects";
 import ProjectDetail from "./pages/app/tasks/ProjectDetail";
 import TasksCalendar from "./pages/app/tasks/Calendar";
+// Planning
+import PlanningPage from "./pages/app/planning/PlanningPage";
 import TasksArchive from "./pages/app/tasks/Archive";
 // Recipes
 import RecipesLayout from "./pages/app/recipes/RecipesLayout";
@@ -91,6 +93,8 @@ const App = () => (
                 <Route path="shopping" element={<RecipesShoppingList />} />
               </Route>
               <Route path="recipes/:recipeId" element={<RecipeDetail />} />
+              {/* Planning */}
+              <Route path="planning" element={<PlanningPage />} />
             </Route>
             {/* Top-level protected routes */}
             <Route path="/challenges" element={
