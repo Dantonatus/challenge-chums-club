@@ -136,7 +136,27 @@ export function QuarterHeader({
 
       <div className="flex items-center gap-2">
         {!isMobile && (
-          <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
+          <>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-md border bg-background">
+                    <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Switch
+                      id="show-labels"
+                      checked={showLabels}
+                      onCheckedChange={onShowLabelsChange}
+                      className="scale-75"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Meilenstein-Labels anzeigen</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
+          </>
         )}
         
         {!isCurrentPeriod && (
