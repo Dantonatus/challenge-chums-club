@@ -38,7 +38,7 @@ const ICON_MAP: Record<MilestoneType, React.ComponentType<{ className?: string }
 };
 
 // Compact label constants - no truncation, allow 2 lines
-const MIN_LABEL_DISTANCE_PERCENT = 15; // 15% of total width - prevents overlap on 6-month view
+const MIN_LABEL_DISTANCE_PERCENT = 18; // 18% of total width - prevents overlap on 6-month view
 
 // Format date compact: "5. Mär" 
 function formatDateCompact(date: Date): string {
@@ -200,12 +200,12 @@ export function ClientPeriodBar({
                 alignment === 'right' && "right-0"
               )}
             >
-              {/* Connection line - always points toward the icon - explicit color for export */}
+              {/* Connection line - always points toward the icon - stronger color for export */}
               {labelPosition === 'above' && (
-                <div className="order-last w-px h-3" style={{ backgroundColor: 'rgba(100, 100, 100, 0.4)' }} />
+                <div className="order-last w-0.5 h-4" style={{ backgroundColor: 'rgba(80, 80, 80, 0.6)' }} />
               )}
               {labelPosition === 'below' && (
-                <div className="order-first w-px h-3" style={{ backgroundColor: 'rgba(100, 100, 100, 0.4)' }} />
+                <div className="order-first w-0.5 h-4" style={{ backgroundColor: 'rgba(80, 80, 80, 0.6)' }} />
               )}
               
               {/* Text content */}
@@ -215,7 +215,7 @@ export function ClientPeriodBar({
                   alignment === 'left' && "text-left",
                   alignment === 'right' && "text-right"
                 )} 
-                style={{ maxWidth: '140px', minWidth: '80px' }}
+                style={{ maxWidth: '160px', minWidth: '90px' }}
               >
                 <div className="text-[11px] font-bold text-foreground leading-tight whitespace-nowrap">
                   {formatDateCompact(new Date(milestone.date))}
@@ -223,12 +223,9 @@ export function ClientPeriodBar({
                 <div 
                   className="text-[10px] text-muted-foreground leading-snug"
                   style={{ 
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
+                    height: '32px',
                     overflow: 'hidden',
                     wordBreak: 'break-word',
-                    minHeight: '24px'
                   }}
                 >
                   {milestone.title}

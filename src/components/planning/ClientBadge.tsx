@@ -36,7 +36,7 @@ export function ClientBadge({ client, size = 'md', compact = false, className, o
       <span className={cn(
         "font-medium truncate",
         size === 'sm' && "text-xs",
-        compact && "text-xs max-w-[100px]"
+        compact && "text-xs max-w-[120px]"
       )}>
         {client.name}
       </span>
