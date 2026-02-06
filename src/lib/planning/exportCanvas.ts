@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -13,8 +13,15 @@ interface ExportOptions {
 }
 
 /**
- * Captures the planning view as a high-quality image and exports as PNG or PDF
- * Uses clone strategy with explicit colors for reliable html2canvas capture
+ * Exports the planning view as a high-quality 1:1 screenshot (PNG) or as a PDF containing that screenshot.
+ *
+ * Design goal: the export must look like what the user sees on screen.
+ *
+ * Implementation notes:
+ * - Uses `html-to-image` (foreignObject-based) which is typically closer to 1:1 than html2canvas for modern CSS.
+ * - Clones the node to avoid flicker / layout jumps.
+ * - Flattens Radix ScrollArea viewports so offscreen content is included.
+ * - Resolves CSS variables into explicit computed values for consistent capture.
  */
 export async function exportPlanningCanvas({
   elementId,
@@ -25,48 +32,64 @@ export async function exportPlanningCanvas({
   // Try export wrapper first (includes padding for label overflow), then fall back to chart
   const wrapperElement = document.getElementById(`${elementId}-export-wrapper`);
   const element = wrapperElement || document.getElementById(elementId);
-  
+
   if (!element) {
     throw new Error(`Element with id "${elementId}" not found`);
   }
 
-  // Clone the element for clean capture without affecting the DOM
   const clone = element.cloneNode(true) as HTMLElement;
   clone.style.position = 'absolute';
   clone.style.left = '-9999px';
   clone.style.top = '0';
   clone.style.backgroundColor = '#ffffff';
   clone.style.overflow = 'visible';
-  
-  // Remove any animations for static export
-  clone.querySelectorAll('.animate-pulse').forEach(el => {
+
+  // Ensure deterministic export (no animations)
+  clone.querySelectorAll('.animate-pulse').forEach((el) => {
     (el as HTMLElement).classList.remove('animate-pulse');
   });
-  
-  document.body.appendChild(clone);
 
-  // Fix CSS variables that html2canvas cannot resolve
-  fixCSSVariablesForExport(clone);
-
-  // Capture at 2x scale for retina quality
-  const canvas = await html2canvas(clone, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-    logging: false,
-    scrollX: 0,
-    scrollY: 0,
-    windowWidth: clone.scrollWidth + 200, // Extra padding for labels
-    windowHeight: clone.scrollHeight + 200,
+  // If the UI uses Radix ScrollArea, flatten it so exports include the real content.
+  // (Otherwise we'd export only the visible viewport.)
+  clone.querySelectorAll('[data-radix-scroll-area-viewport]').forEach((el) => {
+    const viewport = el as HTMLElement;
+    viewport.style.overflow = 'visible';
+    viewport.style.height = 'auto';
+    viewport.style.maxHeight = 'none';
   });
 
-  // Cleanup clone
+  document.body.appendChild(clone);
+
+  // Wait for fonts to be ready (prevents "fallback font" exports)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fonts = (document as any).fonts;
+  if (fonts?.ready) {
+    await fonts.ready;
+  }
+
+  // Fix CSS variables that capture engines cannot always resolve
+  fixCSSVariablesForExport(clone);
+
+  const rect = element.getBoundingClientRect();
+  const exportWidth = Math.max(Math.ceil(rect.width), clone.scrollWidth);
+  const exportHeight = Math.max(Math.ceil(rect.height), clone.scrollHeight);
+
+  const dataUrl = await toPng(clone, {
+    cacheBust: true,
+    backgroundColor: '#ffffff',
+    pixelRatio: 2,
+    width: exportWidth,
+    height: exportHeight,
+  });
+
   document.body.removeChild(clone);
 
+  const canvas = await dataUrlToCanvas(dataUrl);
+
   if (format === 'png') {
-    downloadPNG(canvas, filename);
+    downloadPNGFromDataUrl(dataUrl, filename);
   } else {
-    downloadPDF(canvas, filename, periodLabel);
+    downloadPDFFromCanvas(canvas, filename, periodLabel);
   }
 }
 
@@ -106,16 +129,37 @@ function fixCSSVariablesForExport(element: HTMLElement): void {
   });
 }
 
-function downloadPNG(canvas: HTMLCanvasElement, filename: string): void {
+async function dataUrlToCanvas(dataUrl: string): Promise<HTMLCanvasElement> {
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = dataUrl;
+
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error('Failed to load export image'));
+  });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Unable to create canvas context');
+  ctx.drawImage(img, 0, 0);
+
+  return canvas;
+}
+
+function downloadPNGFromDataUrl(dataUrl: string, filename: string): void {
   const link = document.createElement('a');
   link.download = `${filename}.png`;
-  link.href = canvas.toDataURL('image/png', 1.0);
+  link.href = dataUrl;
   link.click();
 }
 
-function downloadPDF(canvas: HTMLCanvasElement, filename: string, periodLabel: string): void {
+function downloadPDFFromCanvas(canvas: HTMLCanvasElement, filename: string, periodLabel: string): void {
   const imgData = canvas.toDataURL('image/png', 1.0);
-  
+
   // Always use landscape for Gantt charts
   const doc = new jsPDF({
     orientation: 'landscape',
@@ -128,7 +172,7 @@ function downloadPDF(canvas: HTMLCanvasElement, filename: string, periodLabel: s
   const margin = 5;
   const headerHeight = 12;
   const footerHeight = 6;
-  
+
   const contentWidth = pageWidth - 2 * margin;
   const contentHeight = pageHeight - headerHeight - footerHeight - margin;
 
@@ -137,12 +181,12 @@ function downloadPDF(canvas: HTMLCanvasElement, filename: string, periodLabel: s
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 30, 30);
   doc.text('Projektplanung', margin, margin + 6);
-  
+
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
   doc.text(periodLabel, margin + 55, margin + 6);
-  
+
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
   const dateStr = format(new Date(), 'd.MM.yyyy', { locale: de });
@@ -157,10 +201,10 @@ function downloadPDF(canvas: HTMLCanvasElement, filename: string, periodLabel: s
   const imgWidth = canvas.width / 2; // Because we captured at 2x
   const imgHeight = canvas.height / 2;
   const imgAspect = imgWidth / imgHeight;
-  
+
   let finalWidth = contentWidth;
   let finalHeight = finalWidth / imgAspect;
-  
+
   if (finalHeight > contentHeight) {
     finalHeight = contentHeight;
     finalWidth = finalHeight * imgAspect;
