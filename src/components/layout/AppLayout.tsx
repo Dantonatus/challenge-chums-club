@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
-import { ArrowLeft, Home, ListTodo, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, Home, ListTodo, UtensilsCrossed, CalendarRange } from "lucide-react";
 import { MatrixDarkModeToggle } from "@/components/ui/MatrixDarkModeToggle";
 
 const AppLayout = () => {
