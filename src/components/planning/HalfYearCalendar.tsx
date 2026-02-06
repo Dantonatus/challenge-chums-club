@@ -19,7 +19,7 @@ interface HalfYearCalendarProps {
 
 const MAX_VISIBLE_CLIENTS = 7;
 const ROW_HEIGHT_COMPACT = 80;
-const ROW_HEIGHT_EXPANDED = 100; // Reduced from 120 - smart labels need less space
+const ROW_HEIGHT_EXPANDED = 120; // More space for staggered 2-line labels
 
 interface ClientRowProps {
   client: Client;
@@ -175,7 +175,7 @@ function TodayLine({ halfYear, clientColumnWidth }: { halfYear: HalfYear; client
 
   return (
     <div 
-      className="absolute top-0 bottom-0 w-0.5 bg-primary z-10 pointer-events-none"
+      className="absolute top-0 bottom-0 w-0.5 bg-primary z-5 pointer-events-none"
       style={{ left: `calc(${clientColumnWidth}px + ${leftPercent}%)` }}
     >
       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary animate-pulse" />

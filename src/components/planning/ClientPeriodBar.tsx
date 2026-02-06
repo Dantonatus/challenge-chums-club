@@ -185,16 +185,16 @@ export function ClientPeriodBar({
           <div 
             className={cn(
               "absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-20",
-              labelPosition === 'above' ? "bottom-full mb-0.5" : "top-full mt-0.5",
+              labelPosition === 'above' ? "bottom-full mb-2" : "top-full mt-2",
               labelPosition === 'below' && "flex-col-reverse"
             )}
           >
-            <div className="w-px h-1 bg-muted-foreground/20" />
+            <div className="w-px h-2 bg-muted-foreground/30" />
             <div className="text-center" style={{ maxWidth: '100px' }}>
-              <div className="text-[9px] font-medium text-foreground/90 leading-tight">
+              <div className="text-[10px] font-medium text-foreground leading-tight">
                 {formatDateCompact(new Date(milestone.date))}
               </div>
-              <div className="text-[8px] text-muted-foreground leading-tight line-clamp-2">
+              <div className="text-[9px] text-muted-foreground leading-tight line-clamp-2">
                 {milestone.title}
               </div>
             </div>
