@@ -14,7 +14,7 @@ interface MonthViewProps {
   onClientClick?: (client: Client) => void;
 }
 
-export function MonthView({ quarter, milestones, onMilestoneClick }: MonthViewProps) {
+export function MonthView({ quarter, milestones, onMilestoneClick, onClientClick }: MonthViewProps) {
   const months = getQuarterMonths(quarter);
   const [monthIndex, setMonthIndex] = useState(() => {
     // Start with current month if in quarter, otherwise first month

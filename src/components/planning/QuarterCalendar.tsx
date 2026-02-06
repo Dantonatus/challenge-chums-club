@@ -65,7 +65,7 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
               className="p-3 border-r flex items-center"
               style={{ borderLeftColor: client.color, borderLeftWidth: '4px' }}
             >
-              <ClientBadge client={client} />
+              <ClientBadge client={client} onClick={() => onClientClick(client)} />
             </div>
 
             {/* Timeline area */}

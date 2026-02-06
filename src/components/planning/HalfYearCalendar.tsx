@@ -68,7 +68,7 @@ export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onCli
               className="p-2 border-r flex items-center"
               style={{ borderLeftColor: client.color, borderLeftWidth: '4px' }}
             >
-              <ClientBadge client={client} compact />
+              <ClientBadge client={client} compact onClick={() => onClientClick(client)} />
             </div>
 
             {/* Timeline area */}
