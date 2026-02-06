@@ -70,8 +70,8 @@ function ClientRow({
           ))}
         </div>
 
-        {/* Client period bar with milestones */}
-        <div className="relative h-full flex items-center px-2">
+        {/* Client period bar with milestones - overflow visible for labels */}
+        <div className="relative h-full flex items-center px-2 overflow-visible">
           <ClientPeriodBar
             client={client}
             milestones={milestones}
@@ -116,7 +116,8 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
   );
 
   return (
-    <div id="planning-chart" className="border rounded-xl overflow-hidden bg-card relative">
+    <div id="planning-chart-export-wrapper" className="p-4 -m-4">
+      <div id="planning-chart" className="border rounded-xl overflow-visible bg-card relative">
       {/* Month headers */}
       <div className="grid grid-cols-[180px_1fr_1fr_1fr] border-b bg-muted/30 sticky top-0 z-20">
         <div className="p-3 border-r text-sm font-medium text-muted-foreground" />
@@ -142,8 +143,9 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
         <div>{renderClientRows()}</div>
       )}
 
-      {/* Today indicator line */}
-      <TodayLine quarter={quarter} clientColumnWidth={180} />
+        {/* Today indicator line */}
+        <TodayLine quarter={quarter} clientColumnWidth={180} />
+      </div>
     </div>
   );
 }

@@ -70,8 +70,8 @@ function HalfYearClientRow({
           ))}
         </div>
 
-        {/* Client period bar with milestones */}
-        <div className="relative h-full flex items-center">
+        {/* Client period bar with milestones - overflow visible for labels */}
+        <div className="relative h-full flex items-center overflow-visible">
           <ClientPeriodBar
             client={client}
             milestones={milestones}
@@ -116,7 +116,8 @@ export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onCli
   );
 
   return (
-    <div id="planning-chart" className="border rounded-xl overflow-hidden bg-card relative">
+    <div id="planning-chart-export-wrapper" className="p-4 -m-4">
+      <div id="planning-chart" className="border rounded-xl overflow-visible bg-card relative">
       {/* Month headers - sticky */}
       <div className="grid grid-cols-[140px_repeat(6,1fr)] border-b bg-muted/30 sticky top-0 z-20">
         <div className="p-2 border-r text-xs font-medium text-muted-foreground">
@@ -144,8 +145,9 @@ export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onCli
         <div>{renderClientRows()}</div>
       )}
 
-      {/* Today indicator */}
-      <TodayLine halfYear={halfYear} clientColumnWidth={140} />
+        {/* Today indicator */}
+        <TodayLine halfYear={halfYear} clientColumnWidth={140} />
+      </div>
     </div>
   );
 }
