@@ -149,24 +149,49 @@ export function MilestoneQuickAdd({ open, onOpenChange }: MilestoneQuickAddProps
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-2">
-                <Input
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  placeholder="Neuer Kundenname"
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowNewClient(false);
-                    setNewClientName('');
-                  }}
-                >
-                  Abbrechen
-                </Button>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="Neuer Kundenname"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowNewClient(false);
+                      setNewClientName('');
+                      setNewClientStartDate('');
+                      setNewClientEndDate('');
+                    }}
+                  >
+                    Abbrechen
+                  </Button>
+                </div>
+                {/* Client period dates */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Projektstart</Label>
+                    <Input
+                      type="date"
+                      value={newClientStartDate}
+                      onChange={(e) => setNewClientStartDate(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Projektende</Label>
+                    <Input
+                      type="date"
+                      value={newClientEndDate}
+                      onChange={(e) => setNewClientEndDate(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </div>
