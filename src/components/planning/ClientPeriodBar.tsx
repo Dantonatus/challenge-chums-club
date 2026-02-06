@@ -24,6 +24,7 @@ interface ClientPeriodBarProps {
   milestones: MilestoneWithClient[];
   viewRange: { start: Date; end: Date };
   onMilestoneClick: (m: MilestoneWithClient) => void;
+  showLabels?: boolean;
 }
 
 const ICON_MAP: Record<MilestoneType, React.ComponentType<{ className?: string }>> = {
@@ -40,7 +41,8 @@ export function ClientPeriodBar({
   client, 
   milestones, 
   viewRange, 
-  onMilestoneClick 
+  onMilestoneClick,
+  showLabels = false
 }: ClientPeriodBarProps) {
   const hasDateRange = client.start_date && client.end_date;
   
@@ -103,31 +105,42 @@ export function ClientPeriodBar({
           const config = MILESTONE_TYPE_CONFIG[milestone.milestone_type as MilestoneType];
           
           return (
-            <TooltipProvider key={milestone.id}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onMilestoneClick(milestone)}
-                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 p-1.5 rounded-full bg-background border-2 hover:scale-110 transition-transform"
-                    style={{ 
-                      left: `${left}%`,
-                      borderColor: config?.color || client.color 
-                    }}
-                  >
-                    <Icon 
-                      className="h-4 w-4" 
-                      style={{ color: config?.color || client.color }} 
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">{milestone.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(milestone.date), 'd. MMMM', { locale: de })}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div key={milestone.id} className="absolute top-1/2 -translate-y-1/2" style={{ left: `${left}%` }}>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => onMilestoneClick(milestone)}
+                      className="-translate-x-1/2 z-10 p-1.5 rounded-full bg-background border-2 hover:scale-110 transition-transform"
+                      style={{ 
+                        borderColor: config?.color || client.color 
+                      }}
+                    >
+                      <Icon 
+                        className="h-4 w-4" 
+                        style={{ color: config?.color || client.color }} 
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="font-medium">{milestone.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(milestone.date), 'd. MMMM', { locale: de })}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              {showLabels && (
+                <div 
+                  className="absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap z-20 pointer-events-none"
+                >
+                  <div className="bg-background/95 backdrop-blur-sm border rounded px-1.5 py-0.5 shadow-sm text-[10px] leading-tight">
+                    <div className="font-medium truncate max-w-[80px]">{milestone.title}</div>
+                    <div className="text-muted-foreground">{format(new Date(milestone.date), 'd.M.', { locale: de })}</div>
+                  </div>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -180,31 +193,42 @@ export function ClientPeriodBar({
           const config = MILESTONE_TYPE_CONFIG[milestone.milestone_type as MilestoneType];
           
           return (
-            <TooltipProvider key={milestone.id}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onMilestoneClick(milestone)}
-                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 p-1 rounded-full bg-background border hover:scale-110 transition-transform shadow-sm"
-                    style={{ 
-                      left: `${relativeLeft}%`,
-                      borderColor: config?.color || 'currentColor'
-                    }}
-                  >
-                    <Icon 
-                      className="h-3 w-3" 
-                      style={{ color: config?.color || 'currentColor' }} 
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">{milestone.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(milestone.date), 'd. MMMM yyyy', { locale: de })}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div key={milestone.id} className="absolute top-1/2 -translate-y-1/2" style={{ left: `${relativeLeft}%` }}>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => onMilestoneClick(milestone)}
+                      className="-translate-x-1/2 z-10 p-1 rounded-full bg-background border hover:scale-110 transition-transform shadow-sm"
+                      style={{ 
+                        borderColor: config?.color || 'currentColor'
+                      }}
+                    >
+                      <Icon 
+                        className="h-3 w-3" 
+                        style={{ color: config?.color || 'currentColor' }} 
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="font-medium">{milestone.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(milestone.date), 'd. MMMM yyyy', { locale: de })}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              {showLabels && (
+                <div 
+                  className="absolute left-1/2 -translate-x-1/2 top-full mt-0.5 whitespace-nowrap z-20 pointer-events-none"
+                >
+                  <div className="bg-background/95 backdrop-blur-sm border rounded px-1.5 py-0.5 shadow-sm text-[10px] leading-tight">
+                    <div className="font-medium truncate max-w-[80px]">{milestone.title}</div>
+                    <div className="text-muted-foreground">{format(new Date(milestone.date), 'd.M.', { locale: de })}</div>
+                  </div>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus, CalendarDays, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, CalendarDays, Download, Tag } from 'lucide-react';
 import { 
   Quarter, 
   HalfYear,
@@ -20,6 +20,14 @@ import { exportPlanningPDF } from '@/lib/planning/exportPDF';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface QuarterHeaderProps {
   viewMode: ViewMode;
@@ -30,6 +38,8 @@ interface QuarterHeaderProps {
   onHalfYearChange: (halfYear: HalfYear) => void;
   onAddClick: () => void;
   clientData: Array<{ client: Client; milestones: MilestoneWithClient[] }>;
+  showLabels: boolean;
+  onShowLabelsChange: (show: boolean) => void;
 }
 
 export function QuarterHeader({ 
@@ -40,7 +50,9 @@ export function QuarterHeader({
   onQuarterChange, 
   onHalfYearChange,
   onAddClick,
-  clientData
+  clientData,
+  showLabels,
+  onShowLabelsChange
 }: QuarterHeaderProps) {
   const isMobile = useIsMobile();
   
@@ -124,7 +136,27 @@ export function QuarterHeader({
 
       <div className="flex items-center gap-2">
         {!isMobile && (
-          <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
+          <>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-md border bg-background">
+                    <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Switch
+                      id="show-labels"
+                      checked={showLabels}
+                      onCheckedChange={onShowLabelsChange}
+                      className="scale-75"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Meilenstein-Labels anzeigen</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
+          </>
         )}
         
         {!isCurrentPeriod && (

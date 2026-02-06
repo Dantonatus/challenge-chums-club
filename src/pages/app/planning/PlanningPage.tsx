@@ -28,6 +28,7 @@ export default function PlanningPage() {
   const [quarter, setQuarter] = useState<Quarter>(getCurrentQuarter);
   const [halfYear, setHalfYear] = useState<HalfYear>(getCurrentHalfYear);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showLabels, setShowLabels] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<MilestoneWithClient | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   
@@ -69,6 +70,8 @@ export default function PlanningPage() {
         onHalfYearChange={setHalfYear}
         onAddClick={() => setShowQuickAdd(true)}
         clientData={byClient}
+        showLabels={showLabels}
+        onShowLabelsChange={setShowLabels}
       />
 
       {isEmpty ? (
@@ -86,6 +89,7 @@ export default function PlanningPage() {
           clientData={byClient}
           onMilestoneClick={setSelectedMilestone}
           onClientClick={setSelectedClient}
+          showLabels={showLabels}
         />
       ) : (
         <QuarterCalendar
@@ -93,6 +97,7 @@ export default function PlanningPage() {
           clientData={byClient}
           onMilestoneClick={setSelectedMilestone}
           onClientClick={setSelectedClient}
+          showLabels={showLabels}
         />
       )}
 
