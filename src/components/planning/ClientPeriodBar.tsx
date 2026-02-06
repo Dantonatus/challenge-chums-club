@@ -41,7 +41,8 @@ export function ClientPeriodBar({
   client, 
   milestones, 
   viewRange, 
-  onMilestoneClick 
+  onMilestoneClick,
+  showLabels = false
 }: ClientPeriodBarProps) {
   const hasDateRange = client.start_date && client.end_date;
   
