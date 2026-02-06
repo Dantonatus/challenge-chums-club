@@ -53,19 +53,39 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
       </div>
 
       {/* Client rows */}
-      <ScrollArea 
-        className={cn(needsScroll && "h-[560px]")}
-        style={{ height: needsScroll ? `${MAX_VISIBLE_CLIENTS * ROW_HEIGHT}px` : 'auto' }}
-      >
-        {clientData.map(({ client, milestones }) => (
-          <div 
-            key={client.id} 
-            className="grid grid-cols-[180px_1fr] border-b last:border-b-0 group hover:bg-muted/10 transition-colors"
-            style={{ height: `${ROW_HEIGHT}px` }}
-          >
-            {/* Client column */}
-            <div 
-              className="p-3 border-r flex items-center"
+      {needsScroll ? (
+        <ScrollArea style={{ height: `${MAX_VISIBLE_CLIENTS * rowHeight}px` }}>
+          {clientData.map(({ client, milestones }) => (
+            <ClientRow 
+              key={client.id}
+              client={client}
+              milestones={milestones}
+              rowHeight={rowHeight}
+              monthDates={monthDates}
+              viewRange={viewRange}
+              onClientClick={onClientClick}
+              onMilestoneClick={onMilestoneClick}
+              showLabels={showLabels}
+            />
+          ))}
+        </ScrollArea>
+      ) : (
+        <div>
+          {clientData.map(({ client, milestones }) => (
+            <ClientRow 
+              key={client.id}
+              client={client}
+              milestones={milestones}
+              rowHeight={rowHeight}
+              monthDates={monthDates}
+              viewRange={viewRange}
+              onClientClick={onClientClick}
+              onMilestoneClick={onMilestoneClick}
+              showLabels={showLabels}
+            />
+          ))}
+        </div>
+      )}
               style={{ borderLeftColor: client.color, borderLeftWidth: '4px' }}
             >
               <ClientBadge client={client} onClick={() => onClientClick(client)} />
