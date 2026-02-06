@@ -116,7 +116,7 @@ export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClien
   );
 
   return (
-    <div className="border rounded-xl overflow-hidden bg-card relative">
+    <div id="planning-chart" className="border rounded-xl overflow-hidden bg-card relative">
       {/* Month headers */}
       <div className="grid grid-cols-[180px_1fr_1fr_1fr] border-b bg-muted/30 sticky top-0 z-20">
         <div className="p-3 border-r text-sm font-medium text-muted-foreground" />
