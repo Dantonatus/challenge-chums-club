@@ -70,6 +70,8 @@ export default function PlanningPage() {
         onHalfYearChange={setHalfYear}
         onAddClick={() => setShowQuickAdd(true)}
         clientData={byClient}
+        showLabels={showLabels}
+        onShowLabelsChange={setShowLabels}
       />
 
       {isEmpty ? (
