@@ -14,6 +14,7 @@ interface QuarterCalendarProps {
     milestones: MilestoneWithClient[];
   }>;
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
+  onClientClick: (client: Client) => void;
 }
 
 const MAX_VISIBLE_CLIENTS = 7;
