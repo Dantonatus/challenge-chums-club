@@ -37,15 +37,8 @@ const ICON_MAP: Record<MilestoneType, React.ComponentType<{ className?: string }
   general: Circle,
 };
 
-// Compact label constants
-const MAX_LABEL_LENGTH = 15;
+// Compact label constants - no truncation, allow 2 lines
 const MIN_LABEL_DISTANCE_PERCENT = 6; // 6% of total width - tighter packing
-
-function truncateLabel(title: string): string {
-  return title.length > MAX_LABEL_LENGTH 
-    ? title.slice(0, MAX_LABEL_LENGTH - 1).trim() + '…' 
-    : title;
-}
 
 // Format date compact: "5. Mär" 
 function formatDateCompact(date: Date): string {
