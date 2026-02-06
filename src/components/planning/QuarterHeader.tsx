@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Plus, CalendarDays, Download, Tag } from 'lucide-react';
 import { 
@@ -16,7 +17,8 @@ import {
   MilestoneWithClient
 } from '@/lib/planning/types';
 import { ViewModeToggle } from './ViewModeToggle';
-import { exportPlanningPDF } from '@/lib/planning/exportPDF';
+import { ExportDialog, ExportFormat } from './ExportDialog';
+import { exportPlanningCanvas, generateFilename } from '@/lib/planning/exportCanvas';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
