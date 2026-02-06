@@ -176,10 +176,10 @@ export function QuarterHeader({
         <Button
           variant="outline"
           size="sm"
-          onClick={handleExport}
+          onClick={() => setShowExportDialog(true)}
         >
           <Download className="h-4 w-4 mr-1" />
-          PDF
+          Export
         </Button>
         
         <Button onClick={onAddClick} size="sm">
@@ -187,6 +187,13 @@ export function QuarterHeader({
           Meilenstein
         </Button>
       </div>
+
+      <ExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        onExport={handleExport}
+        periodLabel={periodLabel}
+      />
     </div>
   );
 }
