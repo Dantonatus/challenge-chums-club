@@ -38,7 +38,7 @@ const ICON_MAP: Record<MilestoneType, React.ComponentType<{ className?: string }
 };
 
 // Compact label constants - no truncation, allow 2 lines
-const MIN_LABEL_DISTANCE_PERCENT = 6; // 6% of total width - tighter packing
+const MIN_LABEL_DISTANCE_PERCENT = 12; // 12% of total width - prevents overlap on 6-month view
 
 // Format date compact: "5. Mär" 
 function formatDateCompact(date: Date): string {
@@ -211,17 +211,16 @@ export function ClientPeriodBar({
               {/* Text content */}
               <div 
                 className={cn(
-                  "whitespace-nowrap",
                   alignment === 'center' && "text-center",
                   alignment === 'left' && "text-left",
                   alignment === 'right' && "text-right"
                 )} 
-                style={{ maxWidth: '120px' }}
+                style={{ maxWidth: '100px' }}
               >
-                <div className="text-[11px] font-semibold text-foreground leading-tight">
+                <div className="text-[11px] font-bold text-foreground leading-tight whitespace-nowrap">
                   {formatDateCompact(new Date(milestone.date))}
                 </div>
-                <div className="text-[10px] text-muted-foreground leading-tight line-clamp-2">
+                <div className="text-[10px] text-muted-foreground leading-snug line-clamp-2">
                   {milestone.title}
                 </div>
               </div>
