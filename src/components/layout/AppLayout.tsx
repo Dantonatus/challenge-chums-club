@@ -97,6 +97,10 @@ const AppLayout = () => {
                 <UtensilsCrossed className="mr-1 h-4 w-4 inline" />
                 Recipes
               </NavLink>
+              <NavLink to="/app/planning" className={linkClass}>
+                <CalendarRange className="mr-1 h-4 w-4 inline" />
+                Planung
+              </NavLink>
             </nav>
           </div>
           <div className="flex items-center gap-3">

@@ -93,6 +93,8 @@ const App = () => (
                 <Route path="shopping" element={<RecipesShoppingList />} />
               </Route>
               <Route path="recipes/:recipeId" element={<RecipeDetail />} />
+              {/* Planning */}
+              <Route path="planning" element={<PlanningPage />} />
             </Route>
             {/* Top-level protected routes */}
             <Route path="/challenges" element={
