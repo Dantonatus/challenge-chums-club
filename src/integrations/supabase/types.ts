@@ -596,6 +596,7 @@ export type Database = {
           location: string | null
           milestone_type: string
           priority: string | null
+          project_id: string | null
           time: string | null
           title: string
           updated_at: string | null
@@ -613,6 +614,7 @@ export type Database = {
           location?: string | null
           milestone_type?: string
           priority?: string | null
+          project_id?: string | null
           time?: string | null
           title: string
           updated_at?: string | null
@@ -630,6 +632,7 @@ export type Database = {
           location?: string | null
           milestone_type?: string
           priority?: string | null
+          project_id?: string | null
           time?: string | null
           title?: string
           updated_at?: string | null
@@ -641,6 +644,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -695,6 +705,59 @@ export type Database = {
             columns: ["related_challenge_id"]
             isOneToOne: false
             referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_projects: {
+        Row: {
+          client_id: string
+          color: string | null
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          sort_order: number | null
+          start_date: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+          start_date: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+          start_date?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
