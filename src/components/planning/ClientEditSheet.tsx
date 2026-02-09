@@ -47,7 +47,7 @@ export function ClientEditSheet({ client, onClose }: ClientEditSheetProps) {
     
     setIsSaving(true);
     try {
-      await updateClient.mutateAsync({
+      const payload = {
         id: client.id,
         name: name.trim(),
         color,
@@ -55,8 +55,13 @@ export function ClientEditSheet({ client, onClose }: ClientEditSheetProps) {
         end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
         contact_email: contactEmail.trim() || null,
         notes: notes.trim() || null,
-      });
+      };
+      console.log('[ClientEditSheet] Saving client:', payload);
+      await updateClient.mutateAsync(payload);
+      console.log('[ClientEditSheet] Save successful');
       onClose();
+    } catch (err) {
+      console.error('[ClientEditSheet] Save failed:', err);
     } finally {
       setIsSaving(false);
     }
