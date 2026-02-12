@@ -1,60 +1,57 @@
 
-
-# Drag & Drop fuer Gantt-Aufgaben (Phasen verschieben)
+# Vertikales Drag & Drop: Phasen-Reihenfolge im Gantt-Chart aendern
 
 ## Uebersicht
 
-Die Balken im Gantt-Chart werden per Drag & Drop horizontal verschiebbar. Beim Ziehen verschiebt sich die gesamte Phase (Start- und Enddatum bleiben relativ gleich, nur der Zeitpunkt aendert sich). Nach dem Loslassen wird das neue Datum in die Datenbank geschrieben.
-
----
+Die Phasen (Aufgaben) im Gantt-Chart sollen per Drag & Drop vertikal verschoben werden koennen, um die Reihenfolge zu aendern. Aktuell wird bereits `@dnd-kit/core` fuer horizontales Verschieben verwendet -- das wird erweitert um vertikale Sortierung mit `@dnd-kit/sortable`.
 
 ## Funktionsweise
 
-- Der Benutzer zieht einen Aufgabenbalken horizontal im Zeitstrahl
-- Waehrend des Ziehens wird der Balken visuell an der neuen Position dargestellt
-- Start- und Enddatum werden um die gleiche Anzahl Tage verschoben (Dauer bleibt gleich)
-- Nach dem Loslassen wird die Aenderung gespeichert
-
----
+- Der Benutzer zieht eine Phase nach oben oder unten
+- Die anderen Phasen ruecken smooth auf, um Platz zu machen (animierte Uebergaenge)
+- Nach dem Loslassen wird die neue `sort_order` aller betroffenen Phasen in der Datenbank gespeichert
+- Horizontales Verschieben (Datum aendern) bleibt weiterhin moeglich
 
 ## Technische Umsetzung
 
-Das Projekt verwendet bereits `@dnd-kit/core`. Folgende Dateien werden geaendert:
+### Neue Abhaengigkeit
 
-### 1. GanttChart.tsx - DndContext hinzufuegen
+- `@dnd-kit/sortable` muss installiert werden (ergaenzt das bereits vorhandene `@dnd-kit/core`)
 
-- `DndContext` aus `@dnd-kit/core` wrappen um den Task-Bereich
-- `onDragEnd`-Handler: Berechnet aus dem horizontalen Delta (in Pixeln) die Anzahl verschobener Tage und ruft `updateTask` auf
-- Neue Prop `onTaskDragEnd` fuer die Datums-Aktualisierung
-- Hilfsfunktion: Pixel-Delta zu Tage-Delta umrechnen basierend auf der Gesamtbreite und dem Datumsbereich
+### 1. GanttChart.tsx -- Sortable Context
 
-### 2. GanttTaskRow.tsx - Balken draggable machen
+- `SortableContext` mit `verticalListSortingStrategy` um die Task-Rows wrappen
+- `onDragEnd` erweitern: Wenn sich die vertikale Position aendert (`over.id !== active.id`), die Reihenfolge neu berechnen und speichern
+- Neue Prop `onTaskReorder` fuer die Sortier-Aktualisierung
+- `arrayMove` aus `@dnd-kit/sortable` nutzen um die lokale Reihenfolge zu berechnen
 
-- `useDraggable` aus `@dnd-kit/core` auf den Aufgabenbalken anwenden
-- Nur horizontale Bewegung (`transform` nur X-Achse)
-- Cursor aendert sich zu `grab` / `grabbing`
-- Waehrend des Ziehens: Balken folgt der Maus horizontal, Tooltip zeigt die neuen Daten an
+### 2. GanttTaskRow.tsx -- Sortable statt nur Draggable
 
-### 3. GanttPage.tsx - Update-Logik verbinden
+- `useDraggable` durch `useSortable` aus `@dnd-kit/sortable` ersetzen
+- `useSortable` bietet sowohl horizontales als auch vertikales Dragging
+- Die gesamte Zeile bekommt die Sortable-Referenz (fuer vertikale Bewegung)
+- Der Balken innerhalb der Zeile bleibt fuer horizontales Verschieben zustaendig
+- Smooth Animationen ueber die `transition`-Property von `useSortable`
 
-- Neuer Handler `handleTaskDrag` der `updateTask.mutate()` mit den neuen Start/End-Daten aufruft
+### 3. useGanttTasks.ts -- Reorder-Mutation
+
+- Neue `reorderTasks`-Mutation hinzufuegen
+- Nimmt ein Array von `{ id, sort_order }` entgegen
+- Fuehrt mehrere Updates in einer Schleife aus (oder per RPC-Funktion)
+- Optimistisches Update: Lokale Reihenfolge sofort aendern, bei Fehler zurueckrollen
+
+### 4. GanttPage.tsx -- Handler verbinden
+
+- Neuer `handleTaskReorder`-Handler der die `reorderTasks`-Mutation aufruft
 - Wird als Prop an `GanttChart` weitergegeben
-
-### 4. ganttUtils.ts - Neue Hilfsfunktion
-
-- `pixelsToDays(deltaX, totalWidth, weeks)`: Rechnet horizontalen Pixel-Offset in Tage um
-- `shiftDates(startDate, endDate, days)`: Verschiebt beide Daten um n Tage
-
----
 
 ## Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/planning/gantt/GanttChart.tsx` | DndContext wrapper, onDragEnd-Handler |
-| `src/components/planning/gantt/GanttTaskRow.tsx` | useDraggable auf Balken, visuelles Feedback |
-| `src/components/planning/gantt/GanttPage.tsx` | handleTaskDrag Handler mit updateTask |
-| `src/lib/planning/ganttUtils.ts` | pixelsToDays + shiftDates Hilfsfunktionen |
+| `src/components/planning/gantt/GanttChart.tsx` | SortableContext, erweiterter onDragEnd |
+| `src/components/planning/gantt/GanttTaskRow.tsx` | useSortable statt useDraggable, Animations-Styles |
+| `src/hooks/useGanttTasks.ts` | reorderTasks-Mutation |
+| `src/components/planning/gantt/GanttPage.tsx` | handleTaskReorder-Handler |
 
-Keine Datenbank-Aenderungen noetig - die bestehende `updateTask`-Mutation wird wiederverwendet.
-
+Keine Datenbank-Aenderungen noetig -- das `sort_order`-Feld existiert bereits auf `gantt_tasks`.
