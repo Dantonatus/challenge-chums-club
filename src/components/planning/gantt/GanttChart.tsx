@@ -1,10 +1,12 @@
 import { useMemo, useRef, useCallback } from 'react';
-import { buildWeekColumns, groupWeeksByMonth, todayPosition, pixelsToDays, shiftDates } from '@/lib/planning/ganttUtils';
+import { buildWeekColumns, groupWeeksByMonth, todayPosition } from '@/lib/planning/ganttUtils';
 import { GanttTask, PlanningProject, MilestoneWithClient } from '@/lib/planning/types';
 import { GanttTaskRow } from './GanttTaskRow';
 import { GanttMilestoneDiamond } from './GanttMilestoneDiamond';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { DndContext, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface GanttChartProps {
   project: PlanningProject;
@@ -13,13 +15,13 @@ interface GanttChartProps {
   clientColor: string;
   onTaskClick: (task: GanttTask) => void;
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
-  onTaskDragEnd?: (taskId: string, newStartDate: string, newEndDate: string) => void;
+  onTaskReorder?: (reordered: { id: string; sort_order: number }[]) => void;
 }
 
 const LABEL_COL_WIDTH = 280;
 const MIN_WEEK_WIDTH = 60;
 
-export function GanttChart({ project, tasks, milestones, clientColor, onTaskClick, onMilestoneClick, onTaskDragEnd }: GanttChartProps) {
+export function GanttChart({ project, tasks, milestones, clientColor, onTaskClick, onMilestoneClick, onTaskReorder }: GanttChartProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const weeks = useMemo(() => {
@@ -37,24 +39,20 @@ export function GanttChart({ project, tasks, milestones, clientColor, onTaskClic
   const todayPos = useMemo(() => todayPosition(weeks), [weeks]);
   const gridWidth = Math.max(weeks.length * MIN_WEEK_WIDTH, 600);
 
+  const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, delta } = event;
-    if (!delta.x || !onTaskDragEnd) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onTaskReorder) return;
 
-    const task = active.data.current?.task as GanttTask | undefined;
-    if (!task) return;
+    const oldIndex = tasks.findIndex(t => t.id === active.id);
+    const newIndex = tasks.findIndex(t => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
 
-    // Get timeline area width (excluding label column)
-    const timelineEl = timelineRef.current;
-    if (!timelineEl) return;
-    const totalWidth = timelineEl.offsetWidth;
-
-    const days = pixelsToDays(delta.x, totalWidth, weeks);
-    if (days === 0) return;
-
-    const { start_date, end_date } = shiftDates(task.start_date, task.end_date, days);
-    onTaskDragEnd(task.id, start_date, end_date);
-  }, [onTaskDragEnd, weeks]);
+    const reordered = arrayMove(tasks, oldIndex, newIndex);
+    const updates = reordered.map((t, i) => ({ id: t.id, sort_order: i }));
+    onTaskReorder(updates);
+  }, [onTaskReorder, tasks]);
 
   if (weeks.length === 0) return null;
 
@@ -97,7 +95,7 @@ export function GanttChart({ project, tasks, milestones, clientColor, onTaskClic
           </div>
 
           {/* Task rows */}
-          <DndContext onDragEnd={handleDragEnd}>
+          <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]}>
             <div className="relative" ref={timelineRef}>
               {/* Today line */}
               {todayPos !== null && (
@@ -127,23 +125,25 @@ export function GanttChart({ project, tasks, milestones, clientColor, onTaskClic
                   Noch keine Aufgaben. Erstelle die erste Aufgabe für dieses Projekt.
                 </div>
               ) : (
-                tasks.map((task) => (
-                  <GanttTaskRow
-                    key={task.id}
-                    task={task}
-                    weeks={weeks}
-                    clientColor={clientColor}
-                    labelWidth={LABEL_COL_WIDTH}
-                    onClick={() => onTaskClick(task)}
-                    milestones={milestones.filter(m => {
-                      const mDate = new Date(m.date);
-                      const tStart = new Date(task.start_date);
-                      const tEnd = new Date(task.end_date);
-                      return mDate >= tStart && mDate <= tEnd;
-                    })}
-                    onMilestoneClick={onMilestoneClick}
-                  />
-                ))
+                <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+                  {tasks.map((task) => (
+                    <GanttTaskRow
+                      key={task.id}
+                      task={task}
+                      weeks={weeks}
+                      clientColor={clientColor}
+                      labelWidth={LABEL_COL_WIDTH}
+                      onClick={() => onTaskClick(task)}
+                      milestones={milestones.filter(m => {
+                        const mDate = new Date(m.date);
+                        const tStart = new Date(task.start_date);
+                        const tEnd = new Date(task.end_date);
+                        return mDate >= tStart && mDate <= tEnd;
+                      })}
+                      onMilestoneClick={onMilestoneClick}
+                    />
+                  ))}
+                </SortableContext>
               )}
 
               {/* Milestones not on any task */}

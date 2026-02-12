@@ -5,7 +5,7 @@ import { Check } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { useDraggable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface GanttTaskRowProps {
@@ -26,25 +26,38 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
   const bar = taskBarPosition(taskStart, taskEnd, weeks);
   const barColor = task.color || clientColor;
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `gantt-task-${task.id}`,
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
     data: { task },
   });
 
-  const dragStyle = transform
-    ? { transform: `translateX(${transform.x}px)` }
-    : undefined;
+  const style = {
+    transform: CSS.Transform.toString(transform ? { ...transform, x: 0 } : null),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.85 : 1,
+    height: ROW_HEIGHT,
+  };
 
   return (
     <div
-      className="flex items-center border-b border-border/40 hover:bg-muted/20 transition-colors group"
-      style={{ height: ROW_HEIGHT }}
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center border-b border-border/40 hover:bg-muted/20 transition-colors group ${isDragging ? 'bg-muted/40 shadow-lg rounded-md' : ''}`}
     >
-      {/* Label */}
+      {/* Label – drag handle for vertical reorder */}
       <div
-        className="shrink-0 px-3 text-xs font-medium border-r border-border flex items-center gap-2 cursor-pointer"
+        className="shrink-0 px-3 text-xs font-medium border-r border-border flex items-center gap-2 cursor-grab active:cursor-grabbing select-none"
         style={{ width: labelWidth }}
-        onClick={onClick}
+        {...attributes}
+        {...listeners}
       >
         {task.is_completed && (
           <span className="w-4 h-4 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -57,22 +70,18 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
       </div>
 
       {/* Timeline area */}
-      <div className="relative flex-1 h-full">
+      <div className="relative flex-1 h-full" onClick={onClick}>
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
               <div
-                ref={setNodeRef}
-                {...listeners}
-                {...attributes}
-                className={`absolute top-1/2 -translate-y-1/2 rounded-md transition-shadow group-hover:shadow-md ${isDragging ? 'z-20 shadow-lg cursor-grabbing' : 'cursor-grab'}`}
+                className="absolute top-1/2 -translate-y-1/2 rounded-md transition-shadow group-hover:shadow-md cursor-pointer"
                 style={{
                   left: `${bar.left}%`,
                   width: `${bar.width}%`,
                   height: 22,
                   backgroundColor: barColor,
-                  opacity: isDragging ? 0.9 : task.is_completed ? 0.5 : 0.8,
-                  ...dragStyle,
+                  opacity: task.is_completed ? 0.5 : 0.8,
                 }}
               />
             </TooltipTrigger>
@@ -84,7 +93,6 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
           </Tooltip>
         </TooltipProvider>
 
-        {/* Milestone diamonds on this task */}
         {milestones.map(ms => (
           <GanttMilestoneDiamond
             key={ms.id}

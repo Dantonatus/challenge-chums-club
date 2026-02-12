@@ -22,7 +22,7 @@ export function GanttPage() {
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
   const selectedClient = clients.find(c => c.id === selectedClientId) || null;
 
-  const { tasks, milestones, isLoading: tasksLoading, updateTask } = useGanttTasks(selectedProjectId || undefined);
+  const { tasks, milestones, isLoading: tasksLoading, updateTask, reorderTasks } = useGanttTasks(selectedProjectId || undefined);
 
   // Sheets
   const [editTask, setEditTask] = useState<GanttTask | null>(null);
@@ -42,8 +42,8 @@ export function GanttPage() {
     exportGanttPDF(selectedProject, tasks, milestones as MilestoneWithClient[], selectedClient);
   };
 
-  const handleTaskDragEnd = (taskId: string, newStartDate: string, newEndDate: string) => {
-    updateTask.mutate({ id: taskId, start_date: newStartDate, end_date: newEndDate });
+  const handleTaskReorder = (reordered: { id: string; sort_order: number }[]) => {
+    reorderTasks.mutate(reordered);
   };
 
   if (clientsLoading) {
@@ -138,7 +138,7 @@ export function GanttPage() {
           clientColor={selectedClient?.color || '#3B82F6'}
           onTaskClick={setEditTask}
           onMilestoneClick={setEditMilestone}
-          onTaskDragEnd={handleTaskDragEnd}
+          onTaskReorder={handleTaskReorder}
         />
       )}
 
