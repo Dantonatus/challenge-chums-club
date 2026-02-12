@@ -116,14 +116,15 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
           <Tooltip>
             <TooltipTrigger asChild>
               <div
-                className="absolute top-1/2 -translate-y-1/2 rounded-md transition-shadow group-hover:shadow-md"
+                className="absolute rounded-md transition-shadow group-hover:shadow-md"
                 style={{
                   left: `${bar.left}%`,
                   width: `${bar.width}%`,
                   height: 22,
+                  top: '50%',
                   backgroundColor: barColor,
                   opacity: task.is_completed ? 0.5 : 0.8,
-                  transform: `translateX(${deltaX}px)`,
+                  transform: `translateY(-50%) translateX(${deltaX}px)`,
                   cursor: 'ew-resize',
                   transition: isDraggingH.current ? 'none' : undefined,
                 }}
