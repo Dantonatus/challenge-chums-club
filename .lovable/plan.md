@@ -1,54 +1,60 @@
 
 
-# Projektplanung Gantt-Chart: 3 Verbesserungen
+# Drag & Drop fuer Gantt-Aufgaben (Phasen verschieben)
 
-## Problem-Analyse
+## Uebersicht
 
-Basierend auf den BITO-Daten wurden drei Probleme identifiziert:
-
-1. **Abgeschnittene Aufgabennamen**: Die Label-Spalte ist auf 220px fixiert. Lange Phasennamen wie "Phase 2: Datenbereitstellung & Validierung" werden abgeschnitten.
-2. **Zeitraum-Begrenzung**: Der Chart-Zeitraum basiert nur auf dem Projekt-Enddatum. Wenn Aufgaben daruber hinausgehen oder das Projekt laenger wird, fehlt die Flexibilitat.
-3. **Fehlende Phasenbeschreibungen**: Die detaillierten Beschreibungen der Aufgaben (z.B. Bullet-Listen der Arbeitspakete) sind nur im Edit-Sheet sichtbar, nicht direkt unter dem Chart.
+Die Balken im Gantt-Chart werden per Drag & Drop horizontal verschiebbar. Beim Ziehen verschiebt sich die gesamte Phase (Start- und Enddatum bleiben relativ gleich, nur der Zeitpunkt aendert sich). Nach dem Loslassen wird das neue Datum in die Datenbank geschrieben.
 
 ---
 
-## Geplante Aenderungen
+## Funktionsweise
 
-### 1. Bessere Lesbarkeit der Aufgabennamen
-
-- **Label-Spalte verbreitern**: Von 220px auf 280px
-- **Mehrzeilige Labels**: Zeilenhoehe erhoehen (44px auf 56px), Text-Wrapping aktivieren (statt `truncate` wird `line-clamp-2` verwendet)
-- Betrifft: `GanttChart.tsx` (LABEL_COL_WIDTH), `GanttTaskRow.tsx` (ROW_HEIGHT, CSS)
-
-### 2. Dynamischer Zeitraum
-
-- Der Chart-Zeitraum wird aus dem Maximum von Projekt-Enddatum UND dem spaetesten Task-Enddatum berechnet
-- Zusaetzlich 2 Wochen Puffer am Ende fuer bessere Uebersicht
-- Betrifft: `GanttChart.tsx` (weeks-Berechnung im useMemo)
-
-### 3. Strukturierte Phasenbeschreibungen unter dem Chart
-
-- Neues `GanttPhaseDescriptions`-Komponente unterhalb des Gantt-Charts
-- Jede Aufgabe mit Beschreibung wird als Karte dargestellt:
-  - Farbiger Seitenstreifen (Aufgabenfarbe / Kundenfarbe)
-  - Titel + Zeitraum als Header
-  - Beschreibungstext mit Markdown-aehnlicher Formatierung (Aufzaehlungszeichen werden erkannt und als Liste dargestellt)
-- Aufgaben ohne Beschreibung werden uebersprungen
-- Betrifft: Neue Datei `GanttPhaseDescriptions.tsx`, Integration in `GanttPage.tsx`
+- Der Benutzer zieht einen Aufgabenbalken horizontal im Zeitstrahl
+- Waehrend des Ziehens wird der Balken visuell an der neuen Position dargestellt
+- Start- und Enddatum werden um die gleiche Anzahl Tage verschoben (Dauer bleibt gleich)
+- Nach dem Loslassen wird die Aenderung gespeichert
 
 ---
 
-## Technische Details
+## Technische Umsetzung
 
-### Dateien die geaendert werden:
+Das Projekt verwendet bereits `@dnd-kit/core`. Folgende Dateien werden geaendert:
+
+### 1. GanttChart.tsx - DndContext hinzufuegen
+
+- `DndContext` aus `@dnd-kit/core` wrappen um den Task-Bereich
+- `onDragEnd`-Handler: Berechnet aus dem horizontalen Delta (in Pixeln) die Anzahl verschobener Tage und ruft `updateTask` auf
+- Neue Prop `onTaskDragEnd` fuer die Datums-Aktualisierung
+- Hilfsfunktion: Pixel-Delta zu Tage-Delta umrechnen basierend auf der Gesamtbreite und dem Datumsbereich
+
+### 2. GanttTaskRow.tsx - Balken draggable machen
+
+- `useDraggable` aus `@dnd-kit/core` auf den Aufgabenbalken anwenden
+- Nur horizontale Bewegung (`transform` nur X-Achse)
+- Cursor aendert sich zu `grab` / `grabbing`
+- Waehrend des Ziehens: Balken folgt der Maus horizontal, Tooltip zeigt die neuen Daten an
+
+### 3. GanttPage.tsx - Update-Logik verbinden
+
+- Neuer Handler `handleTaskDrag` der `updateTask.mutate()` mit den neuen Start/End-Daten aufruft
+- Wird als Prop an `GanttChart` weitergegeben
+
+### 4. ganttUtils.ts - Neue Hilfsfunktion
+
+- `pixelsToDays(deltaX, totalWidth, weeks)`: Rechnet horizontalen Pixel-Offset in Tage um
+- `shiftDates(startDate, endDate, days)`: Verschiebt beide Daten um n Tage
+
+---
+
+## Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/planning/gantt/GanttChart.tsx` | LABEL_COL_WIDTH auf 280px, dynamische Zeitraum-Berechnung |
-| `src/components/planning/gantt/GanttTaskRow.tsx` | ROW_HEIGHT auf 56px, `line-clamp-2` statt `truncate` |
-| `src/components/planning/gantt/GanttPhaseDescriptions.tsx` | Neue Komponente fuer Phasenbeschreibungen |
-| `src/components/planning/gantt/GanttPage.tsx` | Integration der Phase-Beschreibungen unter dem Chart |
+| `src/components/planning/gantt/GanttChart.tsx` | DndContext wrapper, onDragEnd-Handler |
+| `src/components/planning/gantt/GanttTaskRow.tsx` | useDraggable auf Balken, visuelles Feedback |
+| `src/components/planning/gantt/GanttPage.tsx` | handleTaskDrag Handler mit updateTask |
+| `src/lib/planning/ganttUtils.ts` | pixelsToDays + shiftDates Hilfsfunktionen |
 
-### Keine Datenbank-Aenderungen noetig
-Alle Daten (Beschreibungen, Daten) sind bereits in der `gantt_tasks`-Tabelle vorhanden.
+Keine Datenbank-Aenderungen noetig - die bestehende `updateTask`-Mutation wird wiederverwendet.
 
