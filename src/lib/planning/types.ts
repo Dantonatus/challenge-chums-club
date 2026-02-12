@@ -207,6 +207,67 @@ export const PRIORITY_CONFIG: Record<MilestonePriority, {
   critical: { label: 'Critical', labelDe: 'Kritisch', color: 'hsl(0, 84%, 60%)' },
 };
 
+// Gantt types
+export interface PlanningProject {
+  id: string;
+  client_id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  start_date: string;
+  end_date: string | null;
+  status: string;
+  color: string | null;
+  sort_order: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+  client?: Client;
+}
+
+export interface GanttTask {
+  id: string;
+  project_id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  sort_order: number;
+  color: string | null;
+  is_completed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GanttTaskFormData {
+  title: string;
+  project_id: string;
+  start_date: string;
+  end_date: string;
+  description?: string;
+  color?: string;
+  is_completed?: boolean;
+}
+
+export interface PlanningProjectFormData {
+  name: string;
+  client_id: string;
+  start_date: string;
+  end_date?: string;
+  description?: string;
+  status?: string;
+  color?: string;
+}
+
+export interface WeekColumn {
+  start: Date;
+  end: Date;
+  isoWeek: number;
+  year: number;
+  label: string;
+  month: number; // 0-11
+}
+
 // Predefined client colors
 export const CLIENT_COLORS = [
   '#3B82F6', // Blue
