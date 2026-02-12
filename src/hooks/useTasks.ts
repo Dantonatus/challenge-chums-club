@@ -38,9 +38,12 @@ export function useTasks(filters?: {
 
       if (filters?.status) {
         if (Array.isArray(filters.status)) {
-          query = query.in('status', filters.status);
+          // Include 'todo' when 'open' is requested (DB uses 'todo' instead of 'open')
+          const expanded = [...new Set(filters.status.flatMap(s => s === 'open' ? ['open', 'todo'] : s === 'todo' ? ['todo', 'open'] : [s]))];
+          query = query.in('status', expanded);
         } else {
-          query = query.eq('status', filters.status);
+          const statuses = filters.status === 'open' ? ['open', 'todo'] : filters.status === 'todo' ? ['todo', 'open'] : [filters.status];
+          query = query.in('status', statuses);
         }
       }
       
@@ -92,7 +95,7 @@ export function useTodayTasks() {
           project:projects(*),
           subtasks(*)
         `)
-        .in('status', ['open', 'in_progress'])
+        .in('status', ['todo', 'open', 'in_progress'])
         .eq('due_date', today)
         .order('priority', { ascending: true })
         .order('created_at', { ascending: false });
@@ -116,7 +119,7 @@ export function useUpcomingTasks() {
           *,
           project:projects(*)
         `)
-        .in('status', ['open', 'in_progress'])
+        .in('status', ['todo', 'open', 'in_progress'])
         .not('due_date', 'is', null)
         .order('due_date', { ascending: true })
         .order('priority', { ascending: true });

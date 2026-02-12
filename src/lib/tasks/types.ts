@@ -1,7 +1,7 @@
 // Task Planner types
 
 export type TaskPriority = 'p1' | 'p2' | 'p3' | 'p4';
-export type TaskStatus = 'open' | 'in_progress' | 'done' | 'archived';
+export type TaskStatus = 'open' | 'todo' | 'in_progress' | 'done' | 'archived';
 export type TaskEffort = 'xs' | 's' | 'm' | 'l' | 'xl';
 export type RecurringFrequency = 'none' | 'daily' | 'weekly' | 'monthly';
 export type ProjectStatus = 'active' | 'completed' | 'archived';
