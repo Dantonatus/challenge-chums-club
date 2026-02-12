@@ -114,3 +114,29 @@ export function todayPosition(weeks: WeekColumn[]): number | null {
   if (now < weeks[0].start || now > weeks[weeks.length - 1].end) return null;
   return dateToPosition(now, weeks) * 100;
 }
+
+/**
+ * Convert a horizontal pixel delta to a number of days, given the timeline width and range.
+ */
+export function pixelsToDays(deltaX: number, totalWidth: number, weeks: WeekColumn[]): number {
+  if (weeks.length === 0 || totalWidth === 0) return 0;
+  const totalStart = weeks[0].start.getTime();
+  const totalEnd = weeks[weeks.length - 1].end.getTime();
+  const totalMs = totalEnd - totalStart;
+  const msPerPixel = totalMs / totalWidth;
+  const deltaMs = deltaX * msPerPixel;
+  return Math.round(deltaMs / (24 * 60 * 60 * 1000));
+}
+
+/**
+ * Shift both dates by n days, returning ISO date strings.
+ */
+export function shiftDates(startDate: string, endDate: string, days: number): { start_date: string; end_date: string } {
+  const ms = days * 24 * 60 * 60 * 1000;
+  const newStart = new Date(new Date(startDate).getTime() + ms);
+  const newEnd = new Date(new Date(endDate).getTime() + ms);
+  return {
+    start_date: format(newStart, 'yyyy-MM-dd'),
+    end_date: format(newEnd, 'yyyy-MM-dd'),
+  };
+}
