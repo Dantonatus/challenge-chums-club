@@ -14,6 +14,11 @@ import { cn } from '@/lib/utils';
 import { Client, CLIENT_COLORS } from '@/lib/planning/types';
 import { useClients } from '@/hooks/useClients';
 
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 interface ClientEditSheetProps {
   client: Client | null;
   onClose: () => void;
@@ -35,8 +40,9 @@ export function ClientEditSheet({ client, onClose }: ClientEditSheetProps) {
     if (client) {
       setName(client.name);
       setColor(client.color);
-      setStartDate(client.start_date ? new Date(client.start_date) : undefined);
-      setEndDate(client.end_date ? new Date(client.end_date) : undefined);
+      // Parse date strings as local dates to avoid timezone shift
+      setStartDate(client.start_date ? parseLocalDate(client.start_date) : undefined);
+      setEndDate(client.end_date ? parseLocalDate(client.end_date) : undefined);
       setContactEmail(client.contact_email || '');
       setNotes(client.notes || '');
     }
