@@ -3,8 +3,48 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.54.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// Columns that exist in old DB but not in new DB - must be stripped
+const STRIP_COLUMNS: Record<string, string[]> = {
+  user_roles: ['approved_at'],
+  tasks: ['group_id'],
+};
+
+// Enum mappings: old value -> new value
+const ENUM_FIXES: Record<string, Record<string, Record<string, string>>> = {
+  challenges: {
+    duration_type: {
+      'continuous': 'custom',
+    },
+  },
+};
+
+function cleanRow(table: string, row: Record<string, unknown>): Record<string, unknown> {
+  const cleaned = { ...row };
+
+  // Strip unknown columns
+  const stripCols = STRIP_COLUMNS[table];
+  if (stripCols) {
+    for (const col of stripCols) {
+      delete cleaned[col];
+    }
+  }
+
+  // Fix enum values
+  const enumFixes = ENUM_FIXES[table];
+  if (enumFixes) {
+    for (const [col, mapping] of Object.entries(enumFixes)) {
+      const val = cleaned[col] as string;
+      if (val && mapping[val]) {
+        cleaned[col] = mapping[val];
+      }
+    }
+  }
+
+  return cleaned;
+}
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -20,10 +60,10 @@ const handler = async (req: Request): Promise<Response> => {
     const data = await req.json();
     const results: Record<string, string> = {};
 
-    // Import order matters due to foreign keys
+    // Import order: parent tables first, then dependent tables
     const importOrder = [
       'profiles',
-      'groups', 
+      'groups',
       'group_members',
       'user_roles',
       'challenges',
@@ -35,15 +75,26 @@ const handler = async (req: Request): Promise<Response> => {
       'clients',
       'planning_projects',
       'milestones',
+      'projects',
       'tasks',
       'subtasks',
-      'projects',
       'tags',
       'task_tags',
       'recipes',
       'user_friends',
       'payments',
       'saved_views',
+      'journal_entries',
+      'ideas',
+      'idea_comments',
+      'idea_votes',
+      'ingredient_matches',
+      'recipe_favorites',
+      'shopping_list_items',
+      'task_preferences',
+      'task_audit_log',
+      'scheduled_tips',
+      'approval_tokens',
     ];
 
     for (const table of importOrder) {
@@ -53,20 +104,37 @@ const handler = async (req: Request): Promise<Response> => {
         continue;
       }
 
-      // For profiles, we need to handle the id mapping to new user
-      // Skip importing profiles for now as user IDs won't match
-      
       try {
-        const { error } = await supabaseClient
-          .from(table)
-          .upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+        // Clean each row
+        const cleanedRows = rows.map(row => cleanRow(table, row));
 
-        if (error) {
-          results[table] = `error: ${error.message}`;
-          console.error(`Error importing ${table}:`, error);
-        } else {
-          results[table] = `imported ${rows.length} rows`;
+        // Insert in batches of 50 to avoid payload limits
+        let imported = 0;
+        for (let i = 0; i < cleanedRows.length; i += 50) {
+          const batch = cleanedRows.slice(i, i + 50);
+          const { error } = await supabaseClient
+            .from(table)
+            .upsert(batch, { onConflict: 'id', ignoreDuplicates: true });
+
+          if (error) {
+            // If batch fails, try one by one
+            console.error(`Batch error for ${table}:`, error.message);
+            for (const row of batch) {
+              const { error: rowError } = await supabaseClient
+                .from(table)
+                .upsert(row, { onConflict: 'id', ignoreDuplicates: true });
+              if (!rowError) {
+                imported++;
+              } else {
+                console.error(`Row error for ${table}:`, rowError.message);
+              }
+            }
+          } else {
+            imported += batch.length;
+          }
         }
+
+        results[table] = `imported ${imported}/${cleanedRows.length} rows`;
       } catch (e) {
         results[table] = `error: ${e.message}`;
         console.error(`Error importing ${table}:`, e);
