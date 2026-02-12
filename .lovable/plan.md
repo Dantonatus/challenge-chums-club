@@ -1,25 +1,23 @@
 
 
-# Fix: Client-Projekt-Mismatch und fehlende GRANT-Berechtigungen
+# Fix: Zurueck zum externen Supabase-Projekt
 
-## Problem
+## Was passiert ist
 
-Die App verbindet sich ueber `client.ts` mit einem externen Supabase-Projekt (kehbzhcmalmqxygmhijp), waehrend Migrationen auf dem Lovable Cloud Projekt (ofajbauoqcyiieajirex) ausgefuehrt werden. Deshalb kamen die GRANT-Befehle nie bei der richtigen Datenbank an.
+Die `client.ts` wurde faelschlicherweise auf das Lovable Cloud Projekt umgestellt. Dadurch zeigt die App nicht mehr auf dein bestehendes Projekt mit deinen Daten.
 
 ## Loesung
 
-### Option A (empfohlen): client.ts auf Lovable Cloud umstellen
+### Schritt 1: client.ts zuruecksetzen
 
-Die Datei `src/integrations/supabase/client.ts` wird automatisch generiert und sollte auf das Cloud-Projekt zeigen. Da sie das nicht tut, muss sie aktualisiert werden:
+Die Datei `src/integrations/supabase/client.ts` wird zurueckgesetzt auf dein externes Projekt:
 
-- URL aendern auf: `https://ofajbauoqcyiieajirex.supabase.co`
-- Anon Key aendern auf den Cloud-Key
+- URL: `https://kehbzhcmalmqxygmhijp.supabase.co`
+- Anon Key: der Key deines externen Projekts
 
-Danach die GRANT-Migration erneut ausfuehren, diesmal auf der richtigen Datenbank.
+### Schritt 2: GRANTs manuell ausfuehren
 
-### Option B: Grants manuell auf dem externen Projekt ausfuehren
-
-Falls du das externe Supabase-Projekt weiterhin nutzen moechtest, muesstest du die GRANTs dort manuell im SQL-Editor ausfuehren:
+Da Migrationen nur auf dem Cloud-Projekt laufen, musst du die folgenden SQL-Befehle **manuell** in deinem Supabase-Dashboard ausfuehren (SQL Editor):
 
 ```sql
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.gantt_tasks TO anon, authenticated;
@@ -27,21 +25,21 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.planning_projects TO anon, authen
 NOTIFY pgrst, 'reload schema';
 ```
 
-## Empfehlung
+**So gehst du vor:**
+1. Oeffne dein Supabase-Dashboard unter https://supabase.com/dashboard
+2. Waehle dein Projekt (kehbzhcmalmqxygmhijp)
+3. Gehe zu "SQL Editor"
+4. Fuege die obigen Befehle ein und klicke "Run"
 
-Option A ist besser, da dann alle zukuenftigen Migrationen automatisch auf der richtigen Datenbank laufen. Dazu werde ich:
+### Schritt 3: Testen
 
-1. Die `client.ts` mit der korrekten Cloud-URL und dem Cloud Anon-Key aktualisieren
-2. Die GRANT-Migration erneut ausfuehren (diesmal wirksam)
-3. Testen ob die Tabellen erreichbar sind
+Nach beiden Schritten sollte die Gantt-Projektplanung funktionieren und alle bestehenden Daten erhalten bleiben.
 
 ## Technische Details
 
 | Aspekt | Detail |
 |--------|--------|
-| Aktuelles Projekt in client.ts | kehbzhcmalmqxygmhijp (extern) |
-| Lovable Cloud Projekt | ofajbauoqcyiieajirex |
-| Betroffene Datei | src/integrations/supabase/client.ts |
-| Migration | GRANT + NOTIFY pgrst auf Cloud DB |
-| Risiko | Daten im externen Projekt sind danach nicht mehr ueber die App erreichbar -- falls dort wichtige Daten liegen, muessen sie zuerst migriert werden |
+| Aenderung | client.ts zurueck auf externes Projekt |
+| Manueller Schritt | GRANTs im Supabase SQL Editor ausfuehren |
+| Risiko | Keins -- Daten bleiben vollstaendig erhalten |
 
