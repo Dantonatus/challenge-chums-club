@@ -40,7 +40,7 @@ export function useCreateSubtask() {
         .single();
 
       if (error) throw error;
-      return data as unknown as Subtask;
+      return data as Subtask;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
@@ -65,13 +65,13 @@ export function useUpdateSubtask() {
     }) => {
       const { data, error } = await supabase
         .from('subtasks')
-        .update({ is_completed: done } as any)
+        .update({ done })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as unknown as Subtask;
+      return data as Subtask;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });

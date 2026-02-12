@@ -81,11 +81,11 @@ export const MostPopularByDuration = ({ lang, filters }: MostPopularByDurationPr
       if (groupIds.length === 0) return [];
 
       // Execute the duration-based ranking query
-      const { data, error } = await supabase.rpc('get_popular_challenges_by_duration' as any, {
+      const { data, error } = await supabase.rpc('get_popular_challenges_by_duration', {
         p_start_date: startStr,
         p_end_date: endStr,
-        p_group_id: groupIds[0]
-      } as any);
+        p_group_ids: groupIds
+      });
 
       if (error) {
         console.error('Error fetching popular challenges by duration:', error);

@@ -98,7 +98,7 @@ export function useTodayTasks() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as unknown as Task[];
+      return (data || []) as Task[];
     },
   });
 }
@@ -127,7 +127,7 @@ export function useUpcomingTasks() {
       const overdue: Task[] = [];
       const upcoming: Task[] = [];
       
-      for (const task of (data || []) as unknown as Task[]) {
+      for (const task of (data || []) as Task[]) {
         if (task.due_date && task.due_date < today) {
           overdue.push(task);
         } else {
@@ -181,7 +181,7 @@ export function useCreateTask() {
         user_id: user.user.id,
       });
 
-      return data as unknown as Task;
+      return data as Task;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
@@ -225,7 +225,7 @@ export function useUpdateTask() {
         user_id: user.user.id,
       });
 
-      return data as unknown as Task;
+      return data as Task;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
@@ -311,23 +311,24 @@ export function useCompleteTask() {
       let nextTaskId: string | null = null;
       
       // If recurring, create next occurrence
-      if ((existingTask as any).recurring_frequency && (existingTask as any).recurring_frequency !== 'none') {
-        const nextDueDate = getNextDueDate(existingTask.due_date, (existingTask as any).recurring_frequency as RecurringFrequency);
+      if (existingTask.recurring_frequency && existingTask.recurring_frequency !== 'none') {
+        const nextDueDate = getNextDueDate(existingTask.due_date, existingTask.recurring_frequency as RecurringFrequency);
         
         const { data: nextTask, error: nextError } = await supabase
           .from('tasks')
           .insert({
             title: existingTask.title,
-            description: (existingTask as any).notes,
+            notes: existingTask.notes,
             priority: existingTask.priority,
             effort: existingTask.effort,
             project_id: existingTask.project_id,
-            recurrence: (existingTask as any).recurring_frequency,
+            group_id: existingTask.group_id,
+            recurring_frequency: existingTask.recurring_frequency,
             due_date: nextDueDate,
             due_time: existingTask.due_time,
             user_id: user.user.id,
             status: 'open',
-          } as any)
+          })
           .select()
           .single();
         
@@ -354,7 +355,7 @@ export function useCompleteTask() {
             payload_json: { 
               original_task_id: id,
               next_due_date: nextDueDate,
-              frequency: (existingTask as any).recurring_frequency 
+              frequency: existingTask.recurring_frequency 
             },
             user_id: user.user.id,
           });
@@ -371,10 +372,10 @@ export function useCompleteTask() {
       });
 
       return { 
-        task: data as unknown as Task, 
+        task: data as Task, 
         taskId: id, 
         nextTaskId,
-        isRecurring: (existingTask as any).recurring_frequency !== 'none' && (existingTask as any).recurring_frequency !== null
+        isRecurring: existingTask.recurring_frequency !== 'none' && existingTask.recurring_frequency !== null
       };
     },
     onSuccess: ({ task, taskId, nextTaskId, isRecurring }) => {
@@ -466,7 +467,7 @@ export function useRestoreTask() {
         user_id: user.user.id,
       });
 
-      return data as unknown as Task;
+      return data as Task;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
@@ -505,7 +506,7 @@ export function useArchiveTask() {
         user_id: user.user.id,
       });
 
-      return data as unknown as Task;
+      return data as Task;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
@@ -539,7 +540,7 @@ export function useMoveToSomeday() {
 
       if (error) throw error;
 
-      return data as unknown as Task;
+      return data as Task;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });

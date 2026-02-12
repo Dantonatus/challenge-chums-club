@@ -95,7 +95,7 @@ const GroupsPage = () => {
 
   const joinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data, error } = await supabase.rpc('join_group' as any, { p_invite_code: inviteCode.trim() });
+    const { data, error } = await supabase.rpc('join_group', { p_invite_code: inviteCode.trim() });
     if (error) return toast({ title: 'Join failed', description: error.message, variant: 'destructive' as any });
     setInviteCode('');
     toast({ title: 'Joined group' });
