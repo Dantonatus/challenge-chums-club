@@ -14,7 +14,229 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          color: string
+          contact_email: string | null
+          created_at: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          notes: string | null
+          start_date: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          contact_email?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          notes?: string | null
+          start_date?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string
+          contact_email?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          notes?: string | null
+          start_date?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gantt_tasks: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          end_date: string
+          id: string
+          is_completed: boolean
+          project_id: string
+          sort_order: number
+          start_date: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_date: string
+          id?: string
+          is_completed?: boolean
+          project_id: string
+          sort_order?: number
+          start_date: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_completed?: boolean
+          project_id?: string
+          sort_order?: number
+          start_date?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gantt_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      milestones: {
+        Row: {
+          attendees: string[] | null
+          client_id: string
+          completed_at: string | null
+          created_at: string | null
+          date: string
+          description: string | null
+          id: string
+          is_completed: boolean | null
+          location: string | null
+          milestone_type: string
+          priority: string | null
+          project_id: string | null
+          time: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attendees?: string[] | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          location?: string | null
+          milestone_type?: string
+          priority?: string | null
+          project_id?: string | null
+          time?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attendees?: string[] | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          location?: string | null
+          milestone_type?: string
+          priority?: string | null
+          project_id?: string | null
+          time?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestones_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_projects: {
+        Row: {
+          client_id: string
+          color: string | null
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          sort_order: number | null
+          start_date: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+          start_date: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+          start_date?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
