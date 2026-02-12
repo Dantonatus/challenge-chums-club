@@ -9,6 +9,7 @@ import { GanttTaskSheet } from './GanttTaskSheet';
 import { GanttProjectSheet } from './GanttProjectSheet';
 import { MilestoneSheet } from '@/components/planning/MilestoneSheet';
 import { GanttTask, PlanningProject, MilestoneWithClient } from '@/lib/planning/types';
+import { GanttPhaseDescriptions } from './GanttPhaseDescriptions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { exportGanttPDF } from '@/lib/planning/exportGanttPDF';
 
@@ -134,6 +135,10 @@ export function GanttPage() {
           onTaskClick={setEditTask}
           onMilestoneClick={setEditMilestone}
         />
+      )}
+
+      {selectedProject && !tasksLoading && tasks.length > 0 && (
+        <GanttPhaseDescriptions tasks={tasks} clientColor={selectedClient?.color || '#3B82F6'} />
       )}
 
       {tasksLoading && selectedProjectId && <Skeleton className="h-[300px] w-full" />}

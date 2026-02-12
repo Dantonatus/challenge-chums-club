@@ -16,7 +16,7 @@ interface GanttTaskRowProps {
   onMilestoneClick: (m: MilestoneWithClient) => void;
 }
 
-const ROW_HEIGHT = 44;
+const ROW_HEIGHT = 56;
 
 export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, milestones, onMilestoneClick }: GanttTaskRowProps) {
   const taskStart = new Date(task.start_date);
@@ -32,7 +32,7 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
     >
       {/* Label */}
       <div
-        className="shrink-0 px-3 text-xs font-medium truncate border-r border-border flex items-center gap-2"
+        className="shrink-0 px-3 text-xs font-medium border-r border-border flex items-center gap-2"
         style={{ width: labelWidth }}
       >
         {task.is_completed && (
@@ -40,7 +40,7 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
             <Check className="w-2.5 h-2.5 text-primary-foreground" />
           </span>
         )}
-        <span className={task.is_completed ? 'line-through text-muted-foreground' : ''}>
+        <span className={`line-clamp-2 ${task.is_completed ? 'line-through text-muted-foreground' : ''}`}>
           {task.title}
         </span>
       </div>
