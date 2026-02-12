@@ -18,7 +18,7 @@ export function useShoppingList() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as ShoppingListItem[];
+      return (data || []) as unknown as ShoppingListItem[];
     },
   });
 }
@@ -37,12 +37,12 @@ export function useAddToShoppingList() {
         .insert({
           ...item,
           user_id: user.user.id,
-        })
+        } as any)
         .select()
         .single();
 
       if (error) throw error;
-      return data as ShoppingListItem;
+      return data as unknown as ShoppingListItem;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SHOPPING_LIST_KEY });
@@ -73,7 +73,7 @@ export function useAddIngredientsToShoppingList() {
 
       const { error } = await supabase
         .from('shopping_list_items')
-        .insert(items);
+        .insert(items as any);
 
       if (error) throw error;
     },

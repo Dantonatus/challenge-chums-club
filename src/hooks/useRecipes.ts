@@ -40,7 +40,7 @@ export function useRecipes(filters?: RecipeFilters) {
       const { data, error } = await query;
       if (error) throw error;
 
-      let recipes = (data || []) as Recipe[];
+      let recipes = (data || []) as unknown as Recipe[];
 
       // Client-side filtering for complex queries
       if (filters?.search) {
@@ -83,7 +83,7 @@ export function useRecipe(id: string | undefined) {
         .single();
 
       if (error) throw error;
-      return data as Recipe;
+      return data as unknown as Recipe;
     },
   });
 }
@@ -111,7 +111,7 @@ export function useFavoriteRecipes() {
         .in('id', recipeIds);
 
       if (error) throw error;
-      return (recipes || []).map(r => ({ ...r, is_favorite: true })) as Recipe[];
+      return (recipes || []).map(r => ({ ...r, is_favorite: true })) as unknown as Recipe[];
     },
   });
 }
@@ -135,9 +135,9 @@ export function useCreateRecipe() {
           cook_time: recipe.cook_time,
           cuisine: recipe.cuisine,
           difficulty: recipe.difficulty,
-          tags_json: recipe.tags,
-          steps_json: recipe.steps,
-          ingredients_json: recipe.ingredients,
+          tags_json: recipe.tags as any,
+          steps_json: recipe.steps as any,
+          ingredients_json: recipe.ingredients as any,
           calories_total: recipe.calories_total,
           calories_per_serving: Math.round(recipe.calories_total / recipe.servings),
           macros_json: recipe.macros,
@@ -150,7 +150,7 @@ export function useCreateRecipe() {
         .single();
 
       if (error) throw error;
-      return data as Recipe;
+      return data as unknown as Recipe;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RECIPES_KEY });
@@ -170,13 +170,13 @@ export function useUpdateRecipe() {
     mutationFn: async ({ id, ...updates }: Partial<Recipe> & { id: string }) => {
       const { data, error } = await supabase
         .from('recipes')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as Recipe;
+      return data as unknown as Recipe;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RECIPES_KEY });
