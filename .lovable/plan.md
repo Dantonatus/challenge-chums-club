@@ -1,70 +1,41 @@
 
 
-# Gantt PDF-Export: Screen-getreues Design + Phasenbeschreibungen
+# PDF-Export: Phasenbeschreibungen auf eine Seite + einheitliche Schrift
 
-## Ueberblick
+## Probleme im aktuellen Export
 
-Der bisherige PDF-Export zeichnet ein vereinfachtes Gantt-Diagramm mit jsPDF-Primitiven (Rechtecke, Text). Das Ergebnis weicht stark vom On-Screen-Design ab. Der neue Export soll:
+1. **Phasenbeschreibungen verteilen sich auf 2 Seiten** (Seite 2 und 3) statt auf eine einzige Seite zu passen
+2. **Unterschiedliche Schriften** werden angezeigt -- vermutlich durch Unicode-Zeichen wie das Bullet "bullet" das jsPDF nicht korrekt mit Helvetica rendert
 
-1. **Denselben Zeitraum** zeigen wie auf dem Bildschirm (dynamisch berechnet, inkl. Buffer)
-2. **Abgerundetes Design** mit modernem Look (rounded corners, Farb-Balken mit Opacity, Schatten-Effekte)
-3. **Seite 2: Phasenbeschreibungen** mit Farbbalken-Indikator, Titel, Datum und HTML-/Text-Beschreibung
-4. **Druckqualitaet** mit selektierbarem Text (echte Vektorgrafik, kein Screenshot)
+## Loesung
 
-## Technischer Ansatz
+### Datei: `src/lib/planning/exportGanttPDF.ts`
 
-### Datei: `src/lib/planning/exportGanttPDF.ts` (komplett ueberarbeitet)
+**1. Kompakteres Layout fuer Phasenbeschreibungen:**
+- Reduzierte Abstaende zwischen den Karten: von 3mm auf 1.5mm
+- Weniger internes Padding: `estH`-Basis von 14 auf 11 reduzieren
+- Zeilenhoehe von 3.5mm auf 3.0mm reduzieren
+- Kleinere Schriftgroessen: `descTitle` von 8.5 auf 7.5, `desc` von 7 auf 6
+- Titel-Abstand zum Datum reduzieren
+- Header-Gap auf der Beschreibungsseite reduzieren
 
-**Zeitraum-Berechnung (wie GanttChart.tsx):**
-- Start = `project.start_date`
-- End = Maximum aus `project.end_date`, dem spaetesten Task-Enddatum, + 14 Tage Buffer
-- Dieselbe Logik wie in der `GanttChart`-Komponente
+**2. Einheitliche Schrift (Helvetica):**
+- Bullet-Zeichen von Unicode "bullet" auf ASCII-Bindestrich "-" aendern, da jsPDF bei Helvetica keine Unicode-Bullets korrekt darstellt
+- Sicherstellen, dass ueberall konsistent `helvetica` als Font gesetzt wird
+- Alle `setFont`-Aufrufe pruefen und vereinheitlichen
 
-**Seite 1 - Gantt-Diagramm:**
-- Titel-Header: Kundenname + Projektname (fett, gross)
-- Monats-Header mit abgerundeten Zellen und sanftem Hintergrund
-- KW-Header-Zeile darunter
-- Task-Zeilen mit:
-  - Label-Spalte (links, mit Completed-Checkmark wenn erledigt)
-  - Farbiger Balken mit `roundedRect` und leichter Opazitaet (wie on-screen: 80% aktiv, 50% completed)
-  - Meilenstein-Diamanten auf dem Balken
-- Heute-Linie als vertikale Markierung
-- Footer mit Erstellungsdatum und Projekt-Info
-- Seitenumbruch bei vielen Tasks
+**3. Gantt-Diagramm minimal groesser:**
+- `ROW_H.task` von 9 auf 10mm erhoehen fuer bessere Lesbarkeit
+- `LABEL_W` von 52 auf 54mm fuer laengere Phasen-Namen
 
-**Seite 2+ - Phasenbeschreibungen:**
-- Automatischer Seitenumbruch nach dem Gantt-Diagramm
-- Ueberschrift "Phasenbeschreibungen"
-- Fuer jede Phase mit Beschreibung:
-  - Farbiger vertikaler Streifen links (wie on-screen)
-  - Titel + Datumszeitraum
-  - Beschreibungstext (HTML wird zu Plain-Text konvertiert fuer PDF)
-  - Aufzaehlungspunkte werden als Bullet-Liste dargestellt
-- Automatische Seitenumbrueche bei langen Beschreibungen
+## Zusammenfassung
 
-**Design-Details:**
-- Abgerundete Ecken ueberall (roundedRect statt rect)
-- Sanfte Farben fuer Header (wie bg-muted/30)
-- Balken mit korrekter Opazitaet
-- Grid-Linien als dezente vertikale Striche
-- Schriftgroessen angepasst fuer bessere Lesbarkeit
-
-### Datei: `src/components/planning/gantt/GanttPage.tsx` (minimale Aenderung)
-
-- Die `handleExportPDF`-Funktion uebergibt zusaetzlich die `tasks`-Liste (fuer die Zeitraum-Berechnung), da der Export jetzt denselben dynamischen Zeitraum nutzt wie die UI
-
-## HTML-zu-Text-Konvertierung
-
-Da jsPDF keinen HTML-Renderer hat, werden HTML-Beschreibungen fuer den PDF-Export konvertiert:
-- HTML-Tags werden entfernt
-- `<li>`-Elemente werden zu "- " Bullet-Punkten
-- `<br>` und Block-Elemente erzeugen Zeilenumbrueche
-- Ueberschriften (`<h1>`-`<h3>`) werden als fette Zeilen dargestellt
-
-## Zusammenfassung der Aenderungen
-
-| Datei | Aenderung |
+| Aenderung | Detail |
 |---|---|
-| `src/lib/planning/exportGanttPDF.ts` | Komplett ueberarbeitet: Screen-getreues Design, Phasenbeschreibungen auf Seite 2 |
-| `src/components/planning/gantt/GanttPage.tsx` | Keine Aenderung noetig (tasks werden bereits uebergeben) |
+| Zeilenhoehe Beschreibungen | 3.5mm nach 3.0mm |
+| Kartenabstand | 3mm nach 1.5mm |
+| Schriftgroesse Beschreibung | 7pt nach 6pt, Titel 8.5pt nach 7.5pt |
+| Bullet-Zeichen | Unicode bullet nach ASCII "-" |
+| Gantt Task-Zeilen | 9mm nach 10mm |
+| Label-Spalte | 52mm nach 54mm |
 
