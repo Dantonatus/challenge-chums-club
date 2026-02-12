@@ -29,7 +29,7 @@ function fadedColor(color: { r: number; g: number; b: number }, alpha: number): 
   };
 }
 
-function htmlToPlainLines(html: string): { text: string; bold: boolean; bullet: boolean }[] {
+function htmlToPlainLines(html: string): { text: string; bold: boolean; bullet: boolean; indent?: number }[] {
   if (!/<[a-z][\s\S]*>/i.test(html)) {
     // Plain text – split by newlines
     return html.split('\n').filter(l => l.trim()).map(l => {
@@ -38,26 +38,64 @@ function htmlToPlainLines(html: string): { text: string; bold: boolean; bullet: 
       return { text: isBullet ? trimmed.replace(/^[-\u2013\u2022*]\s+/, '') : trimmed, bold: false, bullet: isBullet };
     });
   }
-  const lines: { text: string; bold: boolean; bullet: boolean }[] = [];
-  // Convert <li> to bullets
-  let processed = html.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_m, content) => {
-    lines.push({ text: content.replace(/<[^>]+>/g, '').trim(), bold: false, bullet: true });
-    return '';
-  });
-  // Convert headings
-  processed = processed.replace(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi, (_m, content) => {
-    lines.push({ text: content.replace(/<[^>]+>/g, '').trim(), bold: true, bullet: false });
-    return '';
-  });
-  // Convert <br> and block elements to newlines
-  processed = processed.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div)>/gi, '\n');
-  // Strip remaining tags
-  processed = processed.replace(/<[^>]+>/g, '');
-  // Split remaining text
-  for (const line of processed.split('\n')) {
-    const t = line.trim();
-    if (t) lines.push({ text: t, bold: false, bullet: false });
+
+  // Order-preserving HTML parser: walk through the HTML sequentially
+  const lines: { text: string; bold: boolean; bullet: boolean; indent?: number }[] = [];
+
+  // First normalize: replace <br> with newlines, close block elements with newlines
+  let normalized = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div)>/gi, '\n');
+
+  // Process tokens sequentially using a simple state machine
+  const tokenRegex = /<(\/?)(\w+)[^>]*>|([^<]+)/gi;
+  let match: RegExpExecArray | null;
+  let inBold = false;
+  let inHeading = false;
+  let listDepth = 0;
+  let inLi = false;
+  let currentText = '';
+
+  const flushText = () => {
+    const text = currentText.trim();
+    if (text) {
+      // Split by newlines to handle inline breaks
+      for (const segment of text.split('\n')) {
+        const t = segment.trim();
+        if (t) {
+          lines.push({ text: t, bold: inBold || inHeading, bullet: inLi, indent: inLi ? Math.max(0, listDepth - 1) : 0 });
+        }
+      }
+    }
+    currentText = '';
+  };
+
+  while ((match = tokenRegex.exec(normalized)) !== null) {
+    const [, isClose, tagName, textContent] = match;
+
+    if (textContent) {
+      currentText += textContent;
+      continue;
+    }
+
+    const tag = (tagName || '').toLowerCase();
+
+    if (!isClose) {
+      // Opening tag
+      if (tag === 'li') { flushText(); inLi = true; }
+      else if (tag === 'ul' || tag === 'ol') { flushText(); listDepth++; }
+      else if (/^h[1-3]$/.test(tag)) { flushText(); inHeading = true; }
+      else if (tag === 'b' || tag === 'strong') { flushText(); inBold = true; }
+    } else {
+      // Closing tag
+      if (tag === 'li') { flushText(); inLi = false; }
+      else if (tag === 'ul' || tag === 'ol') { flushText(); listDepth = Math.max(0, listDepth - 1); }
+      else if (/^h[1-3]$/.test(tag)) { flushText(); inHeading = false; }
+      else if (tag === 'b' || tag === 'strong') { flushText(); inBold = false; }
+    }
   }
+  flushText();
+
   return lines;
 }
 
@@ -271,7 +309,9 @@ export function exportGanttPDF(
       const textW = contentW - 10;
       let estH = 9; // title + date + padding
       for (const line of lines) {
-        const wrapped = doc.splitTextToSize(line.bullet ? `  - ${line.text}` : line.text, textW);
+        const indent = (line.indent || 0) * 4;
+        const prefix = line.bullet ? '- ' : '';
+        const wrapped = doc.splitTextToSize(`${prefix}${line.text}`, textW - indent);
         estH += wrapped.length * 2.6;
       }
       estH = Math.max(estH, 14);
@@ -313,10 +353,11 @@ export function exportGanttPDF(
       for (const line of lines) {
         doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
         doc.setTextColor(60, 60, 60);
-        const prefix = line.bullet ? '  - ' : '';
-        const wrapped = doc.splitTextToSize(`${prefix}${line.text}`, textW);
+        const indent = (line.indent || 0) * 4;
+        const prefix = line.bullet ? '- ' : '';
+        const wrapped = doc.splitTextToSize(`${prefix}${line.text}`, textW - indent);
         for (const wl of wrapped) {
-          doc.text(wl, M + 6, ty);
+          doc.text(wl, M + 6 + indent, ty);
           ty += 2.6;
         }
       }
