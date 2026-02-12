@@ -7,9 +7,9 @@ import { GanttTask, PlanningProject, MilestoneWithClient, MILESTONE_TYPE_CONFIG,
 // ── Layout constants (mm, A4 landscape) ──
 const PAGE = { w: 297, h: 210 };
 const M = 10; // margin
-const LABEL_W = 52;
-const FONT = { title: 13, subtitle: 8, month: 7, kw: 6, cell: 6.5, footer: 5.5, desc: 7, descTitle: 8.5 };
-const ROW_H = { month: 8, kw: 6.5, task: 9 };
+const LABEL_W = 54;
+const FONT = { title: 13, subtitle: 8, month: 7, kw: 6, cell: 6.5, footer: 5.5, desc: 6, descTitle: 7.5 };
+const ROW_H = { month: 8, kw: 6.5, task: 10 };
 const HEADER_GAP = 14;
 const CORNER = 1.8; // rounded-rect radius
 
@@ -34,8 +34,8 @@ function htmlToPlainLines(html: string): { text: string; bold: boolean; bullet: 
     // Plain text – split by newlines
     return html.split('\n').filter(l => l.trim()).map(l => {
       const trimmed = l.trim();
-      const isBullet = /^[-–•*]\s/.test(trimmed);
-      return { text: isBullet ? trimmed.replace(/^[-–•*]\s+/, '') : trimmed, bold: false, bullet: isBullet };
+      const isBullet = /^[-\u2013\u2022*]\s/.test(trimmed);
+      return { text: isBullet ? trimmed.replace(/^[-\u2013\u2022*]\s+/, '') : trimmed, bold: false, bullet: isBullet };
     });
   }
   const lines: { text: string; bold: boolean; bullet: boolean }[] = [];
@@ -255,7 +255,7 @@ export function exportGanttPDF(
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(120, 120, 120);
     doc.text(`${client.name} – ${project.name}`, M, y + 10);
-    y += HEADER_GAP + 2;
+    y += HEADER_GAP;
 
     for (const task of withDesc) {
       const color = hex(task.color || client.color);
@@ -264,10 +264,10 @@ export function exportGanttPDF(
 
       // Estimate height
       const textW = contentW - 10;
-      let estH = 14; // title + date + padding
+      let estH = 11; // title + date + padding
       for (const line of lines) {
-        const wrapped = doc.splitTextToSize(line.bullet ? `  • ${line.text}` : line.text, textW);
-        estH += wrapped.length * 3.5;
+        const wrapped = doc.splitTextToSize(line.bullet ? `  - ${line.text}` : line.text, textW);
+        estH += wrapped.length * 3.0;
       }
       estH = Math.max(estH, 18);
 
@@ -290,7 +290,7 @@ export function exportGanttPDF(
       doc.roundedRect(M, y, 2.5, estH, CORNER, CORNER, 'F');
 
       // Title
-      let ty = y + 5;
+      let ty = y + 4.5;
       doc.setFontSize(FONT.descTitle);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 30, 30);
@@ -300,23 +300,23 @@ export function exportGanttPDF(
       doc.setFontSize(FONT.footer);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(140, 140, 140);
-      doc.text(dateStr, M + 6, ty + 4);
-      ty += 9;
+      doc.text(dateStr, M + 6, ty + 3.5);
+      ty += 7;
 
       // Description lines
       doc.setFontSize(FONT.desc);
       for (const line of lines) {
         doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
         doc.setTextColor(60, 60, 60);
-        const prefix = line.bullet ? '  • ' : '';
+        const prefix = line.bullet ? '  - ' : '';
         const wrapped = doc.splitTextToSize(`${prefix}${line.text}`, textW);
         for (const wl of wrapped) {
           doc.text(wl, M + 6, ty);
-          ty += 3.5;
+          ty += 3.0;
         }
       }
 
-      y += estH + 3;
+      y += estH + 1.5;
     }
 
     addFooter(doc, client, project);
