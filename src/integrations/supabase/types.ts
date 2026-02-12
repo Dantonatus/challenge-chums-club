@@ -1079,30 +1079,42 @@ export type Database = {
       }
       shopping_list_items: {
         Row: {
+          amount: string | null
+          category: string | null
+          checked: boolean | null
           created_at: string
           id: string
           ingredient_text: string
           is_checked: boolean
+          item_name: string | null
           quantity: number | null
           recipe_id: string | null
           unit: string | null
           user_id: string
         }
         Insert: {
+          amount?: string | null
+          category?: string | null
+          checked?: boolean | null
           created_at?: string
           id?: string
           ingredient_text: string
           is_checked?: boolean
+          item_name?: string | null
           quantity?: number | null
           recipe_id?: string | null
           unit?: string | null
           user_id: string
         }
         Update: {
+          amount?: string | null
+          category?: string | null
+          checked?: boolean | null
           created_at?: string
           id?: string
           ingredient_text?: string
           is_checked?: boolean
+          item_name?: string | null
           quantity?: number | null
           recipe_id?: string | null
           unit?: string | null
@@ -1176,6 +1188,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      task_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_audit_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_preferences: {
         Row: {
@@ -1314,6 +1364,30 @@ export type Database = {
           },
         ]
       }
+      user_friends: {
+        Row: {
+          created_at: string
+          friend_user_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_user_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_user_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1340,7 +1414,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_group_invite_code: { Args: { p_group_id: string }; Returns: string }
+      get_popular_challenges_by_duration: {
+        Args: { p_end_date: string; p_group_id: string; p_start_date: string }
+        Returns: {
+          challenge_id: string
+          duration_days: number
+          participant_count: number
+          title: string
+        }[]
+      }
+      get_server_time: { Args: never; Returns: string }
     }
     Enums: {
       challenge_duration_type: "days" | "weeks" | "months" | "custom"
