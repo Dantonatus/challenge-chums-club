@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { RichTextEditor } from './RichTextEditor';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -86,7 +86,7 @@ export function GanttTaskSheet({ task, projectId, onClose, isNew }: GanttTaskShe
   return (
     <>
       <Sheet open={open} onOpenChange={() => onClose()}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
+        <SheetContent className="sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{isNew ? 'Neue Aufgabe' : 'Aufgabe bearbeiten'}</SheetTitle>
           </SheetHeader>
@@ -125,7 +125,7 @@ export function GanttTaskSheet({ task, projectId, onClose, isNew }: GanttTaskShe
 
             <div className="space-y-2">
               <Label>Beschreibung</Label>
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Notizen..." rows={3} />
+              <RichTextEditor value={description} onChange={setDescription} placeholder="Notizen, Beschreibung, Aufgaben..." />
             </div>
           </div>
 

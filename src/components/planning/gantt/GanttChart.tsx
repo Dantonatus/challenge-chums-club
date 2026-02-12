@@ -16,12 +16,13 @@ interface GanttChartProps {
   onTaskClick: (task: GanttTask) => void;
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
   onTaskReorder?: (reordered: { id: string; sort_order: number }[]) => void;
+  onTaskDragEnd?: (taskId: string, newStart: string, newEnd: string) => void;
 }
 
 const LABEL_COL_WIDTH = 280;
 const MIN_WEEK_WIDTH = 60;
 
-export function GanttChart({ project, tasks, milestones, clientColor, onTaskClick, onMilestoneClick, onTaskReorder }: GanttChartProps) {
+export function GanttChart({ project, tasks, milestones, clientColor, onTaskClick, onMilestoneClick, onTaskReorder, onTaskDragEnd }: GanttChartProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const weeks = useMemo(() => {
@@ -141,6 +142,7 @@ export function GanttChart({ project, tasks, milestones, clientColor, onTaskClic
                         return mDate >= tStart && mDate <= tEnd;
                       })}
                       onMilestoneClick={onMilestoneClick}
+                      onTaskDragEnd={onTaskDragEnd}
                     />
                   ))}
                 </SortableContext>
