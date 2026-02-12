@@ -1,41 +1,45 @@
 
 
-# PDF-Export: Phasenbeschreibungen auf eine Seite + einheitliche Schrift
+# PDF-Export: Phase 4 vollstaendig anzeigen + Beschreibungen auf eine Seite
 
-## Probleme im aktuellen Export
+## Probleme
 
-1. **Phasenbeschreibungen verteilen sich auf 2 Seiten** (Seite 2 und 3) statt auf eine einzige Seite zu passen
-2. **Unterschiedliche Schriften** werden angezeigt -- vermutlich durch Unicode-Zeichen wie das Bullet "bullet" das jsPDF nicht korrekt mit Helvetica rendert
+1. **Phase 4 abgeschnitten im Gantt**: "Phase 4: Gemeinsamer Review &" - der Rest des Titels fehlt, weil nur `labelLines[0]` gerendert wird (Zeile 187). Bei langen Titeln wird die zweite Zeile ignoriert.
+2. **Beschreibungen auf 3 Seiten verteilt** statt auf eine Seite zu passen (Phase 5 ist allein auf Seite 3).
+3. **Formatierung weicht ab**: Die On-Screen-Ansicht zeigt HTML-Beschreibungen mit korrekter Formatierung (Aufzaehlungen, Absaetze), der PDF-Export hat teilweise andere Darstellung.
 
 ## Loesung
 
 ### Datei: `src/lib/planning/exportGanttPDF.ts`
 
-**1. Kompakteres Layout fuer Phasenbeschreibungen:**
-- Reduzierte Abstaende zwischen den Karten: von 3mm auf 1.5mm
-- Weniger internes Padding: `estH`-Basis von 14 auf 11 reduzieren
-- Zeilenhoehe von 3.5mm auf 3.0mm reduzieren
-- Kleinere Schriftgroessen: `descTitle` von 8.5 auf 7.5, `desc` von 7 auf 6
-- Titel-Abstand zum Datum reduzieren
-- Header-Gap auf der Beschreibungsseite reduzieren
+**1. Mehrzeilige Labels im Gantt-Chart:**
+- Statt nur `labelLines[0]` zu rendern, werden bis zu 2 Zeilen dargestellt
+- Die Task-Zeilenhoehe (`ROW_H.task`) bleibt bei 10mm, aber der Text wird vertikal zentriert fuer 1 oder 2 Zeilen
+- Schriftgroesse fuer Labels leicht reduzieren (6.5 -> 6pt) damit mehr Text passt
+- Alternativ: `LABEL_W` von 54 auf 58mm erhoehen damit laengere Titel in eine Zeile passen
 
-**2. Einheitliche Schrift (Helvetica):**
-- Bullet-Zeichen von Unicode "bullet" auf ASCII-Bindestrich "-" aendern, da jsPDF bei Helvetica keine Unicode-Bullets korrekt darstellt
-- Sicherstellen, dass ueberall konsistent `helvetica` als Font gesetzt wird
-- Alle `setFont`-Aufrufe pruefen und vereinheitlichen
+**2. Beschreibungen kompakter - alles auf eine Seite:**
+- `estH` Basis von 11 auf 9 reduzieren (weniger Padding oben/unten)
+- Zeilenhoehe von 3.0mm auf 2.6mm reduzieren
+- Kartenabstand von 1.5mm auf 1.0mm reduzieren
+- `minHeight` von 18mm auf 14mm reduzieren
+- Schriftgroesse `desc` bei 6pt belassen, aber `descTitle` von 7.5 auf 7pt
+- Titel und Datum naeh er zusammen (ty-Offset anpassen)
 
-**3. Gantt-Diagramm minimal groesser:**
-- `ROW_H.task` von 9 auf 10mm erhoehen fuer bessere Lesbarkeit
-- `LABEL_W` von 52 auf 54mm fuer laengere Phasen-Namen
+**3. Formatierung naeher an On-Screen-Darstellung:**
+- Sicherstellen, dass alle `setFont`-Aufrufe konsistent `helvetica` verwenden
+- Eingerueckte Unter-Bullets (z.B. "- - Service-Level...") als eingerueckte Zeilen darstellen statt mit doppeltem Strich
+- HTML-Parser verbessern: verschachtelte Listen korrekt erkennen
 
 ## Zusammenfassung
 
 | Aenderung | Detail |
 |---|---|
-| Zeilenhoehe Beschreibungen | 3.5mm nach 3.0mm |
-| Kartenabstand | 3mm nach 1.5mm |
-| Schriftgroesse Beschreibung | 7pt nach 6pt, Titel 8.5pt nach 7.5pt |
-| Bullet-Zeichen | Unicode bullet nach ASCII "-" |
-| Gantt Task-Zeilen | 9mm nach 10mm |
-| Label-Spalte | 52mm nach 54mm |
+| Label im Gantt | Bis zu 2 Zeilen anzeigen statt nur eine, LABEL_W auf 58mm |
+| Beschreibung estH | 11 -> 9mm Basis |
+| Zeilenhoehe Beschreibung | 3.0 -> 2.6mm |
+| Kartenabstand | 1.5 -> 1.0mm |
+| Min-Hoehe Karte | 18 -> 14mm |
+| descTitle Font | 7.5 -> 7pt |
+| Verschachtelte Bullets | Korrekte Einrueckung |
 
