@@ -1,45 +1,43 @@
 
 
-# PDF-Export: Phase 4 vollstaendig anzeigen + Beschreibungen auf eine Seite
+# PDF-Export: HTML-Entities korrekt dekodieren
 
-## Probleme
+## Problem
 
-1. **Phase 4 abgeschnitten im Gantt**: "Phase 4: Gemeinsamer Review &" - der Rest des Titels fehlt, weil nur `labelLines[0]` gerendert wird (Zeile 187). Bei langen Titeln wird die zweite Zeile ignoriert.
-2. **Beschreibungen auf 3 Seiten verteilt** statt auf eine Seite zu passen (Phase 5 ist allein auf Seite 3).
-3. **Formatierung weicht ab**: Die On-Screen-Ansicht zeigt HTML-Beschreibungen mit korrekter Formatierung (Aufzaehlungen, Absaetze), der PDF-Export hat teilweise andere Darstellung.
+Der HTML-Parser in `htmlToPlainLines` gibt HTML-Entities wie `&amp;`, `&nbsp;`, `&lt;`, `&gt;` als Rohtext an jsPDF weiter, statt sie in die entsprechenden Zeichen umzuwandeln. Dadurch steht im PDF z.B. `&amp;` statt `&` und `&nbsp;` statt einem Leerzeichen.
 
 ## Loesung
 
 ### Datei: `src/lib/planning/exportGanttPDF.ts`
 
-**1. Mehrzeilige Labels im Gantt-Chart:**
-- Statt nur `labelLines[0]` zu rendern, werden bis zu 2 Zeilen dargestellt
-- Die Task-Zeilenhoehe (`ROW_H.task`) bleibt bei 10mm, aber der Text wird vertikal zentriert fuer 1 oder 2 Zeilen
-- Schriftgroesse fuer Labels leicht reduzieren (6.5 -> 6pt) damit mehr Text passt
-- Alternativ: `LABEL_W` von 54 auf 58mm erhoehen damit laengere Titel in eine Zeile passen
+Eine `decodeEntities`-Hilfsfunktion hinzufuegen, die gaengige HTML-Entities ersetzt:
 
-**2. Beschreibungen kompakter - alles auf eine Seite:**
-- `estH` Basis von 11 auf 9 reduzieren (weniger Padding oben/unten)
-- Zeilenhoehe von 3.0mm auf 2.6mm reduzieren
-- Kartenabstand von 1.5mm auf 1.0mm reduzieren
-- `minHeight` von 18mm auf 14mm reduzieren
-- Schriftgroesse `desc` bei 6pt belassen, aber `descTitle` von 7.5 auf 7pt
-- Titel und Datum naeh er zusammen (ty-Offset anpassen)
+- `&amp;` wird zu `&`
+- `&nbsp;` wird zu ` ` (normales Leerzeichen)
+- `&lt;` wird zu `<`
+- `&gt;` wird zu `>`
+- `&quot;` wird zu `"`
+- `&#39;` / `&apos;` wird zu `'`
+- Numerische Entities wie `&#123;` werden ebenfalls dekodiert
 
-**3. Formatierung naeher an On-Screen-Darstellung:**
-- Sicherstellen, dass alle `setFont`-Aufrufe konsistent `helvetica` verwenden
-- Eingerueckte Unter-Bullets (z.B. "- - Service-Level...") als eingerueckte Zeilen darstellen statt mit doppeltem Strich
-- HTML-Parser verbessern: verschachtelte Listen korrekt erkennen
+Diese Funktion wird an zwei Stellen angewendet:
 
-## Zusammenfassung
+1. In `flushText()` -- bevor der Text in die `lines`-Liste gepusht wird, wird `decodeEntities` auf den Text angewendet
+2. Im Plain-Text-Pfad (Zeile 35-39) -- ebenfalls Entity-Dekodierung auf jede Zeile anwenden
 
-| Aenderung | Detail |
-|---|---|
-| Label im Gantt | Bis zu 2 Zeilen anzeigen statt nur eine, LABEL_W auf 58mm |
-| Beschreibung estH | 11 -> 9mm Basis |
-| Zeilenhoehe Beschreibung | 3.0 -> 2.6mm |
-| Kartenabstand | 1.5 -> 1.0mm |
-| Min-Hoehe Karte | 18 -> 14mm |
-| descTitle Font | 7.5 -> 7pt |
-| Verschachtelte Bullets | Korrekte Einrueckung |
+Dadurch wird der PDF-Text identisch zur On-Screen-Darstellung gerendert.
+
+## Technische Details
+
+```text
+Neue Hilfsfunktion:
+  decodeEntities(text: string): string
+    - Ersetzt benannte Entities (&amp; &nbsp; &lt; &gt; &quot; &apos;)
+    - Ersetzt numerische Entities (&#60; &#x3C;)
+    - Entfernt doppelte Leerzeichen die durch &nbsp; entstehen
+
+Aenderungen in htmlToPlainLines():
+  - flushText(): line 66 -> decodeEntities(t) anwenden
+  - Plain-text Pfad: line 38 -> decodeEntities(trimmed) anwenden
+```
 
