@@ -14,15 +14,22 @@ interface GanttChartProps {
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
 }
 
-const LABEL_COL_WIDTH = 220;
+const LABEL_COL_WIDTH = 280;
 const MIN_WEEK_WIDTH = 60;
 
 export function GanttChart({ project, tasks, milestones, clientColor, onTaskClick, onMilestoneClick }: GanttChartProps) {
   const weeks = useMemo(() => {
     const start = new Date(project.start_date);
-    const end = project.end_date ? new Date(project.end_date) : new Date(start.getTime() + 90 * 24 * 60 * 60 * 1000);
+    let end = project.end_date ? new Date(project.end_date) : new Date(start.getTime() + 90 * 24 * 60 * 60 * 1000);
+    // Extend to latest task end date
+    for (const t of tasks) {
+      const tEnd = new Date(t.end_date);
+      if (tEnd > end) end = tEnd;
+    }
+    // Add 2 weeks buffer
+    end = new Date(end.getTime() + 14 * 24 * 60 * 60 * 1000);
     return buildWeekColumns(start, end);
-  }, [project.start_date, project.end_date]);
+  }, [project.start_date, project.end_date, tasks]);
 
   const monthGroups = useMemo(() => groupWeeksByMonth(weeks), [weeks]);
   const todayPos = useMemo(() => todayPosition(weeks), [weeks]);
