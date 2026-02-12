@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.4"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -227,6 +227,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      gantt_tasks: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          end_date: string
+          id: string
+          is_completed: boolean
+          project_id: string
+          sort_order: number
+          start_date: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_date: string
+          id?: string
+          is_completed?: boolean
+          project_id: string
+          sort_order?: number
+          start_date: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_completed?: boolean
+          project_id?: string
+          sort_order?: number
+          start_date?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gantt_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "planning_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       group_members: {
         Row: {
@@ -496,7 +549,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_kpi_definitions_challenge"
+            foreignKeyName: "kpi_definitions_challenge_id_fkey"
             columns: ["challenge_id"]
             isOneToOne: false
             referencedRelation: "challenges"
@@ -537,7 +590,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_kpi_measurements_definition"
+            foreignKeyName: "kpi_measurements_kpi_definition_id_fkey"
             columns: ["kpi_definition_id"]
             isOneToOne: false
             referencedRelation: "kpi_definitions"
@@ -1000,71 +1053,69 @@ export type Database = {
       scheduled_tips: {
         Row: {
           created_at: string
-          group_id: string
+          dismissed: boolean
           id: string
-          scheduled_date: string
-          status: string
+          show_after: string | null
           tip_key: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          group_id: string
+          dismissed?: boolean
           id?: string
-          scheduled_date: string
-          status?: string
+          show_after?: string | null
           tip_key: string
           user_id: string
         }
         Update: {
           created_at?: string
-          group_id?: string
+          dismissed?: boolean
           id?: string
-          scheduled_date?: string
-          status?: string
+          show_after?: string | null
           tip_key?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "scheduled_tips_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       shopping_list_items: {
         Row: {
-          amount: number | null
+          amount: string | null
           category: string | null
           checked: boolean | null
           created_at: string
           id: string
-          item_name: string
+          ingredient_text: string
+          is_checked: boolean
+          item_name: string | null
+          quantity: number | null
           recipe_id: string | null
           unit: string | null
           user_id: string
         }
         Insert: {
-          amount?: number | null
+          amount?: string | null
           category?: string | null
           checked?: boolean | null
           created_at?: string
           id?: string
-          item_name: string
+          ingredient_text: string
+          is_checked?: boolean
+          item_name?: string | null
+          quantity?: number | null
           recipe_id?: string | null
           unit?: string | null
           user_id: string
         }
         Update: {
-          amount?: number | null
+          amount?: string | null
           category?: string | null
           checked?: boolean | null
           created_at?: string
           id?: string
-          item_name?: string
+          ingredient_text?: string
+          is_checked?: boolean
+          item_name?: string | null
+          quantity?: number | null
           recipe_id?: string | null
           unit?: string | null
           user_id?: string
@@ -1082,25 +1133,25 @@ export type Database = {
       subtasks: {
         Row: {
           created_at: string
-          done: boolean
           id: string
-          sort_order: number
+          is_completed: boolean
+          sort_order: number | null
           task_id: string
           title: string
         }
         Insert: {
           created_at?: string
-          done?: boolean
           id?: string
-          sort_order?: number
+          is_completed?: boolean
+          sort_order?: number | null
           task_id: string
           title: string
         }
         Update: {
           created_at?: string
-          done?: boolean
           id?: string
-          sort_order?: number
+          is_completed?: boolean
+          sort_order?: number | null
           task_id?: string
           title?: string
         }
@@ -1142,44 +1193,85 @@ export type Database = {
         Row: {
           action: string
           created_at: string
-          entity_id: string
-          entity_type: string
           id: string
-          payload_json: Json | null
+          new_value: Json | null
+          old_value: Json | null
+          task_id: string | null
           user_id: string
         }
         Insert: {
           action: string
           created_at?: string
-          entity_id: string
-          entity_type: string
           id?: string
-          payload_json?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          task_id?: string | null
           user_id: string
         }
         Update: {
           action?: string
           created_at?: string
-          entity_id?: string
-          entity_type?: string
           id?: string
-          payload_json?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_audit_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_preferences: {
+        Row: {
+          created_at: string
+          default_view: string | null
+          id: string
+          show_completed: boolean | null
+          sort_by: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_view?: string | null
+          id?: string
+          show_completed?: boolean | null
+          sort_by?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_view?: string | null
+          id?: string
+          show_completed?: boolean | null
+          sort_by?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
       task_tags: {
         Row: {
+          created_at: string
           id: string
           tag_id: string
           task_id: string
         }
         Insert: {
+          created_at?: string
           id?: string
           tag_id: string
           task_id: string
         }
         Update: {
+          created_at?: string
           id?: string
           tag_id?: string
           task_id?: string
@@ -1205,18 +1297,19 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          description: string | null
           due_date: string | null
           due_time: string | null
-          effort: Database["public"]["Enums"]["task_effort"] | null
-          group_id: string | null
+          effort: string | null
           id: string
-          notes: string | null
-          priority: Database["public"]["Enums"]["task_priority"]
+          is_archived: boolean
+          is_someday: boolean
+          priority: string | null
           project_id: string | null
-          recurring_frequency: Database["public"]["Enums"]["recurring_frequency"]
-          reminder_enabled: boolean
-          reminder_offset_minutes: number | null
-          status: Database["public"]["Enums"]["task_status"]
+          recurrence: string | null
+          reminder_minutes: number | null
+          sort_order: number | null
+          status: string
           title: string
           updated_at: string
           user_id: string
@@ -1224,18 +1317,19 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
+          description?: string | null
           due_date?: string | null
           due_time?: string | null
-          effort?: Database["public"]["Enums"]["task_effort"] | null
-          group_id?: string | null
+          effort?: string | null
           id?: string
-          notes?: string | null
-          priority?: Database["public"]["Enums"]["task_priority"]
+          is_archived?: boolean
+          is_someday?: boolean
+          priority?: string | null
           project_id?: string | null
-          recurring_frequency?: Database["public"]["Enums"]["recurring_frequency"]
-          reminder_enabled?: boolean
-          reminder_offset_minutes?: number | null
-          status?: Database["public"]["Enums"]["task_status"]
+          recurrence?: string | null
+          reminder_minutes?: number | null
+          sort_order?: number | null
+          status?: string
           title: string
           updated_at?: string
           user_id: string
@@ -1243,30 +1337,24 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
+          description?: string | null
           due_date?: string | null
           due_time?: string | null
-          effort?: Database["public"]["Enums"]["task_effort"] | null
-          group_id?: string | null
+          effort?: string | null
           id?: string
-          notes?: string | null
-          priority?: Database["public"]["Enums"]["task_priority"]
+          is_archived?: boolean
+          is_someday?: boolean
+          priority?: string | null
           project_id?: string | null
-          recurring_frequency?: Database["public"]["Enums"]["recurring_frequency"]
-          reminder_enabled?: boolean
-          reminder_offset_minutes?: number | null
-          status?: Database["public"]["Enums"]["task_status"]
+          recurrence?: string | null
+          reminder_minutes?: number | null
+          sort_order?: number | null
+          status?: string
           title?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "tasks_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "tasks_project_id_fkey"
             columns: ["project_id"]
@@ -1281,48 +1369,42 @@ export type Database = {
           created_at: string
           friend_user_id: string
           id: string
-          status: Database["public"]["Enums"]["friend_status"]
+          status: string
           user_id: string
         }
         Insert: {
           created_at?: string
           friend_user_id: string
           id?: string
-          status?: Database["public"]["Enums"]["friend_status"]
+          status?: string
           user_id: string
         }
         Update: {
           created_at?: string
           friend_user_id?: string
           id?: string
-          status?: Database["public"]["Enums"]["friend_status"]
+          status?: string
           user_id?: string
         }
         Relationships: []
       }
       user_roles: {
         Row: {
-          approved_at: string | null
-          approved_by: string | null
           created_at: string
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: string
           user_id: string
         }
         Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
           created_at?: string
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: string
           user_id: string
         }
         Update: {
-          approved_at?: string | null
-          approved_by?: string | null
           created_at?: string
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: string
           user_id?: string
         }
         Relationships: []
@@ -1332,129 +1414,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_user: { Args: { target_user_id: string }; Returns: boolean }
-      cleanup_expired_approval_tokens: { Args: never; Returns: number }
-      cleanup_expired_approval_tokens_enhanced: {
-        Args: never
-        Returns: {
-          deleted_count: number
-          suspicious_tokens: number
-        }[]
-      }
-      consume_approval_token: {
-        Args: { consuming_user_id?: string; token_value: string }
-        Returns: boolean
-      }
-      create_manual_kpi_violation: {
-        Args: {
-          p_amount_cents: number
-          p_challenge_id: string
-          p_user_id: string
-          p_violation_date?: string
-        }
-        Returns: string
-      }
-      encrypt_approval_token: { Args: { token_value: string }; Returns: string }
-      generate_secure_approval_token: {
-        Args: { expiry_hours?: number; target_user_id: string }
-        Returns: string
-      }
-      get_group_info_for_member: {
-        Args: { group_id_param: string }
-        Returns: {
-          created_at: string
-          description: string
-          id: string
-          name: string
-          owner_id: string
-          updated_at: string
-        }[]
-      }
       get_group_invite_code: { Args: { p_group_id: string }; Returns: string }
       get_popular_challenges_by_duration: {
-        Args: {
-          p_end_date: string
-          p_group_ids: string[]
-          p_start_date: string
-        }
+        Args: { p_end_date: string; p_group_id: string; p_start_date: string }
         Returns: {
+          challenge_id: string
           duration_days: number
-          fail_rate_pct: number
           id: string
           is_trending: boolean
           participant_count: number
-          participants: Json
-          start_date: string
+          participants: string[]
           title: string
           total_fails: number
         }[]
       }
       get_server_time: { Args: never; Returns: string }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      is_group_member: {
-        Args: { _group_id: string; _user_id?: string }
-        Returns: boolean
-      }
-      is_group_owner: {
-        Args: { _group_id: string; _user_id?: string }
-        Returns: boolean
-      }
-      is_user_approved: { Args: { _user_id: string }; Returns: boolean }
-      join_group: { Args: { p_invite_code: string }; Returns: string }
-      log_security_event: {
-        Args: {
-          event_type: string
-          metadata_param?: Json
-          user_id_param?: string
-        }
-        Returns: undefined
-      }
-      monitor_failed_auth_attempts: {
-        Args: never
-        Returns: {
-          attempt_count: number
-          is_suspicious: boolean
-          last_attempt: string
-          user_email: string
-        }[]
-      }
-      monitor_token_security: {
-        Args: never
-        Returns: {
-          expired_unused_tokens: number
-          recent_failures: number
-          recommendations: string[]
-          suspicious_activity_count: number
-        }[]
-      }
-      send_password_reset_email: { Args: { user_email: string }; Returns: Json }
-      validate_approval_token: {
-        Args: { token_value: string; user_email?: string }
-        Returns: boolean
-      }
     }
     Enums: {
-      app_role: "admin" | "user" | "pending"
-      challenge_duration_type: "weeks" | "months" | "continuous"
-      challenge_frequency: "daily" | "weekly" | "times_per_week" | "whole_week"
-      challenge_status: "active" | "paused" | "ended"
+      challenge_duration_type: "days" | "weeks" | "months" | "custom"
+      challenge_frequency: "daily" | "weekly" | "custom"
+      challenge_status: "active" | "completed" | "cancelled"
       challenge_type: "habit" | "kpi"
-      friend_status: "pending" | "accepted" | "blocked"
       group_role: "owner" | "admin" | "member"
-      idea_status: "proposed" | "approved" | "rejected"
-      payment_type: "owed" | "paid" | "adjustment"
-      project_status: "active" | "completed" | "archived"
+      idea_status: "proposed" | "approved" | "rejected" | "implemented"
+      payment_type: "penalty" | "reward" | "settlement"
+      project_status: "active" | "completed" | "archived" | "on_hold"
       recipe_difficulty: "easy" | "medium" | "hard"
-      recurring_frequency: "none" | "daily" | "weekly" | "monthly"
-      task_effort: "xs" | "s" | "m" | "l" | "xl"
-      task_priority: "p1" | "p2" | "p3" | "p4"
-      task_status: "open" | "in_progress" | "done" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1582,21 +1567,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "pending"],
-      challenge_duration_type: ["weeks", "months", "continuous"],
-      challenge_frequency: ["daily", "weekly", "times_per_week", "whole_week"],
-      challenge_status: ["active", "paused", "ended"],
+      challenge_duration_type: ["days", "weeks", "months", "custom"],
+      challenge_frequency: ["daily", "weekly", "custom"],
+      challenge_status: ["active", "completed", "cancelled"],
       challenge_type: ["habit", "kpi"],
-      friend_status: ["pending", "accepted", "blocked"],
       group_role: ["owner", "admin", "member"],
-      idea_status: ["proposed", "approved", "rejected"],
-      payment_type: ["owed", "paid", "adjustment"],
-      project_status: ["active", "completed", "archived"],
+      idea_status: ["proposed", "approved", "rejected", "implemented"],
+      payment_type: ["penalty", "reward", "settlement"],
+      project_status: ["active", "completed", "archived", "on_hold"],
       recipe_difficulty: ["easy", "medium", "hard"],
-      recurring_frequency: ["none", "daily", "weekly", "monthly"],
-      task_effort: ["xs", "s", "m", "l", "xl"],
-      task_priority: ["p1", "p2", "p3", "p4"],
-      task_status: ["open", "in_progress", "done", "archived"],
     },
   },
 } as const
