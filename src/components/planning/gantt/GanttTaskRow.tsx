@@ -33,13 +33,14 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
   const isDraggingH = useRef(false);
   const startXRef = useRef(0);
   const timelineWidthRef = useRef(0);
+  const didDragRef = useRef(false);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
     e.preventDefault();
     isDraggingH.current = true;
+    didDragRef.current = false;
     startXRef.current = e.clientX;
-    // Measure the timeline container width
     const timelineEl = (e.currentTarget as HTMLElement).parentElement;
     timelineWidthRef.current = timelineEl?.clientWidth || 1;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -48,7 +49,9 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDraggingH.current) return;
     e.stopPropagation();
-    setDeltaX(e.clientX - startXRef.current);
+    const dx = e.clientX - startXRef.current;
+    if (Math.abs(dx) > 3) didDragRef.current = true;
+    setDeltaX(dx);
   }, []);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -58,7 +61,7 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
     const finalDelta = e.clientX - startXRef.current;
     setDeltaX(0);
 
-    if (Math.abs(finalDelta) < 5) return; // ignore tiny moves
+    if (Math.abs(finalDelta) < 5) return;
 
     const days = pixelsToDays(finalDelta, timelineWidthRef.current, weeks);
     if (days === 0) return;
@@ -66,6 +69,15 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
     const { start_date, end_date } = shiftDates(task.start_date, task.end_date, days);
     onTaskDragEnd?.(task.id, start_date, end_date);
   }, [weeks, task, onTaskDragEnd]);
+
+  const handleTimelineClick = useCallback(() => {
+    // Suppress click if we just finished a drag
+    if (didDragRef.current) {
+      didDragRef.current = false;
+      return;
+    }
+    onClick();
+  }, [onClick]);
 
   const {
     attributes,
@@ -111,7 +123,7 @@ export function GanttTaskRow({ task, weeks, clientColor, labelWidth, onClick, mi
       </div>
 
       {/* Timeline area */}
-      <div className="relative flex-1 h-full" onClick={deltaX === 0 ? onClick : undefined}>
+      <div className="relative flex-1 h-full" onClick={handleTimelineClick}>
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
