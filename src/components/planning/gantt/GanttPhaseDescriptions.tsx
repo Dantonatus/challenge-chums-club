@@ -7,6 +7,10 @@ interface GanttPhaseDescriptionsProps {
   clientColor: string;
 }
 
+function isHtml(text: string) {
+  return /<[a-z][\s\S]*>/i.test(text);
+}
+
 function parseDescription(text: string) {
   const lines = text.split('\n').filter(l => l.trim());
   const bullets: string[] = [];
@@ -49,15 +53,24 @@ export function GanttPhaseDescriptions({ tasks, clientColor }: GanttPhaseDescrip
                     {format(new Date(task.start_date), 'dd.MM.yyyy', { locale: de })} – {format(new Date(task.end_date), 'dd.MM.yyyy', { locale: de })}
                   </span>
                 </div>
-                {paragraphs.map((p, i) => (
-                  <p key={i} className="text-xs text-muted-foreground mb-1">{p}</p>
-                ))}
-                {bullets.length > 0 && (
-                  <ul className="list-disc list-inside space-y-0.5 mt-1">
-                    {bullets.map((b, i) => (
-                      <li key={i} className="text-xs text-muted-foreground">{b}</li>
+                {isHtml(task.description!) ? (
+                  <div
+                    className="text-xs text-muted-foreground prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
+                    dangerouslySetInnerHTML={{ __html: task.description! }}
+                  />
+                ) : (
+                  <>
+                    {paragraphs.map((p, i) => (
+                      <p key={i} className="text-xs text-muted-foreground mb-1">{p}</p>
                     ))}
-                  </ul>
+                    {bullets.length > 0 && (
+                      <ul className="list-disc list-inside space-y-0.5 mt-1">
+                        {bullets.map((b, i) => (
+                          <li key={i} className="text-xs text-muted-foreground">{b}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
                 )}
               </div>
             </div>

@@ -37,6 +37,10 @@ export function GanttPage() {
     setSelectedProjectId('');
   };
 
+  const handleTaskDrag = (taskId: string, newStart: string, newEnd: string) => {
+    updateTask.mutate({ id: taskId, start_date: newStart, end_date: newEnd });
+  };
+
   const handleExportPDF = () => {
     if (!selectedProject || !selectedClient) return;
     exportGanttPDF(selectedProject, tasks, milestones as MilestoneWithClient[], selectedClient);
@@ -139,6 +143,7 @@ export function GanttPage() {
           onTaskClick={setEditTask}
           onMilestoneClick={setEditMilestone}
           onTaskReorder={handleTaskReorder}
+          onTaskDragEnd={handleTaskDrag}
         />
       )}
 
