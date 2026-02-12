@@ -1,169 +1,170 @@
 
-# Fix: Export zeigt leere weiße Fläche
 
-## Root Cause Analyse
+# Modul "Projektplanung" -- Gantt-Detailansicht pro Kunde
 
-Der aktuelle Export-Code hat einen fundamentalen Bug:
+## Zusammenfassung
 
-```typescript
-// PROBLEM: Clone wird erstellt und offscreen platziert
-const clone = element.cloneNode(true) as HTMLElement;
-clone.style.position = 'absolute';
-clone.style.left = '-9999px';  // <-- Offscreen!
+Ein neuer zweiter Tab neben der bestehenden "Planung" (Horizon View). Er zeigt eine echte Gantt-Darstellung pro Kunde mit:
+- Zweistufigem Header: Monate oben, darunter echte ISO-Kalenderwochen (KW)
+- Aufgaben als horizontale Zeitbalken
+- Meilensteine als Rauten-Overlay auf den Balken
+- HQ-PDF-Export in Druckqualitat mit selektierbarem Vektor-Text (jsPDF)
 
-// toPng wird auf dem Clone aufgerufen
-const dataUrl = await toPng(clone, { ... });
+Bestehende Daten und Accounts bleiben vollstandig erhalten.
+
+---
+
+## 1. Datenmodell (bereits vorhanden)
+
+Die Tabellen existieren bereits mit korrekten RLS-Policies:
+
+```text
+clients (besteht)
+  |
+  +-- planning_projects (besteht)
+  |     id, client_id, user_id, name, description
+  |     start_date, end_date, status, color, sort_order
+  |
+  +-- gantt_tasks (besteht)
+  |     id, project_id, user_id, title, description
+  |     start_date (date), end_date (date)
+  |     sort_order, color, is_completed
+  |
+  +-- milestones (besteht, hat project_id FK)
 ```
 
-**Warum das nicht funktioniert:**
-1. `html-to-image` verwendet `foreignObject` in einem SVG, das dann zu Canvas konvertiert wird
-2. Der Clone ist bei `-9999px` und wird vom Browser **nicht gerendert** (Paint wird übersprungen)
-3. CSS Variables (`var(--background)` etc.) werden im Clone nicht aufgelöst, weil er nicht im sichtbaren DOM-Kontext ist
-4. Das Ergebnis: Weißes/leeres Bild
+Keine DB-Migrationen notwendig. Alle Tabellen haben vollstandige CRUD-RLS-Policies.
 
-## Lösung
+---
 
-**Strategie ändern: Direkt auf dem Original-Element arbeiten, NICHT auf einem Clone.**
+## 2. Routing und Navigation
 
-Die `toPng`-Funktion aus `html-to-image` erstellt intern bereits einen Clone. Wir müssen einfach das Original-Element übergeben und die Bibliothek ihre Arbeit machen lassen.
+### 2a. PlanningPage wird zum Tab-Layout
 
-## Implementierungsplan
+Die bestehende `PlanningPage` wird um ein Tab-System erweitert mit zwei Tabs:
+- **Planung** (bestehender Inhalt -- Horizon View)
+- **Projektplanung** (neue Gantt-Ansicht)
 
-### Schritt 1: exportCanvas.ts komplett vereinfachen
+### 2b. Keine neuen Routen notig
 
-```typescript
-export async function exportPlanningCanvas({
-  elementId,
-  format,
-  filename,
-  periodLabel,
-}: ExportOptions): Promise<void> {
-  // 1. Element finden (Wrapper first für Label-Overflow)
-  const wrapperElement = document.getElementById(`${elementId}-export-wrapper`);
-  const element = wrapperElement || document.getElementById(elementId);
+Alles bleibt unter `/app/planning`. Die Tabs sind interner State, kein Routing.
 
-  if (!element) {
-    throw new Error(`Element with id "${elementId}" not found`);
-  }
+---
 
-  // 2. Fonts laden (wichtig für korrektes Rendering)
-  await document.fonts?.ready;
+## 3. Neue Dateien
 
-  // 3. DIREKT toPng auf dem Original-Element aufrufen
-  //    html-to-image klont intern und handhabt CSS korrekt
-  const dataUrl = await toPng(element, {
-    cacheBust: true,
-    pixelRatio: 2,  // Retina-Qualität
-    // KEIN backgroundColor - übernimm exakt was auf Screen ist
-    style: {
-      // Entferne Animationen für statisches Bild
-      animation: 'none',
-      transition: 'none',
-    },
-    filter: (node) => {
-      // Entferne animate-pulse Elemente (pulsierender Punkt)
-      if (node instanceof HTMLElement) {
-        return !node.classList.contains('animate-pulse');
-      }
-      return true;
-    },
-  });
+### 3a. Hook: `src/hooks/useGanttTasks.ts`
+- CRUD-Hook fur `gantt_tasks` und `planning_projects`
+- Queries: Tasks + Milestones fur ein `planning_project` laden
+- Mutations: Create, Update, Delete fur Tasks und Projekte
+- Nutzt `@tanstack/react-query` wie bestehende Hooks
 
-  if (format === 'png') {
-    downloadPNGFromDataUrl(dataUrl, filename);
-  } else {
-    const canvas = await dataUrlToCanvas(dataUrl);
-    downloadPDFFromCanvas(canvas, filename, periodLabel);
-  }
-}
+### 3b. Typen: Erweiterung `src/lib/planning/types.ts`
+- Interface `GanttTask` (basierend auf DB-Schema)
+- Interface `PlanningProject`
+- Hilfs-Typen fur die KW-Berechnung
+
+### 3c. Hauptkomponente: `src/components/planning/gantt/GanttPage.tsx`
+- Kunde auswahlen (Dropdown aus bestehenden `clients`)
+- Projekt auswahlen oder neues erstellen
+- Rendert den `GanttChart`
+
+### 3d. Gantt-Chart: `src/components/planning/gantt/GanttChart.tsx`
+
+Kernkomponente mit:
+
+```text
++------------------------------------------------------------------+
+| Januar 2026                  | Februar 2026         | Marz 2026  |
+| KW1  | KW2  | KW3  | KW4    | KW5  | KW6  | KW7 ...            |
++------------------------------------------------------------------+
+| Aufgabe 1         [=========]                                     |
+| Aufgabe 2                    [==============]                     |
+| Aufgabe 3    [===========o============]    <- o = Meilenstein     |
++------------------------------------------------------------------+
 ```
 
-### Schritt 2: Scroll-Bereich Flatten (für "Gesamte Liste")
+**Kalender-Logik:**
+- Monate aus dem Projektzeitraum (`start_date` bis `end_date`)
+- ISO-Kalenderwochen via `date-fns/getISOWeek` und `startOfISOWeek`
+- Jede KW ist eine Spalte mit exakter Kalenderbreite
+- KW-Header zeigt "KW1", "KW2" etc. (echte ISO-Wochennummern)
+- Monat-Header spannt uber alle zugehorigen KWs (`colSpan`)
 
-Da der User "Gesamte Liste" will, müssen wir die ScrollArea temporär expandieren:
+**Task-Balken:**
+- Position und Breite berechnet aus `start_date`/`end_date` relativ zum Gesamtzeitraum
+- Farbe: `task.color` oder Kundenfarbe als Fallback
+- Abgeschlossene Tasks: volle Opazitat + Checkmark
+- Hover: Tooltip mit Details
 
-```typescript
-export async function exportPlanningCanvas({ ... }): Promise<void> {
-  const element = ... // wie oben
+**Meilenstein-Rauten:**
+- Aus `milestones` Tabelle (gefiltert auf `project_id`)
+- Positioniert als Raute (45-Grad-rotiertes Quadrat) auf der Zeitleiste
+- Overlay uber Task-Balken wenn auf selben Tag
 
-  // ScrollArea temporär expandieren für vollständigen Export
-  const scrollAreas = element.querySelectorAll('[data-radix-scroll-area-viewport]');
-  const originalStyles = new Map<HTMLElement, { overflow: string; height: string; maxHeight: string }>();
-  
-  scrollAreas.forEach((el) => {
-    const viewport = el as HTMLElement;
-    originalStyles.set(viewport, {
-      overflow: viewport.style.overflow,
-      height: viewport.style.height,
-      maxHeight: viewport.style.maxHeight,
-    });
-    viewport.style.overflow = 'visible';
-    viewport.style.height = 'auto';
-    viewport.style.maxHeight = 'none';
-  });
+### 3e. Task-Zeile: `src/components/planning/gantt/GanttTaskRow.tsx`
+- Aufgabenname links (feste Spalte ~250px)
+- Zeitbalken rechts (relative Position zur Timeline)
+- Klick offnet Bearbeitungs-Sheet
 
-  // Warten bis Layout recalculated wurde
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+### 3f. Task-Sheet: `src/components/planning/gantt/GanttTaskSheet.tsx`
+- Sheet zum Erstellen/Bearbeiten eines Gantt-Tasks
+- Felder: Titel, Beschreibung, Start-Datum, End-Datum, Farbe, Status
+- Loschen-Button mit Bestatigung
 
-  try {
-    const dataUrl = await toPng(element, { ... });
-    // ... export
-  } finally {
-    // Original-Styles wiederherstellen
-    originalStyles.forEach((styles, el) => {
-      el.style.overflow = styles.overflow;
-      el.style.height = styles.height;
-      el.style.maxHeight = styles.maxHeight;
-    });
-  }
-}
+### 3g. Projekt-Sheet: `src/components/planning/gantt/GanttProjectSheet.tsx`
+- Projekt anlegen/bearbeiten fur einen Kunden
+- Felder: Name, Beschreibung, Start-Datum, End-Datum, Status
+
+### 3h. PDF-Export: `src/lib/planning/exportGanttPDF.ts`
+
+Vektor-PDF mit jsPDF (kein Screenshot):
+- Zeichnet Header, KW-Spalten, Task-Balken und Meilensteine direkt als Vektor-Grafik
+- Text ist selektierbar und druckscharf
+- A4-Querformat
+- Kundenname + Projektname als Header
+- Fusszeile mit Datum
+
+---
+
+## 4. Kalender-Akkuratesse (Kernlogik)
+
+```text
+Eingabe: Projektzeitraum z.B. 2026-01-05 bis 2026-03-27
+
+1. Finde alle ISO-Wochen im Zeitraum
+2. Jede Woche = 1 Spalte (gleiche Breite)
+3. Monat-Header: colSpan = Anzahl KWs die in diesem Monat starten
+4. KW-Header: "KW1", "KW2", ..., "KW13" (echte ISO-Nummern)
+5. Task-Position: 
+   - startCol = KW-Index von task.start_date
+   - endCol = KW-Index von task.end_date
+   - Breite = (endCol - startCol + 1) Spalten
+   - Fein-Offset innerhalb der KW basierend auf Wochentag
 ```
 
-### Schritt 3: Theme-Aware Export
+Bibliothek: `date-fns` mit `getISOWeek`, `startOfISOWeek`, `eachWeekOfInterval`.
 
-Da der User "Wie Bildschirm" will, entfernen wir die erzwungene `backgroundColor: '#ffffff'`:
+---
 
-```typescript
-const dataUrl = await toPng(element, {
-  cacheBust: true,
-  pixelRatio: 2,
-  // Kein backgroundColor - übernimmt automatisch den Theme-Hintergrund
-  filter: (node) => {
-    if (node instanceof HTMLElement) {
-      // Filter: Keine pulsierenden Elemente
-      if (node.classList.contains('animate-pulse')) return false;
-    }
-    return true;
-  },
-});
-```
+## 5. Implementierungsreihenfolge
 
-### Schritt 4: Calendar-Wrapper anpassen
+1. **Types + Hook** -- `GanttTask`, `PlanningProject` Typen + `useGanttTasks` Hook
+2. **GanttChart** -- Kalender-Header mit Monaten + KWs, Today-Linie
+3. **GanttTaskRow** -- Task-Balken-Rendering mit korrekter Positionierung
+4. **Meilenstein-Overlay** -- Rauten auf der Timeline
+5. **GanttPage** -- Kunden/Projekt-Auswahl, leerer Zustand
+6. **Task/Projekt Sheets** -- CRUD-Formulare
+7. **Tab-Integration** -- PlanningPage um Tabs erweitern
+8. **PDF-Export** -- Vektor-PDF mit jsPDF
 
-Die Calendar-Komponenten haben einen Wrapper mit erzwungenem weißen Hintergrund. Das muss entfernt werden:
+---
 
-**HalfYearCalendar.tsx & QuarterCalendar.tsx:**
-```tsx
-// VORHER:
-<div id="planning-chart-export-wrapper" className="p-6 -m-6" style={{ backgroundColor: '#ffffff' }}>
+## 6. Design-Prinzipien
 
-// NACHHER: Kein erzwungener Hintergrund
-<div id="planning-chart-export-wrapper" className="p-6 -m-6">
-```
+- **Identisches Design** zur bestehenden Planung (gleiche Card-Styles, Border-Radius, Farben)
+- **Progressive Disclosure**: Erst Kunde wahlen, dann Projekt, dann Tasks sehen
+- **Investor-Ready Asthetik**: Clean, professionell, druckfertig
+- **100% Kalender-akkurat**: Echte ISO-Kalenderwochen, keine Approximation
+- **Bestehende Daten bleiben erhalten**: Kein Loschen, keine Schema-Anderungen
 
-Das `bg-card` auf dem inneren Element übernimmt automatisch das korrekte Theme.
-
-## Zusammenfassung der Änderungen
-
-| Datei | Änderung |
-|-------|----------|
-| `exportCanvas.ts` | Komplett neu: Kein manueller Clone, direkt `toPng` auf Original, ScrollArea temporär flatten, Theme-aware |
-| `HalfYearCalendar.tsx` | Entferne `style={{ backgroundColor: '#ffffff' }}` vom Wrapper |
-| `QuarterCalendar.tsx` | Entferne `style={{ backgroundColor: '#ffffff' }}` vom Wrapper |
-
-## Erwartetes Ergebnis
-
-1. **PNG-Export**: Exakt 1:1 wie auf dem Bildschirm (inkl. Dark/Light Mode)
-2. **PDF-Export**: Das PNG im A4-Landscape mit minimalem Header
-3. **Gesamte Liste**: Alle Clients werden exportiert, auch gescrollte
-4. **Theme-Aware**: Dark Mode = Dark Export, Light Mode = Light Export
