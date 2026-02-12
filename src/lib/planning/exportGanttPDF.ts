@@ -20,13 +20,13 @@ function hex(c: string): { r: number; g: number; b: number } {
   return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
 }
 
-function withAlpha(doc: jsPDF, color: { r: number; g: number; b: number }, alpha: number) {
-  (doc as any).setGState(new (jsPDF as any).API.GState({ opacity: alpha, 'stroke-opacity': alpha }));
-  doc.setFillColor(color.r, color.g, color.b);
-}
-
-function resetAlpha(doc: jsPDF) {
-  (doc as any).setGState(new (jsPDF as any).API.GState({ opacity: 1, 'stroke-opacity': 1 }));
+/** Mix color with white to simulate opacity */
+function fadedColor(color: { r: number; g: number; b: number }, alpha: number): { r: number; g: number; b: number } {
+  return {
+    r: Math.round(color.r * alpha + 255 * (1 - alpha)),
+    g: Math.round(color.g * alpha + 255 * (1 - alpha)),
+    b: Math.round(color.b * alpha + 255 * (1 - alpha)),
+  };
 }
 
 function htmlToPlainLines(html: string): { text: string; bold: boolean; bullet: boolean }[] {
@@ -190,10 +190,9 @@ export function exportGanttPDF(
     const barX = M + LABEL_W + (bar.left / 100) * gridW;
     const barW = Math.max((bar.width / 100) * gridW, 2);
     const barColor = hex(task.color || client.color);
-    const barAlpha = task.is_completed ? 0.5 : 0.8;
-    withAlpha(doc, barColor, barAlpha);
+    const faded = fadedColor(barColor, task.is_completed ? 0.5 : 0.8);
+    doc.setFillColor(faded.r, faded.g, faded.b);
     doc.roundedRect(barX, y + 2, barW, ROW_H.task - 4, CORNER, CORNER, 'F');
-    resetAlpha(doc);
 
     // Completed checkmark
     if (task.is_completed) {
