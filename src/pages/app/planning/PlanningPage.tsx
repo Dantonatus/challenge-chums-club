@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QuarterHeader } from '@/components/planning/QuarterHeader';
 import { QuarterCalendar } from '@/components/planning/QuarterCalendar';
@@ -26,7 +27,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MonthView } from '@/components/planning/MonthView';
 
 export default function PlanningPage() {
-  const [activeTab, setActiveTab] = useState('horizon');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'horizon';
+  const setActiveTab = (tab: string) => setSearchParams({ tab }, { replace: true });
   const [viewMode, setViewMode] = useState<ViewMode>('quarter');
   const [quarter, setQuarter] = useState<Quarter>(getCurrentQuarter);
   const [halfYear, setHalfYear] = useState<HalfYear>(getCurrentHalfYear);
