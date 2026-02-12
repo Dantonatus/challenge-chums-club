@@ -7,8 +7,8 @@ import { GanttTask, PlanningProject, MilestoneWithClient, MILESTONE_TYPE_CONFIG,
 // ── Layout constants (mm, A4 landscape) ──
 const PAGE = { w: 297, h: 210 };
 const M = 10; // margin
-const LABEL_W = 54;
-const FONT = { title: 13, subtitle: 8, month: 7, kw: 6, cell: 6.5, footer: 5.5, desc: 6, descTitle: 7.5 };
+const LABEL_W = 58;
+const FONT = { title: 13, subtitle: 8, month: 7, kw: 6, cell: 6, footer: 5.5, desc: 6, descTitle: 7 };
 const ROW_H = { month: 8, kw: 6.5, task: 10 };
 const HEADER_GAP = 14;
 const CORNER = 1.8; // rounded-rect radius
@@ -179,12 +179,17 @@ export function exportGanttPDF(
     doc.setLineWidth(0.2);
     doc.line(M + LABEL_W, y, M + LABEL_W, y + ROW_H.task);
 
-    // Label text
+    // Label text (up to 2 lines)
     doc.setFontSize(FONT.cell);
     doc.setFont('helvetica', task.is_completed ? 'italic' : 'normal');
     doc.setTextColor(task.is_completed ? 160 : 40, task.is_completed ? 160 : 40, task.is_completed ? 160 : 40);
     const labelLines = doc.splitTextToSize(task.title, LABEL_W - 6);
-    doc.text(labelLines[0] || task.title, M + 3, y + ROW_H.task / 2 + 1.2);
+    const lineCount = Math.min(labelLines.length, 2);
+    const lineH = 3.2;
+    const startY = y + ROW_H.task / 2 - ((lineCount - 1) * lineH) / 2 + 1;
+    for (let li = 0; li < lineCount; li++) {
+      doc.text(labelLines[li], M + 3, startY + li * lineH);
+    }
 
     // Bar
     const barX = M + LABEL_W + (bar.left / 100) * gridW;
@@ -264,12 +269,12 @@ export function exportGanttPDF(
 
       // Estimate height
       const textW = contentW - 10;
-      let estH = 11; // title + date + padding
+      let estH = 9; // title + date + padding
       for (const line of lines) {
         const wrapped = doc.splitTextToSize(line.bullet ? `  - ${line.text}` : line.text, textW);
-        estH += wrapped.length * 3.0;
+        estH += wrapped.length * 2.6;
       }
-      estH = Math.max(estH, 18);
+      estH = Math.max(estH, 14);
 
       // Page break
       if (y + estH > PAGE.h - M - 10) {
@@ -290,7 +295,7 @@ export function exportGanttPDF(
       doc.roundedRect(M, y, 2.5, estH, CORNER, CORNER, 'F');
 
       // Title
-      let ty = y + 4.5;
+      let ty = y + 3.8;
       doc.setFontSize(FONT.descTitle);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 30, 30);
@@ -300,8 +305,8 @@ export function exportGanttPDF(
       doc.setFontSize(FONT.footer);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(140, 140, 140);
-      doc.text(dateStr, M + 6, ty + 3.5);
-      ty += 7;
+      doc.text(dateStr, M + 6, ty + 3);
+      ty += 5.5;
 
       // Description lines
       doc.setFontSize(FONT.desc);
@@ -312,11 +317,11 @@ export function exportGanttPDF(
         const wrapped = doc.splitTextToSize(`${prefix}${line.text}`, textW);
         for (const wl of wrapped) {
           doc.text(wl, M + 6, ty);
-          ty += 3.0;
+          ty += 2.6;
         }
       }
 
-      y += estH + 1.5;
+      y += estH + 1.0;
     }
 
     addFooter(doc, client, project);
