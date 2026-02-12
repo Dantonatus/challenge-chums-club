@@ -1420,8 +1420,12 @@ export type Database = {
         Returns: {
           challenge_id: string
           duration_days: number
+          id: string
+          is_trending: boolean
           participant_count: number
+          participants: string[]
           title: string
+          total_fails: number
         }[]
       }
       get_server_time: { Args: never; Returns: string }

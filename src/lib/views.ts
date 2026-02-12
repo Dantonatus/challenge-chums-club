@@ -68,8 +68,8 @@ export async function saveView(viewData: SaveViewRequest): Promise<SavedView> {
     name: data.name,
     filters: data.filters as any,
     dateRange: {
-      start: data.date_range.start,
-      end: data.date_range.end
+      start: (data.date_range as any).start,
+      end: (data.date_range as any).end
     },
     isDefault: data.is_default,
     createdAt: data.created_at,
@@ -97,8 +97,8 @@ export async function getSavedViews(): Promise<SavedView[]> {
     name: view.name,
     filters: view.filters as any,
     dateRange: {
-      start: view.date_range.start,
-      end: view.date_range.end
+      start: (view.date_range as any).start,
+      end: (view.date_range as any).end
     },
     isDefault: view.is_default,
     createdAt: view.created_at,
@@ -144,8 +144,8 @@ export async function getDefaultView(): Promise<SavedView | null> {
     name: data.name,
     filters: data.filters as any,
     dateRange: {
-      start: data.date_range.start,
-      end: data.date_range.end
+      start: (data.date_range as any).start,
+      end: (data.date_range as any).end
     },
     isDefault: data.is_default,
     createdAt: data.created_at,
