@@ -229,6 +229,36 @@ export function useGanttTasks(projectId?: string) {
     },
   });
 
+  const reorderTasks = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from('gantt_tasks')
+          .update({ sort_order: u.sort_order })
+          .eq('id', u.id);
+        if (error) throw error;
+      }
+    },
+    onMutate: async (updates) => {
+      await queryClient.cancelQueries({ queryKey: ['gantt-tasks', projectId] });
+      const prev = queryClient.getQueryData<GanttTask[]>(['gantt-tasks', projectId]);
+      if (prev) {
+        const map = new Map(updates.map(u => [u.id, u.sort_order]));
+        const next = [...prev].map(t => map.has(t.id) ? { ...t, sort_order: map.get(t.id)! } : t)
+          .sort((a, b) => a.sort_order - b.sort_order);
+        queryClient.setQueryData(['gantt-tasks', projectId], next);
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(['gantt-tasks', projectId], context.prev);
+      toast({ title: 'Fehler beim Sortieren', variant: 'destructive' });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['gantt-tasks'] });
+    },
+  });
+
   return {
     tasks: tasksQuery.data || [],
     milestones: milestonesQuery.data || [],
@@ -236,5 +266,6 @@ export function useGanttTasks(projectId?: string) {
     createTask,
     updateTask,
     deleteTask,
+    reorderTasks,
   };
 }
