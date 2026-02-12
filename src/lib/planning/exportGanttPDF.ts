@@ -29,13 +29,28 @@ function fadedColor(color: { r: number; g: number; b: number }, alpha: number): 
   };
 }
 
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/ {2,}/g, ' ');
+}
+
 function htmlToPlainLines(html: string): { text: string; bold: boolean; bullet: boolean; indent?: number }[] {
   if (!/<[a-z][\s\S]*>/i.test(html)) {
     // Plain text – split by newlines
     return html.split('\n').filter(l => l.trim()).map(l => {
       const trimmed = l.trim();
       const isBullet = /^[-\u2013\u2022*]\s/.test(trimmed);
-      return { text: isBullet ? trimmed.replace(/^[-\u2013\u2022*]\s+/, '') : trimmed, bold: false, bullet: isBullet };
+      const cleaned = decodeEntities(isBullet ? trimmed.replace(/^[-\u2013\u2022*]\s+/, '') : trimmed);
+      return { text: cleaned, bold: false, bullet: isBullet };
     });
   }
 
@@ -63,7 +78,7 @@ function htmlToPlainLines(html: string): { text: string; bold: boolean; bullet: 
       for (const segment of text.split('\n')) {
         const t = segment.trim();
         if (t) {
-          lines.push({ text: t, bold: inBold || inHeading, bullet: inLi, indent: inLi ? Math.max(0, listDepth - 1) : 0 });
+          lines.push({ text: decodeEntities(t), bold: inBold || inHeading, bullet: inLi, indent: inLi ? Math.max(0, listDepth - 1) : 0 });
         }
       }
     }
