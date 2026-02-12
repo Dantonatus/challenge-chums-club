@@ -40,6 +40,7 @@ import RecipesReview from "./pages/app/recipes/Review";
 import RecipeDetail from "./pages/app/recipes/Detail";
 import RecipesFavorites from "./pages/app/recipes/Favorites";
 import RecipesShoppingList from "./pages/app/recipes/ShoppingList";
+import ImportPage from "./pages/Import";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,8 @@ const App = () => (
                 </DateRangeProvider>
               </ProtectedRoute>
             } />
+            {/* Import */}
+            <Route path="/import" element={<ImportPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
