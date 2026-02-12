@@ -1,50 +1,70 @@
 
 
-# Rich-Text-Editor: Bugfixes + Schriftart & Schriftgroesse
+# Gantt PDF-Export: Screen-getreues Design + Phasenbeschreibungen
 
-## Alle Aenderungen in einer Datei
+## Ueberblick
 
-`src/components/planning/gantt/RichTextEditor.tsx`
+Der bisherige PDF-Export zeichnet ein vereinfachtes Gantt-Diagramm mit jsPDF-Primitiven (Rechtecke, Text). Das Ergebnis weicht stark vom On-Screen-Design ab. Der neue Export soll:
 
-## 1. Bugfixes (aus vorheriger Analyse)
+1. **Denselben Zeitraum** zeigen wie auf dem Bildschirm (dynamisch berechnet, inkl. Buffer)
+2. **Abgerundetes Design** mit modernem Look (rounded corners, Farb-Balken mit Opacity, Schatten-Effekte)
+3. **Seite 2: Phasenbeschreibungen** mit Farbbalken-Indikator, Titel, Datum und HTML-/Text-Beschreibung
+4. **Druckqualitaet** mit selektierbarem Text (echte Vektorgrafik, kein Screenshot)
 
-### Cursor springt beim Loeschen / Paste
-- Die zwei identischen `useEffect`-Hooks werden zu einem zusammengefuehrt
-- Neuer `lastValueRef` speichert den zuletzt intern gesetzten Wert
-- `innerHTML` wird nur ueberschrieben wenn der Wert wirklich extern geaendert wurde (z.B. Task-Wechsel), nicht bei eigenen Eingaben
-- `onPaste`-Handler fuegt nur Plaintext ein (`document.execCommand('insertText')`)
+## Technischer Ansatz
 
-### Tab fuer Untergliederung
-- `onKeyDown`-Handler: Tab = `indent` (Unterpunkt erstellen), Shift+Tab = `outdent`
+### Datei: `src/lib/planning/exportGanttPDF.ts` (komplett ueberarbeitet)
 
-## 2. Schriftart-Auswahl (neu)
+**Zeitraum-Berechnung (wie GanttChart.tsx):**
+- Start = `project.start_date`
+- End = Maximum aus `project.end_date`, dem spaetesten Task-Enddatum, + 14 Tage Buffer
+- Dieselbe Logik wie in der `GanttChart`-Komponente
 
-- Neues `<Select>`-Dropdown in der Toolbar mit gaengigen Schriftarten:
-  - Sans-serif (Standard), Serif, Monospace, Arial, Georgia, Verdana
-- Nutzt `document.execCommand('fontName', false, schriftart)` um die Schrift auf die aktuelle Selektion anzuwenden
-- Kompaktes Dropdown passend zur bestehenden Toolbar-Optik
+**Seite 1 - Gantt-Diagramm:**
+- Titel-Header: Kundenname + Projektname (fett, gross)
+- Monats-Header mit abgerundeten Zellen und sanftem Hintergrund
+- KW-Header-Zeile darunter
+- Task-Zeilen mit:
+  - Label-Spalte (links, mit Completed-Checkmark wenn erledigt)
+  - Farbiger Balken mit `roundedRect` und leichter Opazitaet (wie on-screen: 80% aktiv, 50% completed)
+  - Meilenstein-Diamanten auf dem Balken
+- Heute-Linie als vertikale Markierung
+- Footer mit Erstellungsdatum und Projekt-Info
+- Seitenumbruch bei vielen Tasks
 
-## 3. Schriftgroesse-Auswahl (neu)
+**Seite 2+ - Phasenbeschreibungen:**
+- Automatischer Seitenumbruch nach dem Gantt-Diagramm
+- Ueberschrift "Phasenbeschreibungen"
+- Fuer jede Phase mit Beschreibung:
+  - Farbiger vertikaler Streifen links (wie on-screen)
+  - Titel + Datumszeitraum
+  - Beschreibungstext (HTML wird zu Plain-Text konvertiert fuer PDF)
+  - Aufzaehlungspunkte werden als Bullet-Liste dargestellt
+- Automatische Seitenumbrueche bei langen Beschreibungen
 
-- Zweites `<Select>`-Dropdown fuer Schriftgroessen:
-  - Klein, Normal, Gross, Sehr gross (entspricht `fontSize` 1-4 bzw. via `<font size>`)
-- Alternativ wird `formatBlock` mit Heading-Tags (p, h3, h2, h1) verwendet, da `fontSize` mit numerischen Werten arbeitet die browserspezifisch sind
-- Optionen: Normal (p), Ueberschrift 3 (h3), Ueberschrift 2 (h2), Ueberschrift 1 (h1)
+**Design-Details:**
+- Abgerundete Ecken ueberall (roundedRect statt rect)
+- Sanfte Farben fuer Header (wie bg-muted/30)
+- Balken mit korrekter Opazitaet
+- Grid-Linien als dezente vertikale Striche
+- Schriftgroessen angepasst fuer bessere Lesbarkeit
 
-## Toolbar-Layout (nach Umbau)
+### Datei: `src/components/planning/gantt/GanttPage.tsx` (minimale Aenderung)
 
-```text
-[ Schriftart v ] [ Groesse v ] | B I U | • 1. |
-```
+- Die `handleExportPDF`-Funktion uebergibt zusaetzlich die `tasks`-Liste (fuer die Zeitraum-Berechnung), da der Export jetzt denselben dynamischen Zeitraum nutzt wie die UI
 
-- Schriftart und Groesse links als Dropdowns
-- Dann Trennlinie, dann die bestehenden Formatierungsbuttons
-- Alles in einer Zeile, responsive mit flex-wrap
+## HTML-zu-Text-Konvertierung
 
-## Technische Details
+Da jsPDF keinen HTML-Renderer hat, werden HTML-Beschreibungen fuer den PDF-Export konvertiert:
+- HTML-Tags werden entfernt
+- `<li>`-Elemente werden zu "- " Bullet-Punkten
+- `<br>` und Block-Elemente erzeugen Zeilenumbrueche
+- Ueberschriften (`<h1>`-`<h3>`) werden als fette Zeilen dargestellt
 
-- Alle Aenderungen nur in `RichTextEditor.tsx`
-- Dropdowns verwenden einfache native `<select>`-Elemente (kein Radix Select noetig, da innerhalb von contentEditable-Kontext einfacher)
-- Styling passend zur bestehenden Toolbar (gleiche Hoehe, Border, Muted-Background)
-- `exec`-Funktion wird wiederverwendet fuer `fontName` und `formatBlock`
+## Zusammenfassung der Aenderungen
+
+| Datei | Aenderung |
+|---|---|
+| `src/lib/planning/exportGanttPDF.ts` | Komplett ueberarbeitet: Screen-getreues Design, Phasenbeschreibungen auf Seite 2 |
+| `src/components/planning/gantt/GanttPage.tsx` | Keine Aenderung noetig (tasks werden bereits uebergeben) |
 
