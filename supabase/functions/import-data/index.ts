@@ -8,8 +8,24 @@ const corsHeaders = {
 
 // Columns that exist in old DB but not in new DB - must be stripped
 const STRIP_COLUMNS: Record<string, string[]> = {
-  user_roles: ['approved_at'],
+  user_roles: ['approved_at', 'approved_by'],
   tasks: ['group_id'],
+};
+
+// Column renames: old column name -> new column name
+const COLUMN_RENAMES: Record<string, Record<string, string>> = {
+  tasks: {
+    'notes': 'description',
+    'recurring_frequency': 'recurrence',
+    'priority': 'priority', // keep as-is but map values below
+    'reminder_enabled': '_drop', // doesn't exist in new schema
+    'reminder_offset_minutes': 'reminder_minutes',
+  },
+  task_audit_log: {
+    'entity_type': '_drop',
+    'entity_id': 'task_id',
+    'payload_json': 'new_value',
+  },
 };
 
 // Enum mappings: old value -> new value
@@ -22,7 +38,19 @@ const ENUM_FIXES: Record<string, Record<string, Record<string, string>>> = {
 };
 
 function cleanRow(table: string, row: Record<string, unknown>): Record<string, unknown> {
-  const cleaned = { ...row };
+  let cleaned = { ...row };
+
+  // Rename columns
+  const renames = COLUMN_RENAMES[table];
+  if (renames) {
+    const renamed: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(cleaned)) {
+      const newKey = renames[key];
+      if (newKey === '_drop') continue; // drop this column
+      renamed[newKey || key] = value;
+    }
+    cleaned = renamed;
+  }
 
   // Strip unknown columns
   const stripCols = STRIP_COLUMNS[table];
@@ -40,6 +68,15 @@ function cleanRow(table: string, row: Record<string, unknown>): Record<string, u
       if (val && mapping[val]) {
         cleaned[col] = mapping[val];
       }
+    }
+  }
+
+  // Tasks: map old priority values (p1-p4) to new ones and fix status
+  if (table === 'tasks') {
+    // Map old status values
+    const statusMap: Record<string, string> = { 'open': 'todo', 'in_progress': 'in_progress' };
+    if (cleaned.status && statusMap[cleaned.status as string]) {
+      cleaned.status = statusMap[cleaned.status as string];
     }
   }
 
