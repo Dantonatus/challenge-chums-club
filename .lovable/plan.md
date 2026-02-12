@@ -1,40 +1,31 @@
 
 
-# Fix: "Could not find table 'public.gantt_tasks' in schema cache"
+# Fix: Fehlende GRANT-Berechtigungen auf `gantt_tasks` und `planning_projects`
 
 ## Problem
 
-Die Tabellen `gantt_tasks` und `planning_projects` existieren in der Datenbank, aber der PostgREST-Schema-Cache kennt sie noch nicht. Deshalb schlagen alle Supabase-JS-Client-Aufrufe (`.from('gantt_tasks')`) fehl.
+Die Tabellen existieren und haben RLS-Policies, aber die PostgreSQL-Rollen `anon` und `authenticated` haben keine GRANT-Berechtigungen (SELECT, INSERT, UPDATE, DELETE). Ohne diese Grants kann PostgREST die Tabellen nicht im Schema-Cache finden.
 
 ## Ursache
 
-Wenn Tabellen direkt erstellt wurden, ohne dass PostgREST seinen Cache aktualisiert hat, sind sie uber SQL erreichbar, aber nicht uber die REST-API.
+Bei der urspruenglichen Tabellenerstellung wurden die `GRANT`-Befehle vergessen. RLS-Policies allein reichen nicht -- die Rollen brauchen grundsaetzliche Tabellenberechtigungen.
 
-## Losung
+## Loesung
 
-Eine leere Migration ausfuhren, die PostgREST zwingt, den Schema-Cache neu zu laden. Zusatzlich sicherstellen, dass alle Foreign Keys und RLS-Policies korrekt sind.
-
-### Schritt 1: Schema-Cache-Refresh via Migration
-
-Eine minimale Migration ausfuhren die:
-- `NOTIFY pgrst, 'reload schema'` sendet (erzwingt Cache-Refresh)
-- Sicherheitshalber die Tabellen mit `IF NOT EXISTS` erneut deklariert
-- RLS-Policies verifiziert
+Eine Migration ausfuehren, die den Rollen `anon` und `authenticated` die notwendigen Berechtigungen erteilt:
 
 ```sql
--- Force PostgREST schema cache reload
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gantt_tasks TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.planning_projects TO anon, authenticated;
 NOTIFY pgrst, 'reload schema';
 ```
 
-### Schritt 2: Verifizierung
-
-Nach der Migration testen, ob der Supabase-JS-Client die Tabellen erreichen kann, indem eine Aufgabe erstellt wird.
-
 ## Technische Details
 
-| Aktion | Detail |
+| Aspekt | Detail |
 |--------|--------|
-| Migration | `NOTIFY pgrst, 'reload schema'` |
 | Betroffene Tabellen | `gantt_tasks`, `planning_projects` |
-| Code-Anderungen | Keine -- der bestehende Code ist korrekt |
-| Risiko | Keins -- nur Cache-Refresh, keine Datenbankanderung |
+| Fehlende Grants | SELECT, INSERT, UPDATE, DELETE fuer `anon` und `authenticated` |
+| Code-Aenderungen | Keine -- nur DB-Migration |
+| Risiko | Keins -- RLS-Policies schuetzen die Daten weiterhin |
+
