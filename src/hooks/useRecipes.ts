@@ -140,12 +140,12 @@ export function useCreateRecipe() {
           ingredients_json: recipe.ingredients as any,
           calories_total: recipe.calories_total,
           calories_per_serving: Math.round(recipe.calories_total / recipe.servings),
-          macros_json: recipe.macros,
-          micros_json: recipe.micros,
+          macros_json: recipe.macros as any,
+          micros_json: recipe.micros as any,
           nutrition_confidence: recipe.nutrition_confidence,
           source: 'ai',
           user_id: user.user.id,
-        })
+        } as any)
         .select()
         .single();
 
