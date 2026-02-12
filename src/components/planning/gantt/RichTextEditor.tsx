@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, Paintbrush } from 'lucide-react';
 import { Toggle } from '@/components/ui/toggle';
 
 interface RichTextEditorProps {
@@ -22,6 +22,14 @@ const SIZES = [
   { label: 'Normal', value: '3' },
   { label: 'Groß', value: '5' },
   { label: 'Sehr groß', value: '7' },
+];
+
+const COLORS = [
+  '#000000', '#434343', '#666666', '#999999',
+  '#B80000', '#DB3E00', '#FCCB00', '#008B02',
+  '#006B76', '#1273DE', '#004DCF', '#5300EB',
+  '#EB9694', '#FAD0C3', '#FEF3BD', '#C1E1C5',
+  '#BEDADC', '#C4DEF6', '#BED3F3', '#D4C4FB',
 ];
 
 export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
@@ -120,6 +128,31 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
         <Toggle size="sm" className="h-7 w-7 p-0" onPressedChange={() => exec('underline')} aria-label="Unterstrichen">
           <Underline className="h-3.5 w-3.5" />
         </Toggle>
+
+        <div className="w-px h-5 bg-border mx-0.5" />
+
+        {/* Font color */}
+        <div className="relative group">
+          <button
+            type="button"
+            className="h-7 w-7 p-0 inline-flex items-center justify-center rounded-md text-sm hover:bg-muted"
+            aria-label="Schriftfarbe"
+          >
+            <Paintbrush className="h-3.5 w-3.5" />
+          </button>
+          <div className="hidden group-hover:grid absolute top-full left-0 z-50 grid-cols-4 gap-1 p-2 rounded-md border bg-popover shadow-md min-w-[120px]">
+            {COLORS.map(c => (
+              <button
+                key={c}
+                type="button"
+                className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
+                style={{ backgroundColor: c }}
+                onClick={() => exec('foreColor', c)}
+                aria-label={c}
+              />
+            ))}
+          </div>
+        </div>
 
         <div className="w-px h-5 bg-border mx-0.5" />
 
