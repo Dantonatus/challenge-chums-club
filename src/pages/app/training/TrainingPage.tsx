@@ -1,6 +1,8 @@
-import { Dumbbell } from 'lucide-react';
+import { Dumbbell, FileDown } from 'lucide-react';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
 import CsvUploader from '@/components/training/CsvUploader';
+import { Button } from '@/components/ui/button';
+import { exportTrainingPDF } from '@/lib/training/exportTrainingPDF';
 import TrainingKPICards from '@/components/training/TrainingKPICards';
 import WeeklyVisitsChart from '@/components/training/WeeklyVisitsChart';
 import TimeDistributionChart from '@/components/training/TimeDistributionChart';
@@ -26,7 +28,15 @@ export default function TrainingPage() {
           <Dumbbell className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Training</h1>
         </div>
-        <CsvUploader onImport={handleImport} isLoading={importCsv.isPending} />
+        <div className="flex items-center gap-2">
+          {checkins.length > 0 && (
+            <Button variant="outline" onClick={() => exportTrainingPDF(checkins)}>
+              <FileDown className="mr-2 h-4 w-4" />
+              PDF Export
+            </Button>
+          )}
+          <CsvUploader onImport={handleImport} isLoading={importCsv.isPending} />
+        </div>
       </div>
 
       {isLoading ? (
