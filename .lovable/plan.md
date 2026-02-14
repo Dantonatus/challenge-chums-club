@@ -1,35 +1,96 @@
 
 
-# Manuelles Archivieren einzelner Feedback-Eintraege
+# Neues Modul: Training
 
-## Was sich aendert
+## Konzept
 
-Einzelne Feedback-Eintraege koennen per Klick direkt ins Archiv verschoben werden -- ohne eine komplette Feedbackrunde starten zu muessen. So gibt es neben dem Session-Workflow auch einen schnellen, manuellen Weg.
+Ein neues "Training"-Modul, das Check-in-Daten aus dem Fitnessstudio visualisiert. Die CSV-Datei wird direkt im Browser hochgeladen und geparst (kein Server-Upload noetig). Die Daten werden in einer Datenbank-Tabelle gespeichert, damit sie persistent sind und bei erneutem Upload aktualisiert werden (Duplikate anhand Datum+Zeit erkennen).
 
-## Umsetzung
+## Datenstruktur der CSV
 
-### 1. Neuer Button auf der FeedbackEntryCard
+Jede Zeile enthaelt:
+- **Datum** (z.B. "02 Januar 2026")
+- **Zeit** (z.B. "19:26:52")
+- **Name der Einrichtung** (Gym-Name)
+- **Adresse**
 
-Jede offene Karte bekommt in der Aktionsleiste (neben Bearbeiten und Loeschen) einen neuen "Archivieren"-Button (Archive-Icon). Beim Klick wird der Eintrag einer automatisch erstellten Einzel-Session zugeordnet und wandert damit in den Verlauf-Tab.
+## Datenbank-Tabelle: `training_checkins`
 
-### 2. Logik: Einzel-Archivierung
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| id | uuid (PK) | -- |
+| user_id | uuid | RLS-Zuordnung |
+| checkin_date | text | Datum im Format YYYY-MM-DD |
+| checkin_time | text | Uhrzeit HH:MM:SS |
+| facility_name | text | Name des Studios |
+| facility_address | text | Adresse |
+| created_at | timestamptz | -- |
 
-Wenn ein einzelner Eintrag manuell archiviert wird:
+Unique-Constraint auf `(user_id, checkin_date, checkin_time)` um Duplikate beim erneuten Upload zu vermeiden (Upsert-Logik).
 
-- Es wird eine neue `feedback_session` erstellt mit `session_date = heute` und `notes = NULL`
-- Der Eintrag bekommt die `session_id` dieser neuen Session
-- Der Eintrag verschwindet aus "Offen" und erscheint im "Verlauf"
+## Analytics & Charts
 
-Alternativ -- und das ist die einfachere Variante -- koennte man Eintraege auch ohne Session archivieren, indem man ein `is_archived`-Flag nutzt. Da aber die bestehende Archiv-Logik komplett ueber `session_id` laeuft, ist es sauberer, eine Mini-Session zu erstellen. So bleibt die Verlauf-Ansicht konsistent.
+Aus den 24 Datenpunkten lassen sich folgende Analysen ableiten:
 
-### 3. Rueckgaengig machen
+### 1. KPI-Karten (oben)
+- **Gesamt-Besuche** (z.B. 24)
+- **Besuche diesen Monat** vs. letzten Monat
+- **Durchschnittliche Besuche pro Woche**
+- **Laengste Streak** (aufeinanderfolgende Tage mit mindestens 1 Besuch)
+- **Haeufigste Uhrzeit** (Zeitfenster-Bucket)
 
-Im Verlauf-Tab kann ein archivierter Eintrag (bzw. eine Einzel-Session) wieder zurueck nach "Offen" verschoben werden. Dabei wird die `session_id` auf NULL gesetzt und die leere Session geloescht.
+### 2. Besuche pro Woche (Balkendiagramm)
+- X-Achse: Kalenderwoche, Y-Achse: Anzahl Besuche
+- Zeigt Trainingsvolumen ueber Zeit
 
-### 4. Betroffene Dateien
+### 3. Uhrzeiten-Verteilung (Balkendiagramm oder Donut)
+- Zeitfenster-Buckets: Morgens (6-12), Mittags (12-15), Nachmittags (15-18), Abends (18-21), Spaet (21+)
+- Zeigt wann bevorzugt trainiert wird
 
-- **`src/components/feedback/FeedbackEntryCard.tsx`**: Neuer Archive-Button in der Aktionsleiste
-- **`src/components/feedback/FeedbackTimeline.tsx`**: Neue Callback-Prop `onArchiveEntry` durchreichen
-- **`src/hooks/useFeedbackEntries.ts`**: Neue Mutation `archiveSingle` -- erstellt Mini-Session + setzt session_id
-- **`src/pages/app/feedback/FeedbackPage.tsx`**: Callback verdrahten
+### 4. Wochentags-Heatmap
+- Montag bis Sonntag als Spalten
+- Zeigt welche Tage am beliebtesten sind
+
+### 5. Monatsvergleich (Balkendiagramm)
+- Besuche pro Monat nebeneinander
+- Trend erkennen
+
+### 6. Aktuelle Streak & Kalender-Ansicht
+- Kleiner Kalender mit markierten Trainingstagen
+- Aktuelle und laengste Streak hervorgehoben
+
+## CSV-Upload Workflow
+
+1. Button "CSV importieren" oben auf der Seite
+2. Datei auswaehlen -- Parsing im Browser (kein Edge Function noetig)
+3. Deutsche Datumsformate parsen ("02 Januar 2026" zu "2026-01-02")
+4. Upsert in die Datenbank (Duplikate ignorieren)
+5. Erfolgsmeldung mit Anzahl neuer/aktualisierter Eintraege
+
+## Neue Dateien
+
+- `src/pages/app/training/TrainingPage.tsx` -- Hauptseite mit Upload + Dashboard
+- `src/components/training/TrainingKPICards.tsx` -- KPI-Leiste oben
+- `src/components/training/WeeklyVisitsChart.tsx` -- Besuche pro Woche
+- `src/components/training/TimeDistributionChart.tsx` -- Uhrzeiten-Verteilung
+- `src/components/training/WeekdayHeatmap.tsx` -- Wochentags-Heatmap
+- `src/components/training/MonthlyComparisonChart.tsx` -- Monatsvergleich
+- `src/components/training/TrainingCalendar.tsx` -- Kalender mit Streak
+- `src/components/training/CsvUploader.tsx` -- Upload-Komponente
+- `src/hooks/useTrainingCheckins.ts` -- Daten laden + CSV-Import-Mutation
+- `src/lib/training/csvParser.ts` -- CSV-Parsing mit deutschem Datumsformat
+- `src/lib/training/types.ts` -- TypeScript-Typen
+- `src/lib/training/analytics.ts` -- Berechnungen (Streaks, Buckets, Aggregationen)
+
+## Bestehende Aenderungen
+
+- **`src/App.tsx`**: Neue Route `/app/training` einhaengen
+- **`src/components/layout/AppLayout.tsx`**: Neuer Nav-Link "Training" mit Dumbbell-Icon
+- **Migration**: Tabelle `training_checkins` + RLS-Policies + Unique-Constraint
+
+## Technologie
+
+- **Recharts** (bereits installiert) fuer alle Charts
+- **date-fns** (bereits installiert) fuer Datumsberechnungen
+- Kein neues Package noetig
 
