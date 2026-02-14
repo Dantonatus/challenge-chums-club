@@ -1,59 +1,83 @@
 
-# PDF-Export fuer Training Report
 
-## Konzept
+# PDF-Export: Theme-Matching und echte Diagramme
 
-Ein professioneller, druckfertiger PDF-Report ("Training Report") mit jsPDF, der alle wichtigen Kennzahlen und Analysen auf 1-2 Seiten buendelt. Der Export-Button erscheint neben dem CSV-Import-Button.
+## Problem
 
-## Layout des PDFs
+Der aktuelle PDF-Export hat immer einen weissen Hintergrund mit blauen Akzenten und ersetzt die Diagramme durch Tabellen. Der User moechte, dass der PDF-Report exakt so aussieht wie die App -- also Dark/Light-Mode uebernimmt und die echten Diagramme (Charts) einbettet.
 
-### Seite 1
+## Loesung
 
-1. **Header-Balken** (blau, volle Breite): Titel "Trainingsbericht" + Zeitraum (erster bis letzter Check-in)
-2. **KPI-Streifen** (4-6 Boxen nebeneinander): Gesamt-Besuche, Diesen Monat, Oe pro Woche, Laengste Streak, Aktuelle Streak, Lieblings-Zeit
-3. **Bubble-Heatmap als Tabelle**: Wochentag x Zeitslot-Matrix mit gefuellten Kreisen (via jsPDF circle-Zeichnung), Groesse proportional zum Count
-4. **Persoenliche Rekorde**: 4 Boxen (Fruehester/Spaetester Check-in, Aktivster Tag, Laengste Pause)
+Die Recharts-Diagramme und UI-Komponenten werden per `html-to-image` (bereits installiert) als PNG-Bilder erfasst und direkt ins PDF eingebettet. Farben werden dynamisch aus dem aktuellen Theme gelesen.
 
-### Seite 2 (falls noetig)
+## Technischer Ablauf
 
-5. **Besuche pro Woche** als Balken-Tabelle (autoTable)
-6. **Wochentags-Verteilung** als Balken-Tabelle
-7. **Monatsvergleich** als Tabelle
-8. **Ruhetage-Verteilung** als Tabelle
-9. **Footer** mit Generierungszeitpunkt
+```text
+User klickt "PDF Export"
+  |
+  +-- Theme erkennen (document.documentElement.classList.contains('dark'))
+  +-- Farbpalette setzen (dark: dunkler Hintergrund, helle Schrift / light: umgekehrt)
+  +-- Alle Chart-Container im DOM per Selektor finden
+  +-- html-to-image: Jeden Chart-Container als PNG capturen
+  +-- jsPDF: PDF aufbauen mit:
+       - Seiten-Hintergrund passend zum Theme
+       - KPI-Boxen mit Mint-Akzent (HSL 160 55% 45%) statt Blau
+       - Gecapturte Chart-PNGs als eingebettete Bilder
+       - Persoenliche Rekorde mit Theme-Farben
+       - Footer
+```
 
-## Technische Umsetzung
+## Aenderungen
 
-### Neue Dateien
+### 1. `src/lib/training/exportTrainingPDF.ts` -- Komplett ueberarbeiten
 
-| Datei | Beschreibung |
-|---|---|
-| `src/lib/training/exportTrainingPDF.ts` | Komplette PDF-Generierung mit jsPDF + autoTable. Nutzt alle bestehenden Analytics-Funktionen. Zeichnet die Heatmap-Bubbles als SVG-Kreise direkt ins PDF. |
+**Farbpalette dynamisch:**
+- Light: Hintergrund weiss (#FCFCFC), Text dunkel (#1F1F1F), Accent Mint (#2F9B6E), KPI-Boxen helles Mint
+- Dark: Hintergrund (#141414), Text hell (#EBEBEB), Accent Mint (#3FBB7E), KPI-Boxen dunkles Mint
 
-### Geaenderte Dateien
+**Neue Signatur:**
+```typescript
+export async function exportTrainingPDF(
+  checkins: TrainingCheckin[],
+  chartContainers?: HTMLElement[]  // optional: DOM-Elemente der Charts
+)
+```
+
+**Ablauf:**
+1. Theme aus DOM lesen
+2. Farbkonstanten setzen (BG, FG, ACCENT, MUTED, CARD_BG)
+3. Header-Balken in Mint statt Blau
+4. KPI-Strip mit Theme-passenden Boxen
+5. Bubble-Heatmap mit Theme-Farben (Mint-Bubbles auf dunklem/hellem Grund)
+6. Personal Records mit Theme-Farben
+7. Chart-Screenshots als Bilder einbetten (statt Tabellen)
+8. Footer
+
+### 2. `src/pages/app/training/TrainingPage.tsx` -- Chart-Capture-Logik
+
+- Refs auf die Chart-Container-Divs setzen (oder IDs vergeben)
+- Beim Klick auf "PDF Export": alle Chart-Container per `toPng()` aus `html-to-image` capturen
+- Die PNGs zusammen mit den Checkins an `exportTrainingPDF()` uebergeben
+
+**Konkret:**
+- Wrapper-Div um den gesamten Chart-Bereich mit einer `ref` oder `id="training-charts"`
+- Einzelne Sektionen mit `data-pdf-section="kpi"`, `data-pdf-section="heatmap"`, etc.
+- `toPng()` fuer jede Sektion aufrufen
+- Gesammelten Base64-PNGs an die Export-Funktion geben
+
+### 3. Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/app/training/TrainingPage.tsx` | Neuer "PDF Export"-Button neben dem CSV-Import-Button. Ruft `exportTrainingPDF(checkins)` auf. |
+| `src/lib/training/exportTrainingPDF.ts` | Komplette Ueberarbeitung: Theme-Erkennung, Mint-Farben, Chart-Bilder einbetten statt Tabellen |
+| `src/pages/app/training/TrainingPage.tsx` | Refs/IDs an Chart-Sektionen, html-to-image Capture beim Export, async Handler |
 
-### Details zur PDF-Generierung
+### 4. Wichtige Details
 
-- **Format**: A4 Hochformat (210x297mm)
-- **Bibliotheken**: jsPDF + jspdf-autotable (bereits installiert)
-- **Heatmap im PDF**: Fuer jede Zelle mit Daten wird `doc.circle(x, y, radius, 'F')` gezeichnet, Radius skaliert nach Count, Farbe in Blauabstufungen
-- **KPI-Boxen**: Gezeichnet als abgerundete Rechtecke mit `doc.roundedRect()` und Text zentriert darin
-- **Persoenliche Rekorde**: 4 kleine Boxen mit Icon-Emoji + Wert
-- **Tabellen**: Via autoTable mit dem gleichen Styling wie im bestehenden Challenge-Export (blauer Header, alternating rows)
-- **Dateiname**: `training-report-YYYY-MM-DD.pdf`
+- `exportTrainingPDF` wird `async` (wegen Bild-Capture)
+- Bilder werden mit `doc.addImage(base64, 'PNG', x, y, w, h)` eingebettet
+- Seitenumbrueche werden dynamisch berechnet basierend auf Bildhoehen
+- Die KPI-Cards, Heatmap und Personal Records werden weiterhin programmatisch gezeichnet (da einfache Geometrie), aber in den richtigen Theme-Farben
+- Die Recharts-Diagramme (FrequencyTrend, RestDays, WeeklyVisits, TimeDistribution, WeekdayHeatmap, MonthlyComparison) werden als Screenshots eingebettet
+- Kalender wird nicht ins PDF aufgenommen (zu komplex, wenig Mehrwert im Print)
 
-### Ablauf im Code
-
-```text
-exportTrainingPDF(checkins: TrainingCheckin[])
-  |
-  +-- Berechne alle Analytics (KPIs, Heatmap, Records, etc.)
-  +-- Seite 1: Header + KPIs + Heatmap-Grid + Records
-  +-- Seite 2: Tabellen (Wochen, Wochentage, Monate, Ruhetage)
-  +-- Footer mit Zeitstempel
-  +-- doc.save('training-report-YYYY-MM-DD.pdf')
-```
