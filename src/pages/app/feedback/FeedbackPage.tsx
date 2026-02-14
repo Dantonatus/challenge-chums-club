@@ -9,7 +9,7 @@ import { toast } from '@/hooks/use-toast';
 const FeedbackPage = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { employees, create: createEmp, update: updateEmp } = useFeedbackEmployees();
-  const { entries, archivedEntries, create: createEntry, update: updateEntry, remove: removeEntry, isLoading } = useFeedbackEntries(selectedId);
+  const { entries, archivedEntries, create: createEntry, update: updateEntry, remove: removeEntry, archiveSingle, isLoading } = useFeedbackEntries(selectedId);
   const { sessions, create: createSession, remove: removeSession } = useFeedbackSessions(selectedId);
 
   const selectedEmployee = employees.find(e => e.id === selectedId) ?? null;
@@ -52,6 +52,13 @@ const FeedbackPage = () => {
         })}
         isCreatingSession={createSession.isPending}
         onDeleteSession={(id) => removeSession.mutate(id)}
+        onArchiveEntry={(entryId) => {
+          if (selectedId) {
+            archiveSingle.mutate({ entryId, employeeId: selectedId }, {
+              onError: () => toast({ title: 'Fehler', description: 'Eintrag konnte nicht archiviert werden.', variant: 'destructive' }),
+            });
+          }
+        }}
       />
     </div>
   );

@@ -3,7 +3,7 @@ import { FeedbackEntry } from '@/lib/feedback/types';
 import { CategoryChip } from './CategoryChip';
 import { SENTIMENTS } from '@/lib/feedback/constants';
 import { cn } from '@/lib/utils';
-import { Check, Pencil, Trash2, Share2 } from 'lucide-react';
+import { Archive, Check, Pencil, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,11 @@ interface Props {
   onToggleShared: (id: string, is_shared: boolean) => void;
   onUpdate: (id: string, content: string) => void;
   onDelete: (id: string) => void;
+  onArchive?: (id: string) => void;
   readOnly?: boolean;
 }
 
-export function FeedbackEntryCard({ entry, onToggleShared, onUpdate, onDelete, readOnly }: Props) {
+export function FeedbackEntryCard({ entry, onToggleShared, onUpdate, onDelete, onArchive, readOnly }: Props) {
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(entry.content);
   const sentiment = SENTIMENTS.find(s => s.value === entry.sentiment);
@@ -73,6 +74,11 @@ export function FeedbackEntryCard({ entry, onToggleShared, onUpdate, onDelete, r
         {/* Actions */}
         {!editing && !readOnly && (
           <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            {onArchive && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onArchive(entry.id)} title="Archivieren">
+                <Archive className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(true)}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>

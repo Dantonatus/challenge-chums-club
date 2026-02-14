@@ -90,6 +90,34 @@ export function useFeedbackEntries(employeeId: string | null) {
     onSuccess: invalidateAll,
   });
 
+  const archiveSingle = useMutation({
+    mutationFn: async ({ entryId, employeeId }: { entryId: string; employeeId: string }) => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error('Not authenticated');
+
+      // Create mini-session
+      const { data: session, error: sessionError } = await supabase
+        .from('feedback_sessions' as any)
+        .insert({
+          employee_id: employeeId,
+          user_id: auth.user.id,
+          session_date: new Date().toISOString().slice(0, 10),
+          notes: null,
+        })
+        .select()
+        .single();
+      if (sessionError) throw sessionError;
+
+      // Link entry to session
+      const { error: updateError } = await supabase
+        .from('feedback_entries' as any)
+        .update({ session_id: (session as any).id, is_shared: true, shared_at: new Date().toISOString() } as any)
+        .eq('id', entryId);
+      if (updateError) throw updateError;
+    },
+    onSuccess: invalidateAll,
+  });
+
   return {
     entries: query.data ?? [],
     archivedEntries: allQuery.data ?? [],
@@ -97,5 +125,6 @@ export function useFeedbackEntries(employeeId: string | null) {
     create,
     update,
     remove,
+    archiveSingle,
   };
 }

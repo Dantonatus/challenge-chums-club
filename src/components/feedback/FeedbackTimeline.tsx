@@ -25,12 +25,13 @@ interface Props {
   onCreateSession: (data: { employee_id: string; session_date: string; notes?: string; entry_ids: string[] }) => void;
   isCreatingSession: boolean;
   onDeleteSession: (id: string) => void;
+  onArchiveEntry: (entryId: string) => void;
 }
 
 export function FeedbackTimeline({
   employee, entries, archivedEntries, sessions, isLoading, onCreateEntry, isCreating,
   onUpdateEntry, onDeleteEntry, onUpdateEmployee, onToggleArchive,
-  onCreateSession, isCreatingSession, onDeleteSession,
+  onCreateSession, isCreatingSession, onDeleteSession, onArchiveEntry,
 }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
@@ -112,6 +113,7 @@ export function FeedbackTimeline({
                   onToggleShared={() => {}}
                   onUpdate={onUpdateEntry}
                   onDelete={onDeleteEntry}
+                  onArchive={onArchiveEntry}
                 />
               ))}
             </div>
