@@ -1,65 +1,35 @@
 
 
-# Feedbackgespraeche & Gespraechs-Archiv
+# Manuelles Archivieren einzelner Feedback-Eintraege
 
-## Konzept
+## Was sich aendert
 
-Das bestehende "Geteilt"-Flag wird zu einem vollstaendigen Gespraechs-Workflow erweitert. Statt einzelne Eintraege nur als "geteilt" zu markieren, werden sie in **Feedbackrunden** (Sessions) zusammengefasst. So entsteht eine klare Historie: Welches Feedback wurde wann mit der Person besprochen?
+Einzelne Feedback-Eintraege koennen per Klick direkt ins Archiv verschoben werden -- ohne eine komplette Feedbackrunde starten zu muessen. So gibt es neben dem Session-Workflow auch einen schnellen, manuellen Weg.
 
-## Workflow fuer den Nutzer
+## Umsetzung
 
-1. **Feedback sammeln** -- wie bisher, Eintraege laufend erfassen
-2. **Feedbackgespraech starten** -- Button "Feedbackrunde starten" in der Timeline
-3. **Eintraege auswaehlen** -- alle ungeteilten Eintraege sind vorausgewaehlt, einzelne koennen ab-/ausgewaehlt werden
-4. **Runde abschliessen** -- Datum + optionale Notizen zum Gespraech erfassen, Button "Gespraech abschliessen"
-5. **Archiv** -- Abgeschlossene Runden erscheinen in einem Tab "Verlauf" pro Person, chronologisch sortiert. Jede Runde ist aufklappbar und zeigt die besprochenen Eintraege.
+### 1. Neuer Button auf der FeedbackEntryCard
 
-## Aenderungen im Detail
+Jede offene Karte bekommt in der Aktionsleiste (neben Bearbeiten und Loeschen) einen neuen "Archivieren"-Button (Archive-Icon). Beim Klick wird der Eintrag einer automatisch erstellten Einzel-Session zugeordnet und wandert damit in den Verlauf-Tab.
 
-### 1. Neue Datenbank-Tabelle: `feedback_sessions`
+### 2. Logik: Einzel-Archivierung
 
-| Spalte | Typ | Beschreibung |
-|---|---|---|
-| id | uuid (PK) | -- |
-| employee_id | uuid (FK) | Zuordnung zum Mitarbeiter |
-| user_id | uuid | Eigentum / RLS |
-| session_date | text | Datum des Gespraechs (YYYY-MM-DD) |
-| notes | text (nullable) | Optionale Notizen zum Gespraech |
-| created_at | timestamptz | -- |
+Wenn ein einzelner Eintrag manuell archiviert wird:
 
-### 2. Neue Spalte auf `feedback_entries`
+- Es wird eine neue `feedback_session` erstellt mit `session_date = heute` und `notes = NULL`
+- Der Eintrag bekommt die `session_id` dieser neuen Session
+- Der Eintrag verschwindet aus "Offen" und erscheint im "Verlauf"
 
-| Spalte | Typ | Beschreibung |
-|---|---|---|
-| session_id | uuid (nullable, FK) | Verknuepfung zur Feedbackrunde -- NULL = noch offen |
+Alternativ -- und das ist die einfachere Variante -- koennte man Eintraege auch ohne Session archivieren, indem man ein `is_archived`-Flag nutzt. Da aber die bestehende Archiv-Logik komplett ueber `session_id` laeuft, ist es sauberer, eine Mini-Session zu erstellen. So bleibt die Verlauf-Ansicht konsistent.
 
-Eintraege mit `session_id = NULL` sind aktiv/offen. Eintraege mit einer `session_id` wurden besprochen und sind im Archiv.
+### 3. Rueckgaengig machen
 
-### 3. UI-Aenderungen
+Im Verlauf-Tab kann ein archivierter Eintrag (bzw. eine Einzel-Session) wieder zurueck nach "Offen" verschoben werden. Dabei wird die `session_id` auf NULL gesetzt und die leere Session geloescht.
 
-**FeedbackTimeline -- zwei Tabs:**
-- **Offen** (Standard): Zeigt Erfassungsformular + alle Eintraege ohne `session_id`. Button "Feedbackrunde starten".
-- **Verlauf**: Liste aller abgeschlossenen Sessions, chronologisch absteigend. Jede Session ist ein aufklappbares Akkordeon mit Datum, Notizen und den zugehoerigen Eintraegen.
+### 4. Betroffene Dateien
 
-**Neue Komponenten:**
-- `StartSessionDialog`: Dialog zum Starten einer Runde -- zeigt alle offenen Eintraege mit Checkboxen, Datumsfeld, Notizfeld.
-- `SessionCard`: Aufklappbare Karte im Verlauf-Tab mit Session-Datum, Notizen und den Eintraegen.
+- **`src/components/feedback/FeedbackEntryCard.tsx`**: Neuer Archive-Button in der Aktionsleiste
+- **`src/components/feedback/FeedbackTimeline.tsx`**: Neue Callback-Prop `onArchiveEntry` durchreichen
+- **`src/hooks/useFeedbackEntries.ts`**: Neue Mutation `archiveSingle` -- erstellt Mini-Session + setzt session_id
+- **`src/pages/app/feedback/FeedbackPage.tsx`**: Callback verdrahten
 
-**Bestehende Aenderungen:**
-- `FeedbackEntryCard`: Kleines Badge "Besprochen am [Datum]" wenn `session_id` gesetzt ist.
-- Das bisherige "Geteilt"-Toggle wird durch den Session-Workflow ersetzt (ist_shared wird durch session_id abgeloest).
-
-### 4. Hooks
-
-- `useFeedbackSessions(employeeId)` -- CRUD fuer Sessions
-- `useFeedbackEntries` anpassen -- Filter nach `session_id IS NULL` fuer offene Eintraege, bzw. nach `session_id` fuer Archiv
-
-### 5. RLS-Policies
-
-Gleiche Policies wie bei den bestehenden Tabellen: Nutzer koennen nur eigene Sessions sehen, erstellen, updaten und loeschen.
-
-## Was sich nicht aendert
-
-- Das Erfassen von Feedback bleibt identisch
-- Mitarbeiter-Verwaltung (anlegen, archivieren, bearbeiten) bleibt identisch
-- Bestehende Eintraege (die 28 von Markus) bleiben als "offen" erhalten, da sie kein session_id haben
