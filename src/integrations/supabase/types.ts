@@ -53,6 +53,87 @@ export type Database = {
         }
         Relationships: []
       }
+      body_scans: {
+        Row: {
+          age_years: number | null
+          bmi: number | null
+          bmr_kcal: number | null
+          bone_mass_kg: number | null
+          created_at: string
+          device: string
+          ecw_kg: number | null
+          ecw_tbw_ratio: number | null
+          fat_mass_kg: number | null
+          fat_percent: number | null
+          height_cm: number | null
+          icw_kg: number | null
+          id: string
+          metabolic_age: number | null
+          muscle_mass_kg: number | null
+          physique_text: string | null
+          scan_date: string
+          scan_time: string
+          segments_json: Json | null
+          tbw_kg: number | null
+          tbw_percent: number | null
+          user_id: string
+          visceral_fat: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          age_years?: number | null
+          bmi?: number | null
+          bmr_kcal?: number | null
+          bone_mass_kg?: number | null
+          created_at?: string
+          device?: string
+          ecw_kg?: number | null
+          ecw_tbw_ratio?: number | null
+          fat_mass_kg?: number | null
+          fat_percent?: number | null
+          height_cm?: number | null
+          icw_kg?: number | null
+          id?: string
+          metabolic_age?: number | null
+          muscle_mass_kg?: number | null
+          physique_text?: string | null
+          scan_date: string
+          scan_time: string
+          segments_json?: Json | null
+          tbw_kg?: number | null
+          tbw_percent?: number | null
+          user_id: string
+          visceral_fat?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          age_years?: number | null
+          bmi?: number | null
+          bmr_kcal?: number | null
+          bone_mass_kg?: number | null
+          created_at?: string
+          device?: string
+          ecw_kg?: number | null
+          ecw_tbw_ratio?: number | null
+          fat_mass_kg?: number | null
+          fat_percent?: number | null
+          height_cm?: number | null
+          icw_kg?: number | null
+          id?: string
+          metabolic_age?: number | null
+          muscle_mass_kg?: number | null
+          physique_text?: string | null
+          scan_date?: string
+          scan_time?: string
+          segments_json?: Json | null
+          tbw_kg?: number | null
+          tbw_percent?: number | null
+          user_id?: string
+          visceral_fat?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       challenge_participants: {
         Row: {
           challenge_id: string

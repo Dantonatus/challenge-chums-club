@@ -144,4 +144,3 @@ Der Parser liest die TANITA-CSV und extrahiert alle 26 Zeilen in ein einzelnes `
 - Gleiche Recharts-Konfiguration (Farben, Tooltips, Responsive Container)
 - Gleiche KPI-Card-Struktur (Icon + Label + Wert + Sub-Text)
 - Gleicher `-m-3 p-3` Wrapper fuer PDF-Export-Kompatibilitaet
-
