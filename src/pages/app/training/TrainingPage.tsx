@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Dumbbell, FileDown, Loader2 } from 'lucide-react';
-import { toPng } from 'html-to-image';
+import { toJpeg } from 'html-to-image';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
 import CsvUploader from '@/components/training/CsvUploader';
 import { Button } from '@/components/ui/button';
@@ -29,23 +29,17 @@ export default function TrainingPage() {
   const kpiRef = useRef<HTMLDivElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const recordsRef = useRef<HTMLDivElement>(null);
-  const frequencyRef = useRef<HTMLDivElement>(null);
-  const restDaysRef = useRef<HTMLDivElement>(null);
-  const weeklyRef = useRef<HTMLDivElement>(null);
-  const timeDistRef = useRef<HTMLDivElement>(null);
-  const weekdayRef = useRef<HTMLDivElement>(null);
-  const monthlyRef = useRef<HTMLDivElement>(null);
+  const gridRow1Ref = useRef<HTMLDivElement>(null);
+  const gridRow2Ref = useRef<HTMLDivElement>(null);
+  const gridRow3Ref = useRef<HTMLDivElement>(null);
 
   const pdfSections: PdfSection[] = [
     { label: 'KPI-Übersicht', ref: kpiRef },
     { label: 'Trainingszeiten', ref: heatmapRef },
     { label: 'Persönliche Rekorde', ref: recordsRef },
-    { label: 'Frequenz-Trend', ref: frequencyRef },
-    { label: 'Ruhetage-Verteilung', ref: restDaysRef },
-    { label: 'Besuche pro Woche', ref: weeklyRef },
-    { label: 'Uhrzeiten-Verteilung', ref: timeDistRef },
-    { label: 'Wochentags-Verteilung', ref: weekdayRef },
-    { label: 'Monatsvergleich', ref: monthlyRef },
+    { label: 'Frequenz & Ruhetage', ref: gridRow1Ref },
+    { label: 'Besuche & Uhrzeiten', ref: gridRow2Ref },
+    { label: 'Wochentag & Monat', ref: gridRow3Ref },
   ];
 
   const handleImport = async (rows: Parameters<typeof importCsv.mutateAsync>[0]) => {
@@ -60,7 +54,7 @@ export default function TrainingPage() {
       for (const section of pdfSections) {
         if (section.ref.current) {
           try {
-            const dataUrl = await toPng(section.ref.current, { pixelRatio: 2 });
+            const dataUrl = await toJpeg(section.ref.current, { quality: 0.85, pixelRatio: 1.5 });
             images.push({ label: section.label, dataUrl });
           } catch (err) {
             console.warn(`Failed to capture ${section.label}:`, err);
@@ -109,17 +103,17 @@ export default function TrainingPage() {
           <div ref={kpiRef}><TrainingKPICards checkins={checkins} /></div>
           <div ref={heatmapRef}><TimeBubbleHeatmap checkins={checkins} /></div>
           <div ref={recordsRef}><PersonalRecords checkins={checkins} /></div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div ref={frequencyRef}><FrequencyTrendChart checkins={checkins} /></div>
-            <div ref={restDaysRef}><RestDaysChart checkins={checkins} /></div>
+          <div ref={gridRow1Ref} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FrequencyTrendChart checkins={checkins} />
+            <RestDaysChart checkins={checkins} />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div ref={weeklyRef}><WeeklyVisitsChart checkins={checkins} /></div>
-            <div ref={timeDistRef}><TimeDistributionChart checkins={checkins} /></div>
+          <div ref={gridRow2Ref} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <WeeklyVisitsChart checkins={checkins} />
+            <TimeDistributionChart checkins={checkins} />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div ref={weekdayRef}><WeekdayHeatmap checkins={checkins} /></div>
-            <div ref={monthlyRef}><MonthlyComparisonChart checkins={checkins} /></div>
+          <div ref={gridRow3Ref} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <WeekdayHeatmap checkins={checkins} />
+            <MonthlyComparisonChart checkins={checkins} />
           </div>
           <TrainingCalendar checkins={checkins} />
         </>

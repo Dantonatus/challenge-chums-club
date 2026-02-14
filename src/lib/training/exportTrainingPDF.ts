@@ -83,10 +83,18 @@ export async function exportTrainingPDF(
 
   // ── Embed all section screenshots ──
   if (sectionImages && sectionImages.length > 0) {
+    const maxImgH = PAGE_H - 2 * MARGIN - 10; // max image height per page
+
     for (const img of sectionImages) {
       const ratio = await getImageAspectRatio(img.dataUrl);
-      const imgW = CONTENT_W;
-      const imgH = imgW / ratio;
+      let imgW = CONTENT_W;
+      let imgH = imgW / ratio;
+
+      // If image is taller than a full page, scale down proportionally
+      if (imgH > maxImgH) {
+        imgH = maxImgH;
+        imgW = imgH * ratio;
+      }
 
       // Check if we need a new page
       if (y + imgH + 4 > PAGE_H - 12) {
@@ -95,7 +103,9 @@ export async function exportTrainingPDF(
         y = MARGIN;
       }
 
-      doc.addImage(img.dataUrl, 'PNG', MARGIN, y, imgW, imgH);
+      // Center horizontally if scaled down
+      const xOffset = MARGIN + (CONTENT_W - imgW) / 2;
+      doc.addImage(img.dataUrl, 'JPEG', xOffset, y, imgW, imgH);
       y += imgH + 4;
     }
   }
