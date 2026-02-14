@@ -14,9 +14,10 @@ interface Props {
   onToggleShared: (id: string, is_shared: boolean) => void;
   onUpdate: (id: string, content: string) => void;
   onDelete: (id: string) => void;
+  readOnly?: boolean;
 }
 
-export function FeedbackEntryCard({ entry, onToggleShared, onUpdate, onDelete }: Props) {
+export function FeedbackEntryCard({ entry, onToggleShared, onUpdate, onDelete, readOnly }: Props) {
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(entry.content);
   const sentiment = SENTIMENTS.find(s => s.value === entry.sentiment);
@@ -70,17 +71,8 @@ export function FeedbackEntryCard({ entry, onToggleShared, onUpdate, onDelete }:
         </div>
 
         {/* Actions */}
-        {!editing && (
+        {!editing && !readOnly && (
           <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => onToggleShared(entry.id, !entry.is_shared)}
-              title={entry.is_shared ? 'Als ungeteilt markieren' : 'Als geteilt markieren'}
-            >
-              <Share2 className={cn('h-3.5 w-3.5', entry.is_shared && 'text-emerald-600')} />
-            </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(true)}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>

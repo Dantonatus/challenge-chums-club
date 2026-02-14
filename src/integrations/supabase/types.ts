@@ -271,6 +271,7 @@ export type Database = {
           id: string
           is_shared: boolean
           sentiment: string
+          session_id: string | null
           shared_at: string | null
           updated_at: string
           user_id: string
@@ -284,6 +285,7 @@ export type Database = {
           id?: string
           is_shared?: boolean
           sentiment?: string
+          session_id?: string | null
           shared_at?: string | null
           updated_at?: string
           user_id: string
@@ -297,6 +299,7 @@ export type Database = {
           id?: string
           is_shared?: boolean
           sentiment?: string
+          session_id?: string | null
           shared_at?: string | null
           updated_at?: string
           user_id?: string
@@ -304,6 +307,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "feedback_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_entries_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_sessions: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          notes: string | null
+          session_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          notes?: string | null
+          session_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          session_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_sessions_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "feedback_employees"
