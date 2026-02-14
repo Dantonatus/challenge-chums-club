@@ -10,40 +10,100 @@ import {
   restDayDistribution,
 } from './analytics';
 
-const BLUE = [37, 99, 235] as const;       // primary blue
-const BLUE_LIGHT = [219, 234, 254] as const;
-const GRAY = [107, 114, 128] as const;
-const WHITE = [255, 255, 255] as const;
-const DARK = [17, 24, 39] as const;
+// ── Theme detection + color palettes ──
+
+interface ThemeColors {
+  bg: [number, number, number];
+  fg: [number, number, number];
+  muted: [number, number, number];
+  accent: [number, number, number];
+  accentLight: [number, number, number];
+  cardBg: [number, number, number];
+  white: [number, number, number];
+}
+
+const LIGHT: ThemeColors = {
+  bg: [252, 252, 252],
+  fg: [31, 31, 31],
+  muted: [140, 140, 140],
+  accent: [47, 155, 110],
+  accentLight: [220, 245, 234],
+  cardBg: [245, 245, 245],
+  white: [255, 255, 255],
+};
+
+const DARK: ThemeColors = {
+  bg: [20, 20, 20],
+  fg: [235, 235, 235],
+  muted: [160, 160, 160],
+  accent: [63, 187, 126],
+  accentLight: [30, 50, 40],
+  cardBg: [35, 35, 35],
+  white: [235, 235, 235],
+};
+
+function getThemeColors(): ThemeColors {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark ? DARK : LIGHT;
+}
 
 const PAGE_W = 210;
 const MARGIN = 14;
 const CONTENT_W = PAGE_W - 2 * MARGIN;
 
-function addFooter(doc: jsPDF) {
+function addPageBg(doc: jsPDF, c: ThemeColors) {
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFillColor(...c.bg);
+    doc.rect(0, 0, 210, 297, 'F');
+  }
+}
+
+function addFooter(doc: jsPDF, c: ThemeColors) {
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(7);
-    doc.setTextColor(...GRAY);
+    doc.setTextColor(...c.muted);
     doc.text(`Erstellt am ${format(new Date(), 'dd.MM.yyyy, HH:mm')} Uhr`, MARGIN, 290);
     doc.text(`Seite ${i} / ${pageCount}`, PAGE_W - MARGIN, 290, { align: 'right' });
   }
 }
 
-export function exportTrainingPDF(checkins: TrainingCheckin[]) {
+function ensureSpace(doc: jsPDF, y: number, needed: number, c: ThemeColors): number {
+  if (y + needed > 280) {
+    doc.addPage();
+    doc.setFillColor(...c.bg);
+    doc.rect(0, 0, 210, 297, 'F');
+    return 16;
+  }
+  return y;
+}
+
+// ── Main export ──
+
+export async function exportTrainingPDF(
+  checkins: TrainingCheckin[],
+  chartImages?: { label: string; dataUrl: string }[],
+) {
+  const c = getThemeColors();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+  // Background for first page
+  doc.setFillColor(...c.bg);
+  doc.rect(0, 0, 210, 297, 'F');
+
   let y = 0;
 
   // ── Header ──
-  doc.setFillColor(...BLUE);
+  doc.setFillColor(...c.accent);
   doc.rect(0, 0, PAGE_W, 22, 'F');
-  doc.setTextColor(...WHITE);
+  doc.setTextColor(...c.white);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text('Trainingsbericht', MARGIN, 13);
 
-  // Date range
   const sorted = [...checkins].sort((a, b) => a.checkin_date.localeCompare(b.checkin_date));
   if (sorted.length > 0) {
     const from = format(parseISO(sorted[0].checkin_date), 'dd. MMM yyyy', { locale: de });
@@ -65,17 +125,17 @@ export function exportTrainingPDF(checkins: TrainingCheckin[]) {
     { label: 'Lieblingszeit', value: `${mostCommonTimeBucket(checkins)}` },
   ];
 
-  const boxW = (CONTENT_W - 5 * 3) / 6; // 6 boxes, 3mm gap
+  const boxW = (CONTENT_W - 5 * 3) / 6;
   kpis.forEach((k, i) => {
     const x = MARGIN + i * (boxW + 3);
-    doc.setFillColor(...BLUE_LIGHT);
+    doc.setFillColor(...c.accentLight);
     doc.roundedRect(x, y, boxW, 16, 2, 2, 'F');
     doc.setFontSize(7);
-    doc.setTextColor(...GRAY);
+    doc.setTextColor(...c.muted);
     doc.setFont('helvetica', 'normal');
     doc.text(k.label, x + boxW / 2, y + 5, { align: 'center' });
     doc.setFontSize(12);
-    doc.setTextColor(...DARK);
+    doc.setTextColor(...c.fg);
     doc.setFont('helvetica', 'bold');
     doc.text(k.value, x + boxW / 2, y + 13, { align: 'center' });
   });
@@ -84,7 +144,7 @@ export function exportTrainingPDF(checkins: TrainingCheckin[]) {
 
   // ── Bubble Heatmap ──
   doc.setFontSize(10);
-  doc.setTextColor(...DARK);
+  doc.setTextColor(...c.fg);
   doc.setFont('helvetica', 'bold');
   doc.text('Trainingszeiten', MARGIN, y);
   y += 5;
@@ -97,21 +157,19 @@ export function exportTrainingPDF(checkins: TrainingCheckin[]) {
   const colW = (CONTENT_W - 16) / Math.max(allSlots.length, 1);
   const rowH = 8;
 
-  // Slot headers
   doc.setFontSize(6);
-  doc.setTextColor(...GRAY);
+  doc.setTextColor(...c.muted);
   doc.setFont('helvetica', 'normal');
   allSlots.forEach((slot, i) => {
     doc.text(slot, MARGIN + 16 + i * colW + colW / 2, y, { align: 'center' });
   });
   y += 3;
 
-  // Day rows
   const bubbleMap = new Map(bubbles.map(b => [`${b.day}|${b.slot}`, b.count]));
   days.forEach((day, di) => {
     const rowY = y + di * rowH + rowH / 2;
     doc.setFontSize(7);
-    doc.setTextColor(...DARK);
+    doc.setTextColor(...c.fg);
     doc.setFont('helvetica', 'bold');
     doc.text(day, MARGIN + 10, rowY + 1, { align: 'right' });
 
@@ -119,10 +177,10 @@ export function exportTrainingPDF(checkins: TrainingCheckin[]) {
       const count = bubbleMap.get(`${day}|${slot}`) || 0;
       if (count > 0) {
         const intensity = Math.min(count / maxCount, 1);
-        const r = Math.round(BLUE[0] + (BLUE_LIGHT[0] - BLUE[0]) * (1 - intensity));
-        const g = Math.round(BLUE[1] + (BLUE_LIGHT[1] - BLUE[1]) * (1 - intensity));
-        const b = Math.round(BLUE[2] + (BLUE_LIGHT[2] - BLUE[2]) * (1 - intensity));
-        doc.setFillColor(r, g, b);
+        const r = Math.round(c.accent[0] + (c.accentLight[0] - c.accent[0]) * (1 - intensity));
+        const g = Math.round(c.accent[1] + (c.accentLight[1] - c.accent[1]) * (1 - intensity));
+        const b_ = Math.round(c.accent[2] + (c.accentLight[2] - c.accent[2]) * (1 - intensity));
+        doc.setFillColor(r, g, b_);
         const radius = 1 + intensity * 2.5;
         const cx = MARGIN + 16 + si * colW + colW / 2;
         doc.circle(cx, rowY, radius, 'F');
@@ -135,7 +193,7 @@ export function exportTrainingPDF(checkins: TrainingCheckin[]) {
   // ── Personal Records ──
   const records = personalRecords(checkins);
   doc.setFontSize(10);
-  doc.setTextColor(...DARK);
+  doc.setTextColor(...c.fg);
   doc.setFont('helvetica', 'bold');
   doc.text('Persönliche Rekorde', MARGIN, y);
   y += 5;
@@ -150,60 +208,98 @@ export function exportTrainingPDF(checkins: TrainingCheckin[]) {
   const recW = (CONTENT_W - 3 * 3) / 4;
   recCards.forEach((rc, i) => {
     const x = MARGIN + i * (recW + 3);
-    doc.setFillColor(245, 245, 245);
+    doc.setFillColor(...c.cardBg);
     doc.roundedRect(x, y, recW, 18, 2, 2, 'F');
     doc.setFontSize(7);
-    doc.setTextColor(...GRAY);
+    doc.setTextColor(...c.muted);
     doc.setFont('helvetica', 'normal');
     doc.text(`${rc.emoji} ${rc.label}`, x + 3, y + 5);
     doc.setFontSize(11);
-    doc.setTextColor(...DARK);
+    doc.setTextColor(...c.fg);
     doc.setFont('helvetica', 'bold');
     doc.text(rc.value, x + 3, y + 12);
     doc.setFontSize(6);
-    doc.setTextColor(...GRAY);
+    doc.setTextColor(...c.muted);
     doc.setFont('helvetica', 'normal');
     doc.text(rc.sub, x + 3, y + 16);
   });
 
   y += 26;
 
-  // ── Page 2: Tables ──
-  const tableStyles = {
-    headStyles: { fillColor: BLUE as any, textColor: WHITE as any, fontStyle: 'bold' as const, fontSize: 8 },
-    bodyStyles: { fontSize: 7, textColor: DARK as any },
-    alternateRowStyles: { fillColor: [245, 247, 250] as any },
-    styles: { cellPadding: 1.5 },
-    margin: { left: MARGIN, right: MARGIN },
-  };
+  // ── Chart images ──
+  if (chartImages && chartImages.length > 0) {
+    for (const img of chartImages) {
+      // Calculate image dimensions to fit content width
+      const imgW = CONTENT_W;
+      // Create a temporary image to get aspect ratio
+      const ratio = await getImageAspectRatio(img.dataUrl);
+      const imgH = imgW / ratio;
 
-  // Check if we need a new page
-  if (y > 200) {
-    doc.addPage();
-    y = 16;
+      y = ensureSpace(doc, y, imgH + 10, c);
+
+      doc.setFontSize(10);
+      doc.setTextColor(...c.fg);
+      doc.setFont('helvetica', 'bold');
+      doc.text(img.label, MARGIN, y);
+      y += 4;
+
+      doc.addImage(img.dataUrl, 'PNG', MARGIN, y, imgW, imgH);
+      y += imgH + 8;
+    }
+  } else {
+    // Fallback: render tables if no chart images provided
+    y = renderTables(doc, checkins, y, c);
   }
 
-  // Weekly visits table
+  // ── Background + Footer ──
+  addPageBg(doc, c);
+  addFooter(doc, c);
+
+  doc.save(`training-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+}
+
+function getImageAspectRatio(dataUrl: string): Promise<number> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img.width / img.height);
+    img.onerror = () => resolve(16 / 9); // fallback
+    img.src = dataUrl;
+  });
+}
+
+function renderTables(doc: jsPDF, checkins: TrainingCheckin[], startY: number, c: ThemeColors): number {
+  let y = startY;
+
+  const tableStyles = {
+    headStyles: { fillColor: c.accent as any, textColor: c.white as any, fontStyle: 'bold' as const, fontSize: 8 },
+    bodyStyles: { fontSize: 7, textColor: c.fg as any },
+    alternateRowStyles: { fillColor: c.cardBg as any },
+    styles: { cellPadding: 1.5 },
+    margin: { left: MARGIN, right: MARGIN },
+    tableLineColor: c.muted as any,
+  };
+
+  // Weekly visits
+  y = ensureSpace(doc, y, 40, c);
   doc.setFontSize(10);
-  doc.setTextColor(...DARK);
+  doc.setTextColor(...c.fg);
   doc.setFont('helvetica', 'bold');
   doc.text('Besuche pro Woche', MARGIN, y);
   y += 2;
 
   const weekly = weeklyVisits(checkins);
-  const weeklyRows = weekly.map(w => [w.week, String(w.visits), '▮'.repeat(Math.min(w.visits, 20))]);
   autoTable(doc, {
     startY: y,
     head: [['Woche', 'Besuche', '']],
-    body: weeklyRows.slice(-20), // last 20 weeks
+    body: weekly.slice(-20).map(w => [w.week, String(w.visits), '▮'.repeat(Math.min(w.visits, 20))]),
     ...tableStyles,
   });
   y = (doc as any).lastAutoTable.finalY + 8;
 
   // Weekday distribution
-  if (y > 240) { doc.addPage(); y = 16; }
+  y = ensureSpace(doc, y, 40, c);
   doc.setFontSize(10);
-  doc.setTextColor(...DARK);
+  doc.setTextColor(...c.fg);
   doc.setFont('helvetica', 'bold');
   doc.text('Wochentags-Verteilung', MARGIN, y);
   y += 2;
@@ -218,9 +314,9 @@ export function exportTrainingPDF(checkins: TrainingCheckin[]) {
   y = (doc as any).lastAutoTable.finalY + 8;
 
   // Monthly comparison
-  if (y > 240) { doc.addPage(); y = 16; }
+  y = ensureSpace(doc, y, 40, c);
   doc.setFontSize(10);
-  doc.setTextColor(...DARK);
+  doc.setTextColor(...c.fg);
   doc.setFont('helvetica', 'bold');
   doc.text('Monatsvergleich', MARGIN, y);
   y += 2;
@@ -235,9 +331,9 @@ export function exportTrainingPDF(checkins: TrainingCheckin[]) {
   y = (doc as any).lastAutoTable.finalY + 8;
 
   // Rest day distribution
-  if (y > 240) { doc.addPage(); y = 16; }
+  y = ensureSpace(doc, y, 40, c);
   doc.setFontSize(10);
-  doc.setTextColor(...DARK);
+  doc.setTextColor(...c.fg);
   doc.setFont('helvetica', 'bold');
   doc.text('Ruhetage-Verteilung', MARGIN, y);
   y += 2;
@@ -249,9 +345,7 @@ export function exportTrainingPDF(checkins: TrainingCheckin[]) {
     body: rest.map(r => [r.days, String(r.count)]),
     ...tableStyles,
   });
+  y = (doc as any).lastAutoTable.finalY + 8;
 
-  // ── Footer ──
-  addFooter(doc);
-
-  doc.save(`training-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  return y;
 }
