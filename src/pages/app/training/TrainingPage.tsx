@@ -32,6 +32,7 @@ export default function TrainingPage() {
   const gridRow1Ref = useRef<HTMLDivElement>(null);
   const gridRow2Ref = useRef<HTMLDivElement>(null);
   const gridRow3Ref = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
 
   const pdfSections: PdfSection[] = [
     { label: 'KPI-Übersicht', ref: kpiRef },
@@ -40,6 +41,7 @@ export default function TrainingPage() {
     { label: 'Frequenz & Ruhetage', ref: gridRow1Ref },
     { label: 'Besuche & Uhrzeiten', ref: gridRow2Ref },
     { label: 'Wochentag & Monat', ref: gridRow3Ref },
+    { label: 'Trainingskalender', ref: calendarRef },
   ];
 
   const handleImport = async (rows: Parameters<typeof importCsv.mutateAsync>[0]) => {
@@ -59,7 +61,7 @@ export default function TrainingPage() {
               quality: 0.85,
               pixelRatio: 1.5,
               backgroundColor: isDark ? '#141414' : '#fcfcfc',
-              style: { padding: '4px' },
+              style: { padding: '8px' },
             });
             images.push({ label: section.label, dataUrl });
           } catch (err) {
@@ -121,7 +123,7 @@ export default function TrainingPage() {
             <WeekdayHeatmap checkins={checkins} />
             <MonthlyComparisonChart checkins={checkins} />
           </div>
-          <TrainingCalendar checkins={checkins} />
+          <div ref={calendarRef}><TrainingCalendar checkins={checkins} /></div>
         </>
       )}
     </div>
