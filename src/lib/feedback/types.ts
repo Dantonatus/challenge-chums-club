@@ -22,6 +22,16 @@ export interface FeedbackEntry {
   entry_date: string;
   is_shared: boolean;
   shared_at: string | null;
+  session_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface FeedbackSession {
+  id: string;
+  employee_id: string;
+  user_id: string;
+  session_date: string;
+  notes: string | null;
+  created_at: string;
 }
