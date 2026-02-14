@@ -16,7 +16,7 @@ import FrequencyTrendChart from '@/components/training/FrequencyTrendChart';
 import RestDaysChart from '@/components/training/RestDaysChart';
 import PersonalRecords from '@/components/training/PersonalRecords';
 
-interface ChartSection {
+interface PdfSection {
   label: string;
   ref: React.RefObject<HTMLDivElement>;
 }
@@ -25,6 +25,10 @@ export default function TrainingPage() {
   const { checkins, isLoading, importCsv } = useTrainingCheckins();
   const [exporting, setExporting] = useState(false);
 
+  // Refs for every visual section to capture
+  const kpiRef = useRef<HTMLDivElement>(null);
+  const heatmapRef = useRef<HTMLDivElement>(null);
+  const recordsRef = useRef<HTMLDivElement>(null);
   const frequencyRef = useRef<HTMLDivElement>(null);
   const restDaysRef = useRef<HTMLDivElement>(null);
   const weeklyRef = useRef<HTMLDivElement>(null);
@@ -32,7 +36,10 @@ export default function TrainingPage() {
   const weekdayRef = useRef<HTMLDivElement>(null);
   const monthlyRef = useRef<HTMLDivElement>(null);
 
-  const chartSections: ChartSection[] = [
+  const pdfSections: PdfSection[] = [
+    { label: 'KPI-Übersicht', ref: kpiRef },
+    { label: 'Trainingszeiten', ref: heatmapRef },
+    { label: 'Persönliche Rekorde', ref: recordsRef },
     { label: 'Frequenz-Trend', ref: frequencyRef },
     { label: 'Ruhetage-Verteilung', ref: restDaysRef },
     { label: 'Besuche pro Woche', ref: weeklyRef },
@@ -48,26 +55,20 @@ export default function TrainingPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const chartImages: { label: string; dataUrl: string }[] = [];
+      const images: { label: string; dataUrl: string }[] = [];
 
-      for (const section of chartSections) {
+      for (const section of pdfSections) {
         if (section.ref.current) {
           try {
-            const dataUrl = await toPng(section.ref.current, {
-              backgroundColor: getComputedStyle(document.documentElement)
-                .getPropertyValue('--background')
-                ? undefined
-                : undefined,
-              pixelRatio: 2,
-            });
-            chartImages.push({ label: section.label, dataUrl });
-          } catch {
-            // skip failed captures
+            const dataUrl = await toPng(section.ref.current, { pixelRatio: 2 });
+            images.push({ label: section.label, dataUrl });
+          } catch (err) {
+            console.warn(`Failed to capture ${section.label}:`, err);
           }
         }
       }
 
-      await exportTrainingPDF(checkins, chartImages.length > 0 ? chartImages : undefined);
+      await exportTrainingPDF(checkins, images);
     } finally {
       setExporting(false);
     }
@@ -105,9 +106,9 @@ export default function TrainingPage() {
         </div>
       ) : (
         <>
-          <TrainingKPICards checkins={checkins} />
-          <TimeBubbleHeatmap checkins={checkins} />
-          <PersonalRecords checkins={checkins} />
+          <div ref={kpiRef}><TrainingKPICards checkins={checkins} /></div>
+          <div ref={heatmapRef}><TimeBubbleHeatmap checkins={checkins} /></div>
+          <div ref={recordsRef}><PersonalRecords checkins={checkins} /></div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div ref={frequencyRef}><FrequencyTrendChart checkins={checkins} /></div>
             <div ref={restDaysRef}><RestDaysChart checkins={checkins} /></div>
