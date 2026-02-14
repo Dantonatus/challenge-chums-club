@@ -7,6 +7,10 @@ import TimeDistributionChart from '@/components/training/TimeDistributionChart';
 import WeekdayHeatmap from '@/components/training/WeekdayHeatmap';
 import MonthlyComparisonChart from '@/components/training/MonthlyComparisonChart';
 import TrainingCalendar from '@/components/training/TrainingCalendar';
+import TimeBubbleHeatmap from '@/components/training/TimeBubbleHeatmap';
+import FrequencyTrendChart from '@/components/training/FrequencyTrendChart';
+import RestDaysChart from '@/components/training/RestDaysChart';
+import PersonalRecords from '@/components/training/PersonalRecords';
 
 export default function TrainingPage() {
   const { checkins, isLoading, importCsv } = useTrainingCheckins();
@@ -36,6 +40,12 @@ export default function TrainingPage() {
       ) : (
         <>
           <TrainingKPICards checkins={checkins} />
+          <TimeBubbleHeatmap checkins={checkins} />
+          <PersonalRecords checkins={checkins} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FrequencyTrendChart checkins={checkins} />
+            <RestDaysChart checkins={checkins} />
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <WeeklyVisitsChart checkins={checkins} />
             <TimeDistributionChart checkins={checkins} />
