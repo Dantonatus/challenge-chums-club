@@ -122,3 +122,113 @@ export function mostCommonTimeBucket(checkins: TrainingCheckin[]): TimeBucket | 
 export function trainingDatesSet(checkins: TrainingCheckin[]): Set<string> {
   return new Set(checkins.map(c => c.checkin_date));
 }
+
+// ── Bubble Heatmap ──
+
+export interface BubbleHeatmapPoint {
+  day: string;
+  slot: string;
+  count: number;
+}
+
+function roundTo30Min(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const rounded = Math.round(m / 30) * 30;
+  const finalH = rounded === 60 ? h + 1 : h;
+  const finalM = rounded === 60 ? 0 : rounded;
+  return `${String(finalH).padStart(2, '0')}:${String(finalM).padStart(2, '0')}`;
+}
+
+export function bubbleHeatmapData(checkins: TrainingCheckin[]): BubbleHeatmapPoint[] {
+  const map = new Map<string, number>();
+  checkins.forEach(c => {
+    const d = parseISO(c.checkin_date);
+    const dow = (d.getDay() + 6) % 7;
+    const day = DAY_LABELS[dow];
+    const slot = roundTo30Min(c.checkin_time);
+    const key = `${day}|${slot}`;
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+  return Array.from(map.entries()).map(([key, count]) => {
+    const [day, slot] = key.split('|');
+    return { day, slot, count };
+  });
+}
+
+// ── Rolling Average ──
+
+export interface RollingAvgPoint {
+  week: string;
+  visits: number;
+  avg: number;
+}
+
+export function rollingAvgWeekly(checkins: TrainingCheckin[], windowSize = 4): RollingAvgPoint[] {
+  const weekly = weeklyVisits(checkins);
+  return weekly.map((w, i) => {
+    const start = Math.max(0, i - windowSize + 1);
+    const window = weekly.slice(start, i + 1);
+    const avg = Math.round((window.reduce((s, x) => s + x.visits, 0) / window.length) * 10) / 10;
+    return { week: w.week, visits: w.visits, avg };
+  });
+}
+
+// ── Rest Day Distribution ──
+
+export interface RestDayPoint {
+  days: string;
+  count: number;
+}
+
+export function restDayDistribution(checkins: TrainingCheckin[]): RestDayPoint[] {
+  const uniqueDates = [...new Set(checkins.map(c => c.checkin_date))].sort();
+  if (uniqueDates.length < 2) return [];
+  const gaps = new Map<number, number>();
+  for (let i = 1; i < uniqueDates.length; i++) {
+    const diff = differenceInCalendarDays(parseISO(uniqueDates[i]), parseISO(uniqueDates[i - 1])) - 1;
+    if (diff >= 0) gaps.set(diff, (gaps.get(diff) || 0) + 1);
+  }
+  return Array.from(gaps.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([days, count]) => ({ days: days === 0 ? 'Kein Ruhetag' : `${days} ${days === 1 ? 'Tag' : 'Tage'}`, count }));
+}
+
+// ── Personal Records ──
+
+export interface PersonalRecords {
+  earliestCheckin: { time: string; date: string } | null;
+  latestCheckin: { time: string; date: string } | null;
+  busiestDay: { date: string; count: number } | null;
+  longestBreak: { days: number; from: string; to: string } | null;
+}
+
+export function personalRecords(checkins: TrainingCheckin[]): PersonalRecords {
+  if (checkins.length === 0) return { earliestCheckin: null, latestCheckin: null, busiestDay: null, longestBreak: null };
+
+  let earliest = checkins[0], latest = checkins[0];
+  const dayCounts = new Map<string, number>();
+
+  checkins.forEach(c => {
+    if (c.checkin_time < earliest.checkin_time) earliest = c;
+    if (c.checkin_time > latest.checkin_time) latest = c;
+    dayCounts.set(c.checkin_date, (dayCounts.get(c.checkin_date) || 0) + 1);
+  });
+
+  const busiest = Array.from(dayCounts.entries()).reduce((a, b) => (b[1] > a[1] ? b : a));
+
+  const uniqueDates = [...new Set(checkins.map(c => c.checkin_date))].sort();
+  let longestBreak: PersonalRecords['longestBreak'] = null;
+  for (let i = 1; i < uniqueDates.length; i++) {
+    const diff = differenceInCalendarDays(parseISO(uniqueDates[i]), parseISO(uniqueDates[i - 1]));
+    if (!longestBreak || diff > longestBreak.days) {
+      longestBreak = { days: diff, from: uniqueDates[i - 1], to: uniqueDates[i] };
+    }
+  }
+
+  return {
+    earliestCheckin: { time: earliest.checkin_time.slice(0, 5), date: format(parseISO(earliest.checkin_date), 'dd. MMM yyyy', { locale: de }) },
+    latestCheckin: { time: latest.checkin_time.slice(0, 5), date: format(parseISO(latest.checkin_date), 'dd. MMM yyyy', { locale: de }) },
+    busiestDay: { date: format(parseISO(busiest[0]), 'dd. MMM yyyy', { locale: de }), count: busiest[1] },
+    longestBreak,
+  };
+}
