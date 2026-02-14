@@ -54,7 +54,13 @@ export default function TrainingPage() {
       for (const section of pdfSections) {
         if (section.ref.current) {
           try {
-            const dataUrl = await toJpeg(section.ref.current, { quality: 0.85, pixelRatio: 1.5 });
+            const isDark = document.documentElement.classList.contains('dark');
+            const dataUrl = await toJpeg(section.ref.current, {
+              quality: 0.85,
+              pixelRatio: 1.5,
+              backgroundColor: isDark ? '#141414' : '#fcfcfc',
+              style: { padding: '4px' },
+            });
             images.push({ label: section.label, dataUrl });
           } catch (err) {
             console.warn(`Failed to capture ${section.label}:`, err);

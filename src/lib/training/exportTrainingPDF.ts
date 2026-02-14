@@ -83,21 +83,26 @@ export async function exportTrainingPDF(
 
   // ── Embed all section screenshots ──
   if (sectionImages && sectionImages.length > 0) {
-    const maxImgH = PAGE_H - 2 * MARGIN - 10; // max image height per page
+    const maxImgH = PAGE_H - 2 * MARGIN - 16;
+    const SECTION_GAP = 10;
+    const FOOTER_RESERVE = 16;
+    const PAGE_BREAK_THRESHOLD = 60;
 
-    for (const img of sectionImages) {
+    for (let idx = 0; idx < sectionImages.length; idx++) {
+      const img = sectionImages[idx];
       const ratio = await getImageAspectRatio(img.dataUrl);
       let imgW = CONTENT_W;
       let imgH = imgW / ratio;
 
-      // If image is taller than a full page, scale down proportionally
+      // Scale down if taller than a full page
       if (imgH > maxImgH) {
         imgH = maxImgH;
         imgW = imgH * ratio;
       }
 
-      // Check if we need a new page
-      if (y + imgH + 4 > PAGE_H - 12) {
+      // Need new page if image doesn't fit OR remaining space is too tight
+      const needsNewPage = y + imgH + SECTION_GAP > PAGE_H - FOOTER_RESERVE;
+      if (needsNewPage) {
         doc.addPage();
         fillPageBg(doc);
         y = MARGIN;
@@ -106,7 +111,14 @@ export async function exportTrainingPDF(
       // Center horizontally if scaled down
       const xOffset = MARGIN + (CONTENT_W - imgW) / 2;
       doc.addImage(img.dataUrl, 'JPEG', xOffset, y, imgW, imgH);
-      y += imgH + 4;
+      y += imgH + SECTION_GAP;
+
+      // Proactive page break: if less than threshold remains, next section goes to new page
+      if (PAGE_H - y - FOOTER_RESERVE < PAGE_BREAK_THRESHOLD && idx < sectionImages.length - 1) {
+        doc.addPage();
+        fillPageBg(doc);
+        y = MARGIN;
+      }
     }
   }
 
