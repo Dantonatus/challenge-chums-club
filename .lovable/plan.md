@@ -1,45 +1,64 @@
 
 
-# PDF-Export Fix: Echte 1:1 Screenshots
+# PDF-Export Fix: Dateigröße und Layout
 
-## Problem
+## Probleme
 
-1. `addPageBg()` wird NACH dem Zeichnen aufgerufen und uebermalt den gesamten Inhalt mit der Hintergrundfarbe -- deshalb ist alles schwarz.
-2. KPI-Cards, Bubble-Heatmap und Personal Records werden programmatisch gezeichnet statt als Screenshots erfasst -- sie sehen anders aus als in der App.
-3. Chart-Captures scheitern leise (Error wird verschluckt), daher fehlen die Diagramme.
+1. **Datei zu groß (>20 MB)**: `pixelRatio: 2` erzeugt riesige PNG-Bilder. 9 Sektionen als unkomprimierte PNGs sprengen das Limit.
+2. **Charts abgeschnitten/schlecht formatiert**: Die 2-Spalten-Grid-Charts werden einzeln gecaptured (halbe Breite), aber im PDF auf volle Breite gestreckt -- dadurch Verzerrung und Abschneidung.
+3. **Layout stimmt nicht**: Seitenumbrüche passen nicht, weil die Bildgrößen nicht korrekt berechnet werden.
 
-## Loesung
+## Lösung
 
-Komplett neuer Ansatz: ALLE sichtbaren Sektionen der Seite werden per `html-to-image` als PNG erfasst und 1:1 ins PDF eingebettet. Kein programmatisches Zeichnen mehr. Das PDF sieht exakt so aus wie die App.
+### 1. JPEG statt PNG + reduzierter pixelRatio
 
-## Technische Umsetzung
+- `toPng` ersetzen durch `toJpeg` aus `html-to-image` (gleiche Bibliothek)
+- `pixelRatio: 1.5` statt `2` (immer noch Druckqualität bei A4)
+- JPEG-Qualität `0.85` -- reduziert Dateigröße um ca. 70-80% gegenüber PNG
 
-### TrainingPage.tsx -- Refs auf ALLE Sektionen
+### 2. Grid-Zeilen als Ganzes capturen
 
-Neue Refs fuer:
-- KPI-Cards
-- TimeBubbleHeatmap
-- PersonalRecords
-- (Die 6 Chart-Refs bleiben)
+Statt 6 einzelne Chart-Refs (die jeweils nur eine Hälfte des Grids sind), werden die 3 Grid-Zeilen als Ganzes gecaptured. Das erhält das 2-Spalten-Layout exakt.
 
-Alle 9 Sektionen werden nacheinander per `toPng()` erfasst und als Array an `exportTrainingPDF()` uebergeben.
+**Vorher (9 Refs, einzelne Charts):**
+```
+kpiRef -> KPI-Cards
+heatmapRef -> TimeBubbleHeatmap  
+recordsRef -> PersonalRecords
+frequencyRef -> FrequencyTrend (halbe Breite!)
+restDaysRef -> RestDays (halbe Breite!)
+weeklyRef -> Weekly (halbe Breite!)
+...
+```
 
-### exportTrainingPDF.ts -- Radikal vereinfacht
+**Nachher (6 Refs, ganze Zeilen):**
+```
+kpiRef -> KPI-Cards (volle Breite)
+heatmapRef -> TimeBubbleHeatmap (volle Breite)
+recordsRef -> PersonalRecords (volle Breite)
+gridRow1Ref -> Grid mit Frequenz + Ruhetage (volle Breite, 2 Spalten)
+gridRow2Ref -> Grid mit Weekly + TimeDistribution (volle Breite, 2 Spalten)
+gridRow3Ref -> Grid mit Weekday + Monthly (volle Breite, 2 Spalten)
+```
 
-Die gesamte programmatische Zeichenlogik (KPI-Boxen, Heatmap-Circles, Record-Cards) wird entfernt. Die Funktion macht nur noch:
+### 3. Skalierung im PDF verbessern
 
-1. Theme-Hintergrundfarbe lesen
-2. Header-Balken zeichnen (Titel + Zeitraum)
-3. Alle uebergebenen Screenshot-Bilder nacheinander einbetten mit `doc.addImage()`
-4. Automatische Seitenumbrueche basierend auf Bildhoehe
-5. Footer mit Zeitstempel
+- Bilder so skalieren, dass sie nie breiter als `CONTENT_W` (182mm) sind
+- Maximale Bildhöhe pro Seite begrenzen, damit nichts abgeschnitten wird
+- Bei Seitenumbruch: Hintergrund der neuen Seite ZUERST füllen, dann Bild platzieren
 
-Das ist ca. 60 Zeilen Code statt 350.
+## Technische Änderungen
 
-### Betroffene Dateien
+### `src/pages/app/training/TrainingPage.tsx`
 
-| Datei | Aenderung |
-|---|---|
-| `src/pages/app/training/TrainingPage.tsx` | 3 neue Refs (kpiRef, heatmapRef, recordsRef), alle 9 Sektionen capturen |
-| `src/lib/training/exportTrainingPDF.ts` | Radikal vereinfacht: nur Header + Bilder einbetten + Footer. Keine programmatische Zeichenlogik mehr |
+- 9 Refs reduzieren auf 6 (3 Grid-Rows statt 6 einzelne Charts)
+- Die `ref` direkt auf die `<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">` Wrapper setzen
+- `toPng` ersetzen durch `toJpeg` mit `{ quality: 0.85, pixelRatio: 1.5 }`
+- `pdfSections`-Array entsprechend anpassen
+
+### `src/lib/training/exportTrainingPDF.ts`
+
+- `addImage`-Format von `'PNG'` auf `'JPEG'` ändern
+- Maximale Bildhöhe pro Seite einführen (z.B. `PAGE_H - 2 * MARGIN - 10`)
+- Falls ein Bild zu hoch für eine Seite ist: auf maximale Höhe skalieren (Breite proportional reduzieren, zentriert platzieren)
 
