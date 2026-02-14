@@ -42,6 +42,7 @@ import RecipeDetail from "./pages/app/recipes/Detail";
 import RecipesFavorites from "./pages/app/recipes/Favorites";
 import RecipesShoppingList from "./pages/app/recipes/ShoppingList";
 import ImportPage from "./pages/Import";
+import TrainingPage from "./pages/app/training/TrainingPage";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,8 @@ const App = () => (
               <Route path="planning" element={<PlanningPage />} />
               {/* Feedback */}
               <Route path="feedback" element={<FeedbackPage />} />
+              {/* Training */}
+              <Route path="training" element={<TrainingPage />} />
             </Route>
             {/* Top-level protected routes */}
             <Route path="/challenges" element={

@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
-import { ArrowLeft, Home, ListTodo, UtensilsCrossed, CalendarRange, MessageSquare } from "lucide-react";
+import { ArrowLeft, Home, ListTodo, UtensilsCrossed, CalendarRange, MessageSquare, Dumbbell } from "lucide-react";
 import { MatrixDarkModeToggle } from "@/components/ui/MatrixDarkModeToggle";
 
 const AppLayout = () => {
@@ -104,6 +104,10 @@ const AppLayout = () => {
               <NavLink to="/app/feedback" className={linkClass}>
                 <MessageSquare className="mr-1 h-4 w-4 inline" />
                 Feedback
+              </NavLink>
+              <NavLink to="/app/training" className={linkClass}>
+                <Dumbbell className="mr-1 h-4 w-4 inline" />
+                Training
               </NavLink>
             </nav>
           </div>
