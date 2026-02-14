@@ -1,83 +1,45 @@
 
 
-# PDF-Export: Theme-Matching und echte Diagramme
+# PDF-Export Fix: Echte 1:1 Screenshots
 
 ## Problem
 
-Der aktuelle PDF-Export hat immer einen weissen Hintergrund mit blauen Akzenten und ersetzt die Diagramme durch Tabellen. Der User moechte, dass der PDF-Report exakt so aussieht wie die App -- also Dark/Light-Mode uebernimmt und die echten Diagramme (Charts) einbettet.
+1. `addPageBg()` wird NACH dem Zeichnen aufgerufen und uebermalt den gesamten Inhalt mit der Hintergrundfarbe -- deshalb ist alles schwarz.
+2. KPI-Cards, Bubble-Heatmap und Personal Records werden programmatisch gezeichnet statt als Screenshots erfasst -- sie sehen anders aus als in der App.
+3. Chart-Captures scheitern leise (Error wird verschluckt), daher fehlen die Diagramme.
 
 ## Loesung
 
-Die Recharts-Diagramme und UI-Komponenten werden per `html-to-image` (bereits installiert) als PNG-Bilder erfasst und direkt ins PDF eingebettet. Farben werden dynamisch aus dem aktuellen Theme gelesen.
+Komplett neuer Ansatz: ALLE sichtbaren Sektionen der Seite werden per `html-to-image` als PNG erfasst und 1:1 ins PDF eingebettet. Kein programmatisches Zeichnen mehr. Das PDF sieht exakt so aus wie die App.
 
-## Technischer Ablauf
+## Technische Umsetzung
 
-```text
-User klickt "PDF Export"
-  |
-  +-- Theme erkennen (document.documentElement.classList.contains('dark'))
-  +-- Farbpalette setzen (dark: dunkler Hintergrund, helle Schrift / light: umgekehrt)
-  +-- Alle Chart-Container im DOM per Selektor finden
-  +-- html-to-image: Jeden Chart-Container als PNG capturen
-  +-- jsPDF: PDF aufbauen mit:
-       - Seiten-Hintergrund passend zum Theme
-       - KPI-Boxen mit Mint-Akzent (HSL 160 55% 45%) statt Blau
-       - Gecapturte Chart-PNGs als eingebettete Bilder
-       - Persoenliche Rekorde mit Theme-Farben
-       - Footer
-```
+### TrainingPage.tsx -- Refs auf ALLE Sektionen
 
-## Aenderungen
+Neue Refs fuer:
+- KPI-Cards
+- TimeBubbleHeatmap
+- PersonalRecords
+- (Die 6 Chart-Refs bleiben)
 
-### 1. `src/lib/training/exportTrainingPDF.ts` -- Komplett ueberarbeiten
+Alle 9 Sektionen werden nacheinander per `toPng()` erfasst und als Array an `exportTrainingPDF()` uebergeben.
 
-**Farbpalette dynamisch:**
-- Light: Hintergrund weiss (#FCFCFC), Text dunkel (#1F1F1F), Accent Mint (#2F9B6E), KPI-Boxen helles Mint
-- Dark: Hintergrund (#141414), Text hell (#EBEBEB), Accent Mint (#3FBB7E), KPI-Boxen dunkles Mint
+### exportTrainingPDF.ts -- Radikal vereinfacht
 
-**Neue Signatur:**
-```typescript
-export async function exportTrainingPDF(
-  checkins: TrainingCheckin[],
-  chartContainers?: HTMLElement[]  // optional: DOM-Elemente der Charts
-)
-```
+Die gesamte programmatische Zeichenlogik (KPI-Boxen, Heatmap-Circles, Record-Cards) wird entfernt. Die Funktion macht nur noch:
 
-**Ablauf:**
-1. Theme aus DOM lesen
-2. Farbkonstanten setzen (BG, FG, ACCENT, MUTED, CARD_BG)
-3. Header-Balken in Mint statt Blau
-4. KPI-Strip mit Theme-passenden Boxen
-5. Bubble-Heatmap mit Theme-Farben (Mint-Bubbles auf dunklem/hellem Grund)
-6. Personal Records mit Theme-Farben
-7. Chart-Screenshots als Bilder einbetten (statt Tabellen)
-8. Footer
+1. Theme-Hintergrundfarbe lesen
+2. Header-Balken zeichnen (Titel + Zeitraum)
+3. Alle uebergebenen Screenshot-Bilder nacheinander einbetten mit `doc.addImage()`
+4. Automatische Seitenumbrueche basierend auf Bildhoehe
+5. Footer mit Zeitstempel
 
-### 2. `src/pages/app/training/TrainingPage.tsx` -- Chart-Capture-Logik
+Das ist ca. 60 Zeilen Code statt 350.
 
-- Refs auf die Chart-Container-Divs setzen (oder IDs vergeben)
-- Beim Klick auf "PDF Export": alle Chart-Container per `toPng()` aus `html-to-image` capturen
-- Die PNGs zusammen mit den Checkins an `exportTrainingPDF()` uebergeben
-
-**Konkret:**
-- Wrapper-Div um den gesamten Chart-Bereich mit einer `ref` oder `id="training-charts"`
-- Einzelne Sektionen mit `data-pdf-section="kpi"`, `data-pdf-section="heatmap"`, etc.
-- `toPng()` fuer jede Sektion aufrufen
-- Gesammelten Base64-PNGs an die Export-Funktion geben
-
-### 3. Betroffene Dateien
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/lib/training/exportTrainingPDF.ts` | Komplette Ueberarbeitung: Theme-Erkennung, Mint-Farben, Chart-Bilder einbetten statt Tabellen |
-| `src/pages/app/training/TrainingPage.tsx` | Refs/IDs an Chart-Sektionen, html-to-image Capture beim Export, async Handler |
-
-### 4. Wichtige Details
-
-- `exportTrainingPDF` wird `async` (wegen Bild-Capture)
-- Bilder werden mit `doc.addImage(base64, 'PNG', x, y, w, h)` eingebettet
-- Seitenumbrueche werden dynamisch berechnet basierend auf Bildhoehen
-- Die KPI-Cards, Heatmap und Personal Records werden weiterhin programmatisch gezeichnet (da einfache Geometrie), aber in den richtigen Theme-Farben
-- Die Recharts-Diagramme (FrequencyTrend, RestDays, WeeklyVisits, TimeDistribution, WeekdayHeatmap, MonthlyComparison) werden als Screenshots eingebettet
-- Kalender wird nicht ins PDF aufgenommen (zu komplex, wenig Mehrwert im Print)
+| `src/pages/app/training/TrainingPage.tsx` | 3 neue Refs (kpiRef, heatmapRef, recordsRef), alle 9 Sektionen capturen |
+| `src/lib/training/exportTrainingPDF.ts` | Radikal vereinfacht: nur Header + Bilder einbetten + Footer. Keine programmatische Zeichenlogik mehr |
 
