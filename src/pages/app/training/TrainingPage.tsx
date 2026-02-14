@@ -1,4 +1,6 @@
-import { Dumbbell, FileDown } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Dumbbell, FileDown, Loader2 } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
 import CsvUploader from '@/components/training/CsvUploader';
 import { Button } from '@/components/ui/button';
@@ -14,11 +16,61 @@ import FrequencyTrendChart from '@/components/training/FrequencyTrendChart';
 import RestDaysChart from '@/components/training/RestDaysChart';
 import PersonalRecords from '@/components/training/PersonalRecords';
 
+interface ChartSection {
+  label: string;
+  ref: React.RefObject<HTMLDivElement>;
+}
+
 export default function TrainingPage() {
   const { checkins, isLoading, importCsv } = useTrainingCheckins();
+  const [exporting, setExporting] = useState(false);
+
+  const frequencyRef = useRef<HTMLDivElement>(null);
+  const restDaysRef = useRef<HTMLDivElement>(null);
+  const weeklyRef = useRef<HTMLDivElement>(null);
+  const timeDistRef = useRef<HTMLDivElement>(null);
+  const weekdayRef = useRef<HTMLDivElement>(null);
+  const monthlyRef = useRef<HTMLDivElement>(null);
+
+  const chartSections: ChartSection[] = [
+    { label: 'Frequenz-Trend', ref: frequencyRef },
+    { label: 'Ruhetage-Verteilung', ref: restDaysRef },
+    { label: 'Besuche pro Woche', ref: weeklyRef },
+    { label: 'Uhrzeiten-Verteilung', ref: timeDistRef },
+    { label: 'Wochentags-Verteilung', ref: weekdayRef },
+    { label: 'Monatsvergleich', ref: monthlyRef },
+  ];
 
   const handleImport = async (rows: Parameters<typeof importCsv.mutateAsync>[0]) => {
     return importCsv.mutateAsync(rows);
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const chartImages: { label: string; dataUrl: string }[] = [];
+
+      for (const section of chartSections) {
+        if (section.ref.current) {
+          try {
+            const dataUrl = await toPng(section.ref.current, {
+              backgroundColor: getComputedStyle(document.documentElement)
+                .getPropertyValue('--background')
+                ? undefined
+                : undefined,
+              pixelRatio: 2,
+            });
+            chartImages.push({ label: section.label, dataUrl });
+          } catch {
+            // skip failed captures
+          }
+        }
+      }
+
+      await exportTrainingPDF(checkins, chartImages.length > 0 ? chartImages : undefined);
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -30,8 +82,12 @@ export default function TrainingPage() {
         </div>
         <div className="flex items-center gap-2">
           {checkins.length > 0 && (
-            <Button variant="outline" onClick={() => exportTrainingPDF(checkins)}>
-              <FileDown className="mr-2 h-4 w-4" />
+            <Button variant="outline" onClick={handleExport} disabled={exporting}>
+              {exporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
               PDF Export
             </Button>
           )}
@@ -53,16 +109,16 @@ export default function TrainingPage() {
           <TimeBubbleHeatmap checkins={checkins} />
           <PersonalRecords checkins={checkins} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <FrequencyTrendChart checkins={checkins} />
-            <RestDaysChart checkins={checkins} />
+            <div ref={frequencyRef}><FrequencyTrendChart checkins={checkins} /></div>
+            <div ref={restDaysRef}><RestDaysChart checkins={checkins} /></div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <WeeklyVisitsChart checkins={checkins} />
-            <TimeDistributionChart checkins={checkins} />
+            <div ref={weeklyRef}><WeeklyVisitsChart checkins={checkins} /></div>
+            <div ref={timeDistRef}><TimeDistributionChart checkins={checkins} /></div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <WeekdayHeatmap checkins={checkins} />
-            <MonthlyComparisonChart checkins={checkins} />
+            <div ref={weekdayRef}><WeekdayHeatmap checkins={checkins} /></div>
+            <div ref={monthlyRef}><MonthlyComparisonChart checkins={checkins} /></div>
           </div>
           <TrainingCalendar checkins={checkins} />
         </>
