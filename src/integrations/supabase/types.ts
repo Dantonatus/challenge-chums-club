@@ -1492,6 +1492,36 @@ export type Database = {
           },
         ]
       }
+      training_checkins: {
+        Row: {
+          checkin_date: string
+          checkin_time: string
+          created_at: string
+          facility_address: string | null
+          facility_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          checkin_date: string
+          checkin_time: string
+          created_at?: string
+          facility_address?: string | null
+          facility_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          checkin_date?: string
+          checkin_time?: string
+          created_at?: string
+          facility_address?: string | null
+          facility_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_friends: {
         Row: {
           created_at: string
