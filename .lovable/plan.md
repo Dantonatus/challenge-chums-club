@@ -1,64 +1,77 @@
 
 
-# PDF-Export Fix: Dateigröße und Layout
+# PDF-Export: Neues Layout-Konzept
 
-## Probleme
+## Analyse der Probleme
 
-1. **Datei zu groß (>20 MB)**: `pixelRatio: 2` erzeugt riesige PNG-Bilder. 9 Sektionen als unkomprimierte PNGs sprengen das Limit.
-2. **Charts abgeschnitten/schlecht formatiert**: Die 2-Spalten-Grid-Charts werden einzeln gecaptured (halbe Breite), aber im PDF auf volle Breite gestreckt -- dadurch Verzerrung und Abschneidung.
-3. **Layout stimmt nicht**: Seitenumbrüche passen nicht, weil die Bildgrößen nicht korrekt berechnet werden.
+Vergleich Dashboard vs. PDF zeigt 3 konkrete Probleme:
 
-## Lösung
+1. **Alles auf eine Seite gequetscht**: 5 von 6 Sektionen werden auf Seite 1 gepresst (KPIs + Heatmap + Records + 2 Grid-Rows). Nur 4mm Abstand zwischen den Bildern.
+2. **Seite 2 fast leer**: Nur die letzte Grid-Row (Wochentag + Monat) mit riesigem Leerraum darunter.
+3. **KPI-Karten abgeschnitten**: Der "Diesen Monat"-Subtext wird am unteren Rand abgeschnitten, weil der Capture-Bereich zu eng ist.
 
-### 1. JPEG statt PNG + reduzierter pixelRatio
+## Ursache
 
-- `toPng` ersetzen durch `toJpeg` aus `html-to-image` (gleiche Bibliothek)
-- `pixelRatio: 1.5` statt `2` (immer noch Druckqualität bei A4)
-- JPEG-Qualität `0.85` -- reduziert Dateigröße um ca. 70-80% gegenüber PNG
+Der Seitenumbruch-Check `y + imgH + 4 > PAGE_H - 12` bricht erst um, wenn ein Bild physisch nicht mehr passt. Dadurch wird alles maximal zusammengepresst, bis kein Pixel mehr Platz hat.
 
-### 2. Grid-Zeilen als Ganzes capturen
+## Neues Konzept: "Drucklayout mit Atemraum"
 
-Statt 6 einzelne Chart-Refs (die jeweils nur eine Hälfte des Grids sind), werden die 3 Grid-Zeilen als Ganzes gecaptured. Das erhält das 2-Spalten-Layout exakt.
+### Prinzip
 
-**Vorher (9 Refs, einzelne Charts):**
+Statt "so viel wie moeglich auf eine Seite quetschen" wird das Layout so verteilt, dass es dem Bildschirm-Erlebnis entspricht -- mit angemessenen Abstaenden und sinnvollen Seitenumbruechen.
+
+### Konkrete Aenderungen
+
+#### 1. Abstaende erhoehen (4mm -> 10mm)
+
+Zwischen jeder Sektion 10mm Abstand statt 4mm. Das entspricht ungefaehr dem `space-y-6` (24px ~ 6mm bei 96dpi) aus dem Dashboard, aufgerundet fuer Print.
+
+#### 2. Intelligenter Seitenumbruch
+
+Neue Regel: Wenn nach dem Platzieren eines Bildes weniger als 60mm auf der Seite uebrig bleiben, wird die naechste Sektion auf eine neue Seite gesetzt. Das verhindert, dass eine Sektion am unteren Rand gequetscht wird.
+
+```text
+Seite 1:
+  [Header-Balken 22mm]
+  [6mm Abstand]
+  [KPI-Cards ~18mm]
+  [10mm Abstand]
+  [Heatmap ~55mm]
+  [10mm Abstand]
+  [Personal Records ~30mm]
+  [10mm Abstand]
+  [Grid Row 1: Frequenz + Ruhetage ~65mm]
+  -- Seitenumbruch (< 60mm uebrig) --
+
+Seite 2:
+  [Grid Row 2: Besuche + Uhrzeiten ~65mm]
+  [10mm Abstand]
+  [Grid Row 3: Wochentag + Monat ~65mm]
 ```
-kpiRef -> KPI-Cards
-heatmapRef -> TimeBubbleHeatmap  
-recordsRef -> PersonalRecords
-frequencyRef -> FrequencyTrend (halbe Breite!)
-restDaysRef -> RestDays (halbe Breite!)
-weeklyRef -> Weekly (halbe Breite!)
-...
-```
 
-**Nachher (6 Refs, ganze Zeilen):**
-```
-kpiRef -> KPI-Cards (volle Breite)
-heatmapRef -> TimeBubbleHeatmap (volle Breite)
-recordsRef -> PersonalRecords (volle Breite)
-gridRow1Ref -> Grid mit Frequenz + Ruhetage (volle Breite, 2 Spalten)
-gridRow2Ref -> Grid mit Weekly + TimeDistribution (volle Breite, 2 Spalten)
-gridRow3Ref -> Grid mit Weekday + Monthly (volle Breite, 2 Spalten)
-```
+#### 3. Padding um Captures
 
-### 3. Skalierung im PDF verbessern
+Beim html-to-image Capture einen kleinen Padding-Puffer einbauen, damit nichts am Rand abgeschnitten wird. Dafuer wird `style` im Capture-Options uebergeben: `{ padding: '4px' }`.
 
-- Bilder so skalieren, dass sie nie breiter als `CONTENT_W` (182mm) sind
-- Maximale Bildhöhe pro Seite begrenzen, damit nichts abgeschnitten wird
-- Bei Seitenumbruch: Hintergrund der neuen Seite ZUERST füllen, dann Bild platzieren
+#### 4. Hintergrund-Farbe im Capture setzen
 
-## Technische Änderungen
+Das aktuelle Problem: Die Screenshots haben einen transparenten Hintergrund, der im JPEG als schwarzer Hintergrund erscheint. Loesung: `backgroundColor` explizit im `toJpeg`-Aufruf setzen, basierend auf dem aktuellen Theme.
 
-### `src/pages/app/training/TrainingPage.tsx`
+### Technische Aenderungen
 
-- 9 Refs reduzieren auf 6 (3 Grid-Rows statt 6 einzelne Charts)
-- Die `ref` direkt auf die `<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">` Wrapper setzen
-- `toPng` ersetzen durch `toJpeg` mit `{ quality: 0.85, pixelRatio: 1.5 }`
-- `pdfSections`-Array entsprechend anpassen
+#### `src/pages/app/training/TrainingPage.tsx`
 
-### `src/lib/training/exportTrainingPDF.ts`
+- `toJpeg`-Optionen erweitern um `backgroundColor` (Theme-abhaengig: `#141414` fuer Dark, `#fcfcfc` fuer Light)
+- Kein Aendern der Refs oder Sektionen -- die 6 Refs bleiben
 
-- `addImage`-Format von `'PNG'` auf `'JPEG'` ändern
-- Maximale Bildhöhe pro Seite einführen (z.B. `PAGE_H - 2 * MARGIN - 10`)
-- Falls ein Bild zu hoch für eine Seite ist: auf maximale Höhe skalieren (Breite proportional reduzieren, zentriert platzieren)
+#### `src/lib/training/exportTrainingPDF.ts`
+
+- Abstand zwischen Sektionen von 4mm auf 10mm erhoehen
+- Seitenumbruch-Logik aendern: Wenn nach dem Bild weniger als 60mm frei waeren, vorher umbrechen
+- Footer-Platz von 12mm auf 16mm erhoehen (etwas mehr Abstand zum Seitenende)
+
+| Datei | Aenderung |
+|---|---|
+| `src/pages/app/training/TrainingPage.tsx` | `backgroundColor` in toJpeg-Optionen hinzufuegen |
+| `src/lib/training/exportTrainingPDF.ts` | Abstand 4->10mm, Seitenumbruch-Schwelle 60mm, Footer-Platz 16mm |
 
