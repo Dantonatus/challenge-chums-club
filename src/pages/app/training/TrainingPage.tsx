@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Dumbbell, FileDown, Loader2 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Dumbbell, FileDown, Loader2, ScanLine } from 'lucide-react';
 import { toJpeg } from 'html-to-image';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
 import CsvUploader from '@/components/training/CsvUploader';
@@ -76,12 +77,40 @@ export default function TrainingPage() {
     }
   };
 
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isBodyScan = location.pathname.includes('/bodyscan');
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Dumbbell className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Training</h1>
+          <div className="flex items-center gap-1 ml-2 bg-muted rounded-lg p-1">
+            <button
+              onClick={() => navigate('/app/training')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                !isBodyScan
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Dumbbell className="h-3.5 w-3.5 inline mr-1" />
+              Check-ins
+            </button>
+            <button
+              onClick={() => navigate('/app/training/bodyscan')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                isBodyScan
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <ScanLine className="h-3.5 w-3.5 inline mr-1" />
+              Body Scan
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {checkins.length > 0 && (
