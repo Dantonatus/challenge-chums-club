@@ -2,7 +2,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import type { TrainingCheckin } from '@/lib/training/types';
 import { trainingDatesSet } from '@/lib/training/analytics';
-import { parseISO } from 'date-fns';
+import { parseISO, subMonths } from 'date-fns';
 
 interface Props { checkins: TrainingCheckin[] }
 
@@ -18,6 +18,9 @@ export default function TrainingCalendar({ checkins }: Props) {
       <CardContent className="flex justify-center">
         <Calendar
           mode="multiple"
+          numberOfMonths={3}
+          pagedNavigation
+          defaultMonth={subMonths(new Date(), 2)}
           selected={highlighted}
           className="rounded-md"
         />
