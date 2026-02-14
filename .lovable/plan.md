@@ -1,40 +1,65 @@
 
 
-# Migration: Markus Heid Feedback-Daten
+# Feedbackgespraeche & Gespraechs-Archiv
 
-## Was passiert
+## Konzept
 
-Die 28 bestehenden Tasks mit Feedback zu Markus werden als Eintraege in das neue Feedback-Modul uebernommen. Dafuer wird:
+Das bestehende "Geteilt"-Flag wird zu einem vollstaendigen Gespraechs-Workflow erweitert. Statt einzelne Eintraege nur als "geteilt" zu markieren, werden sie in **Feedbackrunden** (Sessions) zusammengefasst. So entsteht eine klare Historie: Welches Feedback wurde wann mit der Person besprochen?
 
-1. Ein Mitarbeiter "Markus Heid" (Rolle: Geschaeftsfuehrer) angelegt
-2. Alle 28 Feedback-Eintraege migriert
+## Workflow fuer den Nutzer
 
-## Daten-Mapping
+1. **Feedback sammeln** -- wie bisher, Eintraege laufend erfassen
+2. **Feedbackgespraech starten** -- Button "Feedbackrunde starten" in der Timeline
+3. **Eintraege auswaehlen** -- alle ungeteilten Eintraege sind vorausgewaehlt, einzelne koennen ab-/ausgewaehlt werden
+4. **Runde abschliessen** -- Datum + optionale Notizen zum Gespraech erfassen, Button "Gespraech abschliessen"
+5. **Archiv** -- Abgeschlossene Runden erscheinen in einem Tab "Verlauf" pro Person, chronologisch sortiert. Jede Runde ist aufklappbar und zeigt die besprochenen Eintraege.
 
-| Task-Feld | Feedback-Feld | Logik |
+## Aenderungen im Detail
+
+### 1. Neue Datenbank-Tabelle: `feedback_sessions`
+
+| Spalte | Typ | Beschreibung |
 |---|---|---|
-| Titel (nach Datum+Name) | content | Text nach dem Praefix "Markus:" / "Markus_" |
-| Datum im Titel (z.B. 11.01.26) | entry_date | Geparstes Datum, Fallback: created_at |
-| Beschreibung (falls vorhanden) | content (angehaengt) | Wird an den Titel-Text angehaengt |
-| -- | category | Default: "observation" (kann spaeter angepasst werden) |
-| -- | sentiment | Default: "neutral" (kann spaeter angepasst werden) |
-| -- | is_shared | false |
+| id | uuid (PK) | -- |
+| employee_id | uuid (FK) | Zuordnung zum Mitarbeiter |
+| user_id | uuid | Eigentum / RLS |
+| session_date | text | Datum des Gespraechs (YYYY-MM-DD) |
+| notes | text (nullable) | Optionale Notizen zum Gespraech |
+| created_at | timestamptz | -- |
 
-## Mitarbeiter-Profil
+### 2. Neue Spalte auf `feedback_entries`
 
-- **Name**: Markus Heid
-- **Rolle**: Geschaeftsfuehrer
-- **Farbe**: Blau (#3B82F6) -- oder nach Wunsch anpassbar
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| session_id | uuid (nullable, FK) | Verknuepfung zur Feedbackrunde -- NULL = noch offen |
 
-## Umsetzung
+Eintraege mit `session_id = NULL` sind aktiv/offen. Eintraege mit einer `session_id` wurden besprochen und sind im Archiv.
 
-Eine SQL-Migration, die:
+### 3. UI-Aenderungen
 
-1. Den Mitarbeiter in `feedback_employees` anlegt (mit der user_id des aktuellen Nutzers)
-2. Alle 28 Eintraege in `feedback_entries` einfuegt mit dem jeweiligen Datum aus dem Titel
-3. Die Original-Tasks bleiben erhalten (kein Loeschen, das kann spaeter manuell passieren)
+**FeedbackTimeline -- zwei Tabs:**
+- **Offen** (Standard): Zeigt Erfassungsformular + alle Eintraege ohne `session_id`. Button "Feedbackrunde starten".
+- **Verlauf**: Liste aller abgeschlossenen Sessions, chronologisch absteigend. Jede Session ist ein aufklappbares Akkordeon mit Datum, Notizen und den zugehoerigen Eintraegen.
 
-## Technische Details
+**Neue Komponenten:**
+- `StartSessionDialog`: Dialog zum Starten einer Runde -- zeigt alle offenen Eintraege mit Checkboxen, Datumsfeld, Notizfeld.
+- `SessionCard`: Aufklappbare Karte im Verlauf-Tab mit Session-Datum, Notizen und den Eintraegen.
 
-Die Migration verwendet die `user_id` aus den bestehenden Tasks, um sicherzustellen, dass die Daten dem richtigen Nutzer zugeordnet werden. Das Datum wird aus dem Titel-Praefix (Format DD.MM.YY) extrahiert und in YYYY-MM-DD konvertiert.
+**Bestehende Aenderungen:**
+- `FeedbackEntryCard`: Kleines Badge "Besprochen am [Datum]" wenn `session_id` gesetzt ist.
+- Das bisherige "Geteilt"-Toggle wird durch den Session-Workflow ersetzt (ist_shared wird durch session_id abgeloest).
 
+### 4. Hooks
+
+- `useFeedbackSessions(employeeId)` -- CRUD fuer Sessions
+- `useFeedbackEntries` anpassen -- Filter nach `session_id IS NULL` fuer offene Eintraege, bzw. nach `session_id` fuer Archiv
+
+### 5. RLS-Policies
+
+Gleiche Policies wie bei den bestehenden Tabellen: Nutzer koennen nur eigene Sessions sehen, erstellen, updaten und loeschen.
+
+## Was sich nicht aendert
+
+- Das Erfassen von Feedback bleibt identisch
+- Mitarbeiter-Verwaltung (anlegen, archivieren, bearbeiten) bleibt identisch
+- Bestehende Eintraege (die 28 von Markus) bleiben als "offen" erhalten, da sie kein session_id haben
