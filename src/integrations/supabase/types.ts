@@ -228,6 +228,89 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_employees: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_archived: boolean
+          name: string
+          role: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          name: string
+          role?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          name?: string
+          role?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      feedback_entries: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          employee_id: string
+          entry_date: string
+          id: string
+          is_shared: boolean
+          sentiment: string
+          shared_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          employee_id: string
+          entry_date?: string
+          id?: string
+          is_shared?: boolean
+          sentiment?: string
+          shared_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          employee_id?: string
+          entry_date?: string
+          id?: string
+          is_shared?: boolean
+          sentiment?: string
+          shared_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gantt_tasks: {
         Row: {
           color: string | null
