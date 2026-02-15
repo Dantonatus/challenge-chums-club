@@ -45,9 +45,10 @@ export function useWeightEntries() {
         const typedEntries = latestEntries as WeightEntry[];
         const fc14 = forecast(typedEntries, 14);
         const fc30 = forecast(typedEntries, 30);
+        const fc60 = forecast(typedEntries, 60);
 
-        // Upsert both snapshots (overwrite same day)
-        for (const [days, fc] of [[14, fc14], [30, fc30]] as const) {
+        // Upsert all snapshots (overwrite same day)
+        for (const [days, fc] of [[14, fc14], [30, fc30], [60, fc60]] as const) {
           // Delete existing snapshot for same date + days
           await supabase
             .from('weight_forecast_snapshots' as any)
