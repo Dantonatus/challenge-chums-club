@@ -1,11 +1,11 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LabelList } from 'recharts';
 import type { BodyScan } from '@/lib/bodyscan/types';
 import { compositionChartData } from '@/lib/bodyscan/analytics';
 
-interface Props { scans: BodyScan[] }
+interface Props { scans: BodyScan[]; showLabels?: boolean }
 
-export default function CompositionTrendChart({ scans }: Props) {
+export default function CompositionTrendChart({ scans, showLabels }: Props) {
   const data = compositionChartData(scans);
   if (data.length < 2) return null;
 
@@ -27,9 +27,15 @@ export default function CompositionTrendChart({ scans }: Props) {
               }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Line type="monotone" dataKey="Gewicht" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
-            <Line type="monotone" dataKey="Muskelmasse" stroke="hsl(210 70% 55%)" strokeWidth={2} dot={{ r: 4 }} />
-            <Line type="monotone" dataKey="Fettmasse" stroke="hsl(0 60% 55%)" strokeWidth={2} dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="Gewicht" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }}>
+              {showLabels && <LabelList dataKey="Gewicht" position="top" fontSize={9} fill="hsl(var(--primary))" fillOpacity={0.6} />}
+            </Line>
+            <Line type="monotone" dataKey="Muskelmasse" stroke="hsl(210 70% 55%)" strokeWidth={2} dot={{ r: 4 }}>
+              {showLabels && <LabelList dataKey="Muskelmasse" position="top" fontSize={9} fill="hsl(210 70% 55%)" fillOpacity={0.6} />}
+            </Line>
+            <Line type="monotone" dataKey="Fettmasse" stroke="hsl(0 60% 55%)" strokeWidth={2} dot={{ r: 4 }}>
+              {showLabels && <LabelList dataKey="Fettmasse" position="top" fontSize={9} fill="hsl(0 60% 55%)" fillOpacity={0.6} />}
+            </Line>
           </LineChart>
         </ResponsiveContainer>
       </CardContent>
