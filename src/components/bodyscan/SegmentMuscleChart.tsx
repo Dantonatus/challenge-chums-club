@@ -1,13 +1,17 @@
+import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LabelList } from 'recharts';
 import type { BodyScan } from '@/lib/bodyscan/types';
 import { latestScan, previousScan } from '@/lib/bodyscan/analytics';
+import { createChartLabel } from './ChartLabel';
 
 interface Props { scans: BodyScan[]; showLabels?: boolean }
 
 export default function SegmentMuscleChart({ scans, showLabels }: Props) {
   const latest = latestScan(scans);
   const prev = previousScan(scans);
+  const labelCurrent = useMemo(() => createChartLabel({ color: 'hsl(var(--primary))', offsetY: -12 }), []);
+  const labelPrev = useMemo(() => createChartLabel({ color: 'hsl(var(--muted-foreground))', offsetY: -12 }), []);
   if (!latest?.segments_json) return null;
 
   const segments = [
@@ -43,11 +47,11 @@ export default function SegmentMuscleChart({ scans, showLabels }: Props) {
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             <Bar dataKey="Aktuell" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
-              {showLabels && <LabelList dataKey="Aktuell" position="top" fontSize={9} fill="hsl(var(--primary))" fillOpacity={0.6} />}
+              {showLabels && <LabelList dataKey="Aktuell" content={labelCurrent} />}
             </Bar>
             {prev?.segments_json && (
               <Bar dataKey="Vorher" fill="hsl(var(--muted-foreground) / 0.3)" radius={[4, 4, 0, 0]}>
-                {showLabels && <LabelList dataKey="Vorher" position="top" fontSize={9} fill="hsl(var(--muted-foreground))" fillOpacity={0.6} />}
+                {showLabels && <LabelList dataKey="Vorher" content={labelPrev} />}
               </Bar>
             )}
           </BarChart>
