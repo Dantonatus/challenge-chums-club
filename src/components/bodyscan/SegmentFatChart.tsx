@@ -1,11 +1,11 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LabelList } from 'recharts';
 import type { BodyScan } from '@/lib/bodyscan/types';
 import { latestScan, previousScan } from '@/lib/bodyscan/analytics';
 
-interface Props { scans: BodyScan[] }
+interface Props { scans: BodyScan[]; showLabels?: boolean }
 
-export default function SegmentFatChart({ scans }: Props) {
+export default function SegmentFatChart({ scans, showLabels }: Props) {
   const latest = latestScan(scans);
   const prev = previousScan(scans);
   if (!latest?.segments_json) return null;
@@ -42,9 +42,13 @@ export default function SegmentFatChart({ scans }: Props) {
               }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar dataKey="Aktuell %" fill="hsl(0 60% 55%)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Aktuell %" fill="hsl(0 60% 55%)" radius={[4, 4, 0, 0]}>
+              {showLabels && <LabelList dataKey="Aktuell %" position="top" fontSize={9} fill="hsl(0 60% 55%)" fillOpacity={0.6} />}
+            </Bar>
             {prev?.segments_json && (
-              <Bar dataKey="Vorher %" fill="hsl(var(--muted-foreground) / 0.3)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Vorher %" fill="hsl(var(--muted-foreground) / 0.3)" radius={[4, 4, 0, 0]}>
+                {showLabels && <LabelList dataKey="Vorher %" position="top" fontSize={9} fill="hsl(var(--muted-foreground))" fillOpacity={0.6} />}
+              </Bar>
             )}
           </BarChart>
         </ResponsiveContainer>

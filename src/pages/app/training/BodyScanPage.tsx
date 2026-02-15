@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toJpeg } from 'html-to-image';
 import { useBodyScans } from '@/hooks/useBodyScans';
-import { Dumbbell, ScanLine, FileDown, Loader2, Scale } from 'lucide-react';
+import { Dumbbell, ScanLine, FileDown, Loader2, Scale, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { exportBodyScanPDF } from '@/lib/bodyscan/exportBodyScanPDF';
 import BodyScanCsvUploader from '@/components/bodyscan/BodyScanCsvUploader';
@@ -18,6 +18,7 @@ export default function BodyScanPage() {
   const { scans, isLoading, importScan } = useBodyScans();
   const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
+  const [showLabels, setShowLabels] = useState(false);
 
   const kpiRef = useRef<HTMLDivElement>(null);
   const compositionRef = useRef<HTMLDivElement>(null);
@@ -93,10 +94,21 @@ export default function BodyScanPage() {
         </div>
         <div className="flex items-center gap-2">
           {scans.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-              PDF
-            </Button>
+            <>
+              <Button
+                variant={showLabels ? "default" : "outline"}
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setShowLabels(v => !v)}
+                title="Datenwerte anzeigen"
+              >
+                <Hash className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                PDF
+              </Button>
+            </>
           )}
           <BodyScanCsvUploader onImport={handleImport} isLoading={importScan.isPending} />
         </div>
@@ -113,11 +125,11 @@ export default function BodyScanPage() {
       ) : (
         <>
           <div className="-m-3 p-3" ref={kpiRef}><BodyScanKPICards scans={scans} /></div>
-          <div className="-m-3 p-3" ref={compositionRef}><CompositionTrendChart scans={scans} /></div>
-          <div className="-m-3 p-3" ref={fatMuscleRef}><FatMuscleAreaChart scans={scans} /></div>
+          <div className="-m-3 p-3" ref={compositionRef}><CompositionTrendChart scans={scans} showLabels={showLabels} /></div>
+          <div className="-m-3 p-3" ref={fatMuscleRef}><FatMuscleAreaChart scans={scans} showLabels={showLabels} /></div>
           <div className="-m-3 p-3 grid grid-cols-1 lg:grid-cols-2 gap-6" ref={segmentsRef}>
-            <SegmentMuscleChart scans={scans} />
-            <SegmentFatChart scans={scans} />
+            <SegmentMuscleChart scans={scans} showLabels={showLabels} />
+            <SegmentFatChart scans={scans} showLabels={showLabels} />
           </div>
           <div className="-m-3 p-3" ref={metabolismRef}><MetabolismCard scans={scans} /></div>
           <div className="-m-3 p-3" ref={timelineRef}><ScanTimeline scans={scans} /></div>
