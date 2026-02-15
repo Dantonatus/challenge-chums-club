@@ -18,7 +18,32 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Authenticate the caller
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    // Use service role client for privileged operations
+    const serviceClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
@@ -35,7 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     // Store the approval token
-    const { error: tokenError } = await supabaseClient
+    const { error: tokenError } = await serviceClient
       .from('approval_tokens')
       .insert({
         token: approvalToken,
@@ -45,11 +70,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (tokenError) {
       console.error("Error creating approval token:", tokenError);
-      throw new Error(`Failed to create approval token: ${tokenError.message}`);
+      throw new Error("Failed to create approval token");
     }
 
-    console.log(`New user registration: ${userEmail} (${userName || 'N/A'}). Approval token created.`);
-    console.log(`Admin should check the Approval page in the app to approve this user.`);
+    console.log(`New user registration: ${userEmail}. Approval token created.`);
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -64,10 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-admin-notification function:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        timestamp: new Date().toISOString()
-      }),
+      JSON.stringify({ error: "An error occurred" }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

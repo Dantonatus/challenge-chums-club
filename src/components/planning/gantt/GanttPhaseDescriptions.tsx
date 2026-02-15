@@ -1,6 +1,12 @@
 import { GanttTask } from '@/lib/planning/types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import DOMPurify from 'dompurify';
+
+const SANITIZE_CONFIG = {
+  ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'span', 'p', 'br', 'ul', 'ol', 'li', 'font', 'div'],
+  ALLOWED_ATTR: ['style', 'class', 'color', 'size', 'face'],
+};
 
 interface GanttPhaseDescriptionsProps {
   tasks: GanttTask[];
@@ -56,7 +62,7 @@ export function GanttPhaseDescriptions({ tasks, clientColor }: GanttPhaseDescrip
                 {isHtml(task.description!) ? (
                   <div
                     className="text-xs text-muted-foreground prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
-                    dangerouslySetInnerHTML={{ __html: task.description! }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(task.description!, SANITIZE_CONFIG) }}
                   />
                 ) : (
                   <>
