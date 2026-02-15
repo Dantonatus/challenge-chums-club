@@ -1,50 +1,45 @@
 
-# Labels lesbar machen -- Hintergrund-Halo und gestaffelte Positionen
 
-## Problem
+# Chart-Labels Rework -- Lesbarkeit und Groesse
 
-Die `LabelList`-Labels (fontSize 9, halbtransparent) werden von Linien, Flaechen und anderen Datenpunkten ueberdeckt und sind schwer lesbar.
+## Probleme
 
-## Loesung
-
-Einen **Custom Label Renderer** erstellen, der jeden Wert mit einem kleinen halbtransparenten Hintergrund-Rechteck ("Halo") rendert. Zusaetzlich werden Labels bei LineCharts und AreaCharts abwechselnd oben/unten positioniert, damit sie sich nicht gegenseitig verdecken.
+1. **Segment-Charts (Muskel + Fett)**: Labels werden von den dunklen Bars ueberlagert -- die Halo-Box mit 0.85 Opacity reicht im Dark Mode nicht, weil `hsl(var(--card))` selbst dunkel ist und mit den Bars verschmilzt
+2. **Koerperfett vs. Muskelmasse (AreaChart)**: Blaue Zahl kann unter die blaue Flaeche rutschen, rote Zahl wird ebenfalls ueberdeckt
+3. **Segment-Charts zu klein**: Bei 280px Hoehe ist zu wenig Platz fuer Labels oberhalb der Bars
 
 ## Aenderungen
 
-### 1. Neuer Shared Helper: `src/components/bodyscan/ChartLabel.tsx`
+### 1. ChartLabel.tsx -- Robusterer Halo
 
-- Eine React-Komponente `ChartLabel`, die als `content`-Prop fuer Recharts `<LabelList content={...} />` dient
-- Rendert fuer jeden Datenpunkt:
-  - Ein `<rect>` als Hintergrund (Farbe `hsl(var(--card))`, opacity 0.85, abgerundete Ecken)
-  - Ein `<text>` mit dem Wert darueber (fontSize 9, Farbe passend zur Serie)
-- Props: `color` (Textfarbe), `offsetY` (Versatz nach oben/unten, default -12)
-- Ergebnis: Labels "schweben" auf einem kleinen undurchsichtigen Kaestchen ueber dem Datenpunkt und werden nie von Linien/Flaechen verdeckt
+- `fillOpacity` der Hintergrund-Box von 0.85 auf **0.95** erhoehen
+- Einen subtilen **Stroke** (1px, `hsl(var(--border))`) um die Box hinzufuegen, damit sie sich auch im Dark Mode klar vom Hintergrund abhebt
+- Text `fillOpacity` von 0.8 auf **0.9** fuer bessere Lesbarkeit
 
-### 2. CompositionTrendChart.tsx
+### 2. FatMuscleAreaChart.tsx -- Labels weiter nach oben
 
-- Import `ChartLabel`
-- Statt dem einfachen `<LabelList position="top" ...>` wird `<LabelList content={<ChartLabel color="..." />} />` verwendet
-- Die drei Serien bekommen unterschiedliche `offsetY`-Werte (-14, -24, -34), damit sich "Gewicht", "Muskelmasse" und "Fettmasse" nicht ueberlagern
+- Beide Labels weiter vom Datenpunkt weg positionieren: Fat `offsetY: -18`, Muscle `offsetY: -34`
+- Chart-Hoehe von 280 auf **340px** erhoehen, damit oben genug Platz fuer die gestaffelten Labels bleibt
+- Top-Margin im AreaChart erhoehen (`margin={{ top: 40 }}`)
 
-### 3. FatMuscleAreaChart.tsx
+### 3. CompositionTrendChart.tsx -- Mehr Platz oben
 
-- Import `ChartLabel`
-- Koerperfett-Label bekommt `offsetY={-14}`, Muskelmasse `offsetY={-26}` -- so liegen sie gestaffelt uebereinander statt aufeinander
+- Chart-Hoehe von 280 auf **340px**
+- `margin={{ top: 45 }}` damit die drei gestaffelten Labels (-14, -26, -38) nicht abgeschnitten werden
 
-### 4. SegmentMuscleChart.tsx + SegmentFatChart.tsx
+### 4. SegmentMuscleChart.tsx + SegmentFatChart.tsx -- Groesser + Labels hoeher
 
-- Import `ChartLabel`
-- Hier reicht ein einheitlicher `offsetY={-12}`, da Bars nebeneinander stehen und sich weniger ueberlagern
-- Der Halo-Hintergrund sorgt dafuer, dass Gridlines die Zahlen nicht durchschneiden
+- Chart-Hoehe von 280 auf **340px**
+- `margin={{ top: 30 }}` fuer Platz ueber den Bars
+- "Aktuell"-Label `offsetY: -16`, "Vorher"-Label `offsetY: -16` (Bars stehen nebeneinander, kein Staffeln noetig)
+- Durch die hoeheren Offsets + groessere Charts + robusteren Halo sind die Zahlen klar ueber den Bars sichtbar
 
 ### Zusammenfassung
 
 | Datei | Aenderung |
 |---|---|
-| `src/components/bodyscan/ChartLabel.tsx` | Neue shared Komponente -- Custom SVG Label mit Hintergrund-Rect |
-| `CompositionTrendChart.tsx` | `LabelList content={ChartLabel}` mit gestaffeltem offsetY |
-| `FatMuscleAreaChart.tsx` | `LabelList content={ChartLabel}` mit gestaffeltem offsetY |
-| `SegmentMuscleChart.tsx` | `LabelList content={ChartLabel}` |
-| `SegmentFatChart.tsx` | `LabelList content={ChartLabel}` |
-
-Keine neuen Abhaengigkeiten noetig.
+| `ChartLabel.tsx` | Opacity 0.95, Stroke-Border, Text-Opacity 0.9 |
+| `FatMuscleAreaChart.tsx` | Hoehe 340px, margin top 40, offsetY -18/-34 |
+| `CompositionTrendChart.tsx` | Hoehe 340px, margin top 45 |
+| `SegmentMuscleChart.tsx` | Hoehe 340px, margin top 30, offsetY -16 |
+| `SegmentFatChart.tsx` | Hoehe 340px, margin top 30, offsetY -16 |
