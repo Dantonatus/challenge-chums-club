@@ -1,61 +1,62 @@
 
 
-# Prognose-Fixes: Proportion, Realismus, Info-Button
+# Forecast-Oszillation + Info-Icon Alignment
 
-## 3 Probleme, 3 Fixes
+## 1. Natuerliche Schwankungen in der Prognose
 
-### 1. Proportion -- Forecast nimmt zu viel Platz ein
+### Problem
+Die aktuelle Prognoselinie ist glatt und monoton -- sie geht nur in eine Richtung. Echtes Gewicht schwankt aber taeglich um 0.3-0.8 kg (Wasser, Nahrung, Verdauung). Die Prognose wirkt dadurch unrealistisch.
 
-**Aktuell**: 30 Forecast-Tage bei ~53 realen Datenpunkten = 36% des Charts ist Prognose.
+### Loesung
+Die Prognoselinie bleibt als **Mittelwert-Linie** (glatt, gestrichelt) bestehen -- das ist der statistische Trend. Zusaetzlich wird eine **simulierte Schwankungslinie** als zweite Forecast-Linie hinzugefuegt, die natuerliche Tagesschwankungen nachbildet.
 
-**Fix**: Forecast auf **14 Tage** reduzieren. Das ergibt ~20% Forecast-Anteil -- visuell ausgewogen und trotzdem aussagekraeftig.
+Konkret:
+- Aus den historischen Daten wird die **typische Tagesschwankung** berechnet (Standardabweichung der Tag-zu-Tag-Differenzen)
+- Fuer jeden Forecast-Tag wird ein deterministischer Sinus-Rausch-Wert addiert (kein Zufall -- damit die Linie bei jedem Render gleich bleibt)
+- Die Schwankung oszilliert um die Trendlinie mit realistischer Amplitude (typisch 0.3-0.6 kg)
 
-### 2. Unrealistischer Trend + zu breites Unsicherheitsband
+Visuell:
+- **Gestrichelte Linie** (wie bisher): Trend-Mittelwert
+- **Neue duenne Linie**: Simulierter realistischer Verlauf mit Hoch und Runter
+- Das Konfidenzband bleibt als Huelle um beide Linien
 
-**Problem Trend**: Der aktuelle Holt-Winters extrapoliert den Trend linear in die Zukunft (`level + k * trend`). Bei den Daten steigt das Gewicht zuletzt steil (Jan 91 -> Feb 93), und das Modell projiziert diesen Anstieg unveraendert weiter -- unrealistisch.
+### Technische Umsetzung
 
-**Fix Trend**: **Damped Trend** (Holt-Winters mit Daempfungsfaktor phi=0.85):
-```text
-Statt:   F_{t+k} = Level + k * Trend
-Neu:     F_{t+k} = Level + (phi + phi^2 + ... + phi^k) * Trend
-```
-Der Daempfungsfaktor sorgt dafuer, dass der Trend sich mit der Zeit abschwaechen und die Prognose sich einem Plateau naehert -- so wie es bei Gewicht in der Realitaet passiert.
+**`src/lib/weight/analytics.ts`** -- `forecast()` Funktion erweitern:
+- Tag-zu-Tag-Differenzen der historischen Daten berechnen: `dailyDiffs = ys[i] - ys[i-1]`
+- Standardabweichung der Differenzen = typische Tagesschwankung (`dailySwing`)
+- Fuer jeden Forecast-Tag k: `oscillation = dailySwing * sin(k * 1.3 + cos(k * 0.7))` (deterministisch, nicht random)
+- Neues Feld `simulated` im Return-Objekt: `value + oscillation`
 
-**Problem Band**: `1.96 * sigma * sqrt(k)` waechst unbegrenzt. Bei Tag 30 und sigma=0.8 waere das +-4.4kg -- voellig unrealistisch.
+**`src/components/weight/WeightTerrainChart.tsx`**:
+- Neues Datenfeld `forecastSimulated` in chartData
+- Neue duenne Linie (solid, nicht gestrichelt) in gleicher Farbe aber leicht transparent fuer die simulierten Schwankungen
 
-**Fix Band**: Physiologisch gecapptes Konfidenzband:
-- Basis: Residual-Sigma wie bisher, aber gecappt auf max 0.5 kg (entspricht normaler Tagesschwankung)
-- Wachstum: `margin = cappedSigma * sqrt(k)`, aber maximal **1.5 kg** (selbst in 14 Tagen realistisch)
-- Reale Tagesschwankung liegt bei 0.5-1.0 kg, absolute Extreme bei 2 kg
+## 2. Info-Icon Alignment
 
-### 3. Info-Icon am Prognose-Button
+### Problem
+Der Info-Button hat `h-[26px]` hardcoded, was nicht zur dynamischen Badge-Hoehe passt. Die Badge hat `py-1` (8px padding) plus Texthoehe, was je nach Font-Rendering anders ausfaellt.
 
-Neben dem "Prognose 30d"-Badge (wird zu "Prognose 14d") kommt ein kleines Info-Icon (Lucide `Info`). Bei Klick oeffnet sich ein Popover mit:
-- Modellname: "Holt-Winters Exponential Smoothing"
-- Kurze Erklaerung: "Gewichtet juengste Werte staerker. Der Trend wird gedaempft, damit die Prognose realistisch bleibt."
-- Hinweis zum Konfidenzband: "Das Band zeigt die erwartete Schwankungsbreite basierend auf deinen bisherigen Tagesschwankungen."
-- Hinweis zum Refinement: "Jeder neue Eintrag verfeinert die Prognose automatisch."
+### Loesung
+Statt separater Buttons mit unterschiedlichen Hoehen wird das Info-Icon **innerhalb des Badge** platziert, nach dem Label-Text. Ein Klick auf das Icon oeffnet den Popover, ein Klick auf den Rest des Badge toggelt die Trend-Linie.
 
-## Technische Aenderungen
+Konkret:
+- Badge bekommt das Info-Icon als letztes Element (mit `onClick.stopPropagation()` damit der Badge-Toggle nicht ausloest)
+- Kein separater Button mehr noetig
+- Automatisch gleiche Hoehe, kein Alignment-Problem
 
-### `src/lib/weight/analytics.ts`
+### Technische Umsetzung
 
-**forecast() Funktion anpassen:**
-- Parameter `days` Default von 30 auf **14** aendern
-- Damped Trend einfuehren: `phi = 0.85`, Forecast-Formel wird `level + sumPhi * trend` wobei `sumPhi = phi + phi^2 + ... + phi^k`
-- Sigma cappen: `cappedSigma = Math.min(sigma, 0.5)`
-- Margin cappen: `Math.min(margin, 1.5)`
+**`src/components/weight/WeightTerrainChart.tsx`**:
+- Den separaten Info-Button (Zeilen 179-207) entfernen
+- Info-Icon in den Badge verschieben (nach `{cfg.label}`)
+- `borderTopRightRadius: 0` und `borderBottomRightRadius: 0` entfernen
+- PopoverTrigger wird das Info-Icon innerhalb des Badge
 
-### `src/components/weight/WeightTerrainChart.tsx`
-
-- TREND_CONFIG: Label von "Prognose 30d" auf "Prognose 14d" aendern
-- Info-Icon + Popover beim Forecast-Badge hinzufuegen (Lucide `Info` Icon, Radix Popover)
-- Popover-Inhalt mit Modellbeschreibung
-
-### Betroffene Dateien
+## Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/lib/weight/analytics.ts` | Damped Trend (phi=0.85), Sigma-Cap (0.5), Margin-Cap (1.5), days=14 |
-| `src/components/weight/WeightTerrainChart.tsx` | Label-Update, Info-Icon mit Popover am Forecast-Badge |
+| `src/lib/weight/analytics.ts` | `forecast()` gibt zusaetzlich `simulated` Wert zurueck mit deterministischer Oszillation |
+| `src/components/weight/WeightTerrainChart.tsx` | Neue simulierte Forecast-Linie, Info-Icon ins Badge integriert |
 
