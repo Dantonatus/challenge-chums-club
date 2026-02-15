@@ -10,8 +10,8 @@ interface Props { scans: BodyScan[]; showLabels?: boolean }
 export default function SegmentMuscleChart({ scans, showLabels }: Props) {
   const latest = latestScan(scans);
   const prev = previousScan(scans);
-  const labelCurrent = useMemo(() => createChartLabel({ color: 'hsl(var(--primary))', offsetY: -12 }), []);
-  const labelPrev = useMemo(() => createChartLabel({ color: 'hsl(var(--muted-foreground))', offsetY: -12 }), []);
+  const labelCurrent = useMemo(() => createChartLabel({ color: 'hsl(var(--primary))', offsetY: -16 }), []);
+  const labelPrev = useMemo(() => createChartLabel({ color: 'hsl(var(--muted-foreground))', offsetY: -16 }), []);
   if (!latest?.segments_json) return null;
 
   const segments = [
@@ -32,8 +32,8 @@ export default function SegmentMuscleChart({ scans, showLabels }: Props) {
     <Card>
       <CardContent className="p-4">
         <h3 className="text-sm font-semibold mb-4">Muskelverteilung (kg)</h3>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={data}>
+        <ResponsiveContainer width="100%" height={340}>
+          <BarChart data={data} margin={{ top: 30 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="segment" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
             <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />

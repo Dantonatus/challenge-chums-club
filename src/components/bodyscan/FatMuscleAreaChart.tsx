@@ -9,15 +9,15 @@ interface Props { scans: BodyScan[]; showLabels?: boolean }
 
 export default function FatMuscleAreaChart({ scans, showLabels }: Props) {
   const data = fatMuscleChartData(scans);
-  const labelFat = useMemo(() => createChartLabel({ color: 'hsl(0 60% 55%)', offsetY: -14 }), []);
-  const labelMuscle = useMemo(() => createChartLabel({ color: 'hsl(210 70% 55%)', offsetY: -26 }), []);
+  const labelFat = useMemo(() => createChartLabel({ color: 'hsl(0 60% 55%)', offsetY: -18 }), []);
+  const labelMuscle = useMemo(() => createChartLabel({ color: 'hsl(210 70% 55%)', offsetY: -34 }), []);
   if (data.length < 2) return null;
   return (
     <Card>
       <CardContent className="p-4">
         <h3 className="text-sm font-semibold mb-4">Körperfett vs. Muskelmasse – Trend</h3>
-        <ResponsiveContainer width="100%" height={280}>
-          <AreaChart data={data}>
+        <ResponsiveContainer width="100%" height={340}>
+          <AreaChart data={data} margin={{ top: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
             <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
