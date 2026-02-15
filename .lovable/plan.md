@@ -1,62 +1,58 @@
 
+# Oszillation im Info-Popover, datenbasierte Unsicherheit, 14d/30d Toggle
 
-# Forecast-Oszillation + Info-Icon Alignment
+## 1. Info-Popover um Oszillations-Erklaerung erweitern
 
-## 1. Natuerliche Schwankungen in der Prognose
+Der Popover-Text (Zeilen 190-199 in WeightTerrainChart.tsx) wird um einen Absatz zur Oszillationslinie ergaenzt:
+- "Die duenne Linie zeigt einen simulierten realistischen Verlauf mit deinen typischen Tagesschwankungen (aktuell ca. X kg). Diese Schwankung wird aus deinen bisherigen Tag-zu-Tag-Differenzen berechnet."
 
-### Problem
-Die aktuelle Prognoselinie ist glatt und monoton -- sie geht nur in eine Richtung. Echtes Gewicht schwankt aber taeglich um 0.3-0.8 kg (Wasser, Nahrung, Verdauung). Die Prognose wirkt dadurch unrealistisch.
+Dafuer muss `dailySwing` aus der `forecast()`-Funktion heraus zugaenglich sein. Die Funktion wird erweitert, sodass sie neben dem Array auch die berechnete `dailySwing` zurueckgibt (als Objekt: `{ points, dailySwing }`).
 
-### Loesung
-Die Prognoselinie bleibt als **Mittelwert-Linie** (glatt, gestrichelt) bestehen -- das ist der statistische Trend. Zusaetzlich wird eine **simulierte Schwankungslinie** als zweite Forecast-Linie hinzugefuegt, die natuerliche Tagesschwankungen nachbildet.
+## 2. Unsicherheitsband auf eigenen Daten basieren
 
-Konkret:
-- Aus den historischen Daten wird die **typische Tagesschwankung** berechnet (Standardabweichung der Tag-zu-Tag-Differenzen)
-- Fuer jeden Forecast-Tag wird ein deterministischer Sinus-Rausch-Wert addiert (kein Zufall -- damit die Linie bei jedem Render gleich bleibt)
-- Die Schwankung oszilliert um die Trendlinie mit realistischer Amplitude (typisch 0.3-0.6 kg)
+**Aktuell**: Das Konfidenzband nutzt `cappedSigma` (Residual-Standardabweichung, gecappt auf 0.5 kg). Das ist modellbasiert, nicht direkt aus den Tagesschwankungen.
 
-Visuell:
-- **Gestrichelte Linie** (wie bisher): Trend-Mittelwert
-- **Neue duenne Linie**: Simulierter realistischer Verlauf mit Hoch und Runter
-- Das Konfidenzband bleibt als Huelle um beide Linien
+**Neu**: Das Band nutzt `dailySwing` (Standardabweichung der Tag-zu-Tag-Differenzen) als Basis -- das ist die **tatsaechliche Schwankung des Users**. Formel wird:
+```text
+margin = min(1.96 * dailySwing * sqrt(k), 2.0)
+```
+Der Cap wird auf 2.0 kg erhoeht (bei 30 Tagen braucht man etwas mehr Spielraum). So waechst die Unsicherheit mit der Zeit, aber basiert auf den echten Schwankungen.
 
-### Technische Umsetzung
+## 3. 14d und 30d Prognose-Buttons
 
-**`src/lib/weight/analytics.ts`** -- `forecast()` Funktion erweitern:
-- Tag-zu-Tag-Differenzen der historischen Daten berechnen: `dailyDiffs = ys[i] - ys[i-1]`
-- Standardabweichung der Differenzen = typische Tagesschwankung (`dailySwing`)
-- Fuer jeden Forecast-Tag k: `oscillation = dailySwing * sin(k * 1.3 + cos(k * 0.7))` (deterministisch, nicht random)
-- Neues Feld `simulated` im Return-Objekt: `value + oscillation`
-
-**`src/components/weight/WeightTerrainChart.tsx`**:
-- Neues Datenfeld `forecastSimulated` in chartData
-- Neue duenne Linie (solid, nicht gestrichelt) in gleicher Farbe aber leicht transparent fuer die simulierten Schwankungen
-
-## 2. Info-Icon Alignment
-
-### Problem
-Der Info-Button hat `h-[26px]` hardcoded, was nicht zur dynamischen Badge-Hoehe passt. Die Badge hat `py-1` (8px padding) plus Texthoehe, was je nach Font-Rendering anders ausfaellt.
-
-### Loesung
-Statt separater Buttons mit unterschiedlichen Hoehen wird das Info-Icon **innerhalb des Badge** platziert, nach dem Label-Text. Ein Klick auf das Icon oeffnet den Popover, ein Klick auf den Rest des Badge toggelt die Trend-Linie.
-
-Konkret:
-- Badge bekommt das Info-Icon als letztes Element (mit `onClick.stopPropagation()` damit der Badge-Toggle nicht ausloest)
-- Kein separater Button mehr noetig
-- Automatisch gleiche Hoehe, kein Alignment-Problem
+Statt eines einzelnen Forecast-Buttons gibt es zwei separate Buttons: **Prognose 14d** und **Prognose 30d**. Nur einer kann gleichzeitig aktiv sein.
 
 ### Technische Umsetzung
 
-**`src/components/weight/WeightTerrainChart.tsx`**:
-- Den separaten Info-Button (Zeilen 179-207) entfernen
-- Info-Icon in den Badge verschieben (nach `{cfg.label}`)
-- `borderTopRightRadius: 0` und `borderBottomRightRadius: 0` entfernen
-- PopoverTrigger wird das Info-Icon innerhalb des Badge
+**TrendKey** wird erweitert: `'forecast'` wird ersetzt durch `'forecast14'` und `'forecast30'`.
 
-## Betroffene Dateien
+Die State-Logik stellt sicher, dass beim Aktivieren von `forecast14` automatisch `forecast30` deaktiviert wird und umgekehrt.
+
+Beide Forecasts werden mit `forecast(entries, 14)` bzw. `forecast(entries, 30)` berechnet. Die aktive Variante wird angezeigt.
+
+Das Info-Icon mit Popover wird nur beim ersten Forecast-Button angezeigt (gilt fuer beide Varianten).
+
+## Technische Aenderungen
+
+### `src/lib/weight/analytics.ts`
+
+- **Return-Typ** von `forecast()` aendern: gibt jetzt `{ points: [...], dailySwing: number }` zurueck statt nur das Array
+- **Konfidenzband**: `cappedSigma` durch `dailySwing` ersetzen. `margin = min(1.96 * dailySwing * sqrt(k), 2.0)`
+- Die Oszillation und der Trend bleiben unveraendert
+
+### `src/components/weight/WeightTerrainChart.tsx`
+
+- **TrendKey**: `'forecast'` ersetzen durch `'forecast14' | 'forecast30'`
+- **TREND_CONFIG**: Zwei Eintraege statt einem: `forecast14: { label: 'Prognose 14d', ... }` und `forecast30: { label: 'Prognose 30d', ... }`
+- **State-Logik**: `toggleTrend()` anpassen -- wenn `forecast14` aktiviert wird, `forecast30` deaktivieren und umgekehrt
+- **Forecast-Berechnung**: Beide Varianten vorberechnen, nur die aktive nutzen
+- **Info-Popover**: Text erweitern um Oszillations-Erklaerung mit dem berechneten `dailySwing`-Wert (z.B. "Deine typische Tagesschwankung: 0.4 kg")
+- **showForecastVisuals**: Pruefen ob `forecast14` ODER `forecast30` aktiv ist
+- **Default-State**: `new Set(['ma7', 'forecast14'])` statt `new Set(['ma7', 'forecast'])`
+
+### Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/lib/weight/analytics.ts` | `forecast()` gibt zusaetzlich `simulated` Wert zurueck mit deterministischer Oszillation |
-| `src/components/weight/WeightTerrainChart.tsx` | Neue simulierte Forecast-Linie, Info-Icon ins Badge integriert |
-
+| `src/lib/weight/analytics.ts` | Return-Typ erweitert, Konfidenzband auf dailySwing umgestellt |
+| `src/components/weight/WeightTerrainChart.tsx` | Zwei Forecast-Buttons, exklusiver Toggle, Popover-Text mit Oszillation + dailySwing |
