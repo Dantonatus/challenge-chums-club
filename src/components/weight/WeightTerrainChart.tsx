@@ -5,6 +5,8 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Info } from 'lucide-react';
 import { movingAverage, linearRegression, forecast } from '@/lib/weight/analytics';
 import type { WeightEntry } from '@/lib/weight/types';
 import { format, parseISO } from 'date-fns';
@@ -18,7 +20,7 @@ const TREND_CONFIG: Record<TrendKey, { label: string; color: string; dash?: stri
   ma7: { label: 'Ø 7 Tage', color: 'hsl(var(--muted-foreground))', dash: '6 4' },
   ma30: { label: 'Ø 30 Tage', color: 'hsl(220, 70%, 55%)', dash: '8 4' },
   regression: { label: 'Lineare Regression', color: 'hsl(30, 90%, 55%)' },
-  forecast: { label: 'Prognose 30d', color: FORECAST_COLOR, dash: '6 3' },
+  forecast: { label: 'Prognose 14d', color: FORECAST_COLOR, dash: '6 3' },
 };
 
 interface Props {
@@ -151,25 +153,59 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
             {(Object.keys(TREND_CONFIG) as TrendKey[]).map(key => {
               const cfg = TREND_CONFIG[key];
               const active = activeTrends.has(key);
+              const isForecast = key === 'forecast';
               return (
-                <button key={key} onClick={() => toggleTrend(key)}>
-                  <Badge
-                    variant="outline"
-                    className="cursor-pointer text-xs px-2.5 py-1 transition-all"
-                    style={{
-                      borderColor: active ? cfg.color : 'hsl(var(--border))',
-                      backgroundColor: active ? `${cfg.color}15` : 'transparent',
-                      color: active ? cfg.color : 'hsl(var(--muted-foreground))',
-                      opacity: active ? 1 : 0.6,
-                    }}
-                  >
-                    <span
-                      className="inline-block w-2 h-2 rounded-full mr-1.5"
-                      style={{ backgroundColor: cfg.color, opacity: active ? 1 : 0.3 }}
-                    />
-                    {cfg.label}
-                  </Badge>
-                </button>
+                <span key={key} className="inline-flex items-center gap-0">
+                  <button onClick={() => toggleTrend(key)}>
+                    <Badge
+                      variant="outline"
+                      className="cursor-pointer text-xs px-2.5 py-1 transition-all"
+                      style={{
+                        borderColor: active ? cfg.color : 'hsl(var(--border))',
+                        backgroundColor: active ? `${cfg.color}15` : 'transparent',
+                        color: active ? cfg.color : 'hsl(var(--muted-foreground))',
+                        opacity: active ? 1 : 0.6,
+                        borderTopRightRadius: isForecast ? 0 : undefined,
+                        borderBottomRightRadius: isForecast ? 0 : undefined,
+                      }}
+                    >
+                      <span
+                        className="inline-block w-2 h-2 rounded-full mr-1.5"
+                        style={{ backgroundColor: cfg.color, opacity: active ? 1 : 0.3 }}
+                      />
+                      {cfg.label}
+                    </Badge>
+                  </button>
+                  {isForecast && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          className="inline-flex items-center justify-center h-[26px] w-6 rounded-r-md border border-l-0 transition-all"
+                          style={{
+                            borderColor: active ? cfg.color : 'hsl(var(--border))',
+                            backgroundColor: active ? `${cfg.color}15` : 'transparent',
+                            color: active ? cfg.color : 'hsl(var(--muted-foreground))',
+                            opacity: active ? 1 : 0.6,
+                          }}
+                        >
+                          <Info size={12} />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 text-sm space-y-2" side="bottom" align="end">
+                        <p className="font-semibold">Holt-Winters Exponential Smoothing</p>
+                        <p className="text-muted-foreground text-xs">
+                          Gewichtet jüngste Werte stärker. Der Trend wird gedämpft (φ=0.85), damit die Prognose realistisch bleibt und sich einem Plateau nähert.
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          Das Konfidenzband zeigt die erwartete Schwankungsbreite (max ±1.5 kg) basierend auf deinen bisherigen Tagesschwankungen.
+                        </p>
+                        <p className="text-muted-foreground text-xs italic">
+                          Jeder neue Eintrag verfeinert die Prognose automatisch.
+                        </p>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </span>
               );
             })}
           </div>
