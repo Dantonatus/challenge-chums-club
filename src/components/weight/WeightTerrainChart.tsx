@@ -16,12 +16,12 @@ type TrendKey = 'ma7' | 'ma30' | 'regression' | 'forecast14' | 'forecast30';
 
 const FORECAST_COLOR = 'hsl(270, 70%, 55%)';
 
-const TREND_CONFIG: Record<TrendKey, { label: string; color: string; dash?: string }> = {
-  ma7: { label: 'Ø 7 Tage', color: 'hsl(var(--muted-foreground))', dash: '6 4' },
-  ma30: { label: 'Ø 30 Tage', color: 'hsl(220, 70%, 55%)', dash: '8 4' },
-  regression: { label: 'Lineare Regression', color: 'hsl(30, 90%, 55%)' },
-  forecast14: { label: 'Prognose 14d', color: FORECAST_COLOR, dash: '6 3' },
-  forecast30: { label: 'Prognose 30d', color: FORECAST_COLOR, dash: '6 3' },
+const TREND_CONFIG: Record<TrendKey, { label: string; color: string; dash?: string; description?: { title: string; text: string } }> = {
+  ma7: { label: 'Ø 7 Tage', color: 'hsl(var(--muted-foreground))', dash: '6 4', description: { title: 'Gleitender Durchschnitt (7 Tage)', text: 'Glättet Tagesschwankungen und zeigt den kurzfristigen Trend. Ideal um zu sehen ob sich in der aktuellen Woche etwas bewegt.' } },
+  ma30: { label: 'Ø 30 Tage', color: 'hsl(220, 70%, 55%)', dash: '8 4', description: { title: 'Gleitender Durchschnitt (30 Tage)', text: 'Filtert Wasser- und Verdauungsschwankungen fast komplett raus. Zeigt den echten mittelfristigen Trend.' } },
+  regression: { label: 'Lineare Regression', color: 'hsl(30, 90%, 55%)', description: { title: 'Lineare Regression', text: 'Berechnet eine gerade „Best-Fit"-Linie durch alle Datenpunkte. Zeigt die durchschnittliche Richtung über den gesamten Zeitraum – steigt die Linie, nimmst du insgesamt zu, fällt sie, nimmst du ab.' } },
+  forecast14: { label: 'Prognose 14d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (14 Tage)', text: 'Gewichtet die letzten 30 Tage besonders stark. Der Trend wird leicht gedämpft, um zu zeigen wohin es geht wenn du so weitermachst. Die dünne Linie zeigt einen simulierten realistischen Verlauf mit deinen typischen Tagesschwankungen.' } },
+  forecast30: { label: 'Prognose 30d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (30 Tage)', text: 'Gleiche Methode wie die 14-Tage-Prognose, aber auf 30 Tage in die Zukunft. Die Unsicherheit wächst mit der Zeit, daher ist das Konfidenzband breiter.' } },
 };
 
 interface Props {
@@ -211,7 +211,6 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
             {(Object.keys(TREND_CONFIG) as TrendKey[]).map(key => {
               const cfg = TREND_CONFIG[key];
               const active = activeTrends.has(key);
-              const isForecast14 = key === 'forecast14';
               return (
               <span key={key} className="inline-flex items-center">
                   <button onClick={() => toggleTrend(key)}>
@@ -230,7 +229,7 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
                         style={{ backgroundColor: cfg.color, opacity: active ? 1 : 0.3 }}
                       />
                       {cfg.label}
-                      {isForecast14 && (
+                      {cfg.description && (
                         <Popover>
                           <PopoverTrigger asChild>
                             <span
@@ -242,18 +241,9 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
                             </span>
                           </PopoverTrigger>
                           <PopoverContent className="w-72 text-sm space-y-2" side="bottom" align="end">
-                            <p className="font-semibold">Holt-Winters Exponential Smoothing</p>
+                            <p className="font-semibold">{cfg.description.title}</p>
                             <p className="text-muted-foreground text-xs">
-                              Gewichtet die letzten 30 Tage besonders stark (α=0.4). Der Trend wird leicht gedämpft (φ=0.95), um zu zeigen wohin es geht wenn du so weitermachst.
-                            </p>
-                            <p className="text-muted-foreground text-xs">
-                              Die dünne Linie zeigt einen simulierten realistischen Verlauf mit deinen typischen Tagesschwankungen (aktuell ca. <strong>{dailySwing} kg</strong>). Diese Schwankung wird aus deinen bisherigen Tag-zu-Tag-Differenzen berechnet.
-                            </p>
-                            <p className="text-muted-foreground text-xs">
-                              Das Konfidenzband basiert ebenfalls auf deiner persönlichen Schwankung und wächst mit der Zeit (max ±2.0 kg).
-                            </p>
-                            <p className="text-muted-foreground text-xs italic">
-                              Jeder neue Eintrag verfeinert die Prognose automatisch.
+                              {cfg.description.text}
                             </p>
                           </PopoverContent>
                         </Popover>
@@ -264,21 +254,40 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
               );
             })}
             {/* History toggle */}
-            <button onClick={() => setShowHistory(prev => !prev)}>
-              <Badge
-                variant="outline"
-                className="cursor-pointer text-xs px-2.5 py-1 transition-all inline-flex items-center gap-1"
-                style={{
-                  borderColor: showHistory ? FORECAST_COLOR : 'hsl(var(--border))',
-                  backgroundColor: showHistory ? `${FORECAST_COLOR}15` : 'transparent',
-                  color: showHistory ? FORECAST_COLOR : 'hsl(var(--muted-foreground))',
-                  opacity: showHistory ? 1 : 0.6,
-                }}
-              >
-                <History size={12} />
-                Alte Prognosen
-              </Badge>
-            </button>
+            <span className="inline-flex items-center">
+              <button onClick={() => setShowHistory(prev => !prev)}>
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer text-xs px-2.5 py-1 transition-all inline-flex items-center gap-1"
+                  style={{
+                    borderColor: showHistory ? FORECAST_COLOR : 'hsl(var(--border))',
+                    backgroundColor: showHistory ? `${FORECAST_COLOR}15` : 'transparent',
+                    color: showHistory ? FORECAST_COLOR : 'hsl(var(--muted-foreground))',
+                    opacity: showHistory ? 1 : 0.6,
+                  }}
+                >
+                  <History size={12} />
+                  Alte Prognosen
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <span
+                        role="button"
+                        className="inline-flex items-center ml-0.5 hover:opacity-100 opacity-60 transition-opacity"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Info size={11} />
+                      </span>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 text-sm space-y-2" side="bottom" align="end">
+                      <p className="font-semibold">Alte Prognosen</p>
+                      <p className="text-muted-foreground text-xs">
+                        Zeigt frühere gespeicherte Prognosen als Overlay-Linien. So kannst du vergleichen wie genau deine Vorhersagen waren vs. was tatsächlich passiert ist.
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </Badge>
+              </button>
+            </span>
           </div>
         </div>
       </CardHeader>
