@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toJpeg } from 'html-to-image';
 import { useBodyScans } from '@/hooks/useBodyScans';
-import { Dumbbell, ScanLine, FileDown, Loader2 } from 'lucide-react';
+import { Dumbbell, ScanLine, FileDown, Loader2, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { exportBodyScanPDF } from '@/lib/bodyscan/exportBodyScanPDF';
 import BodyScanCsvUploader from '@/components/bodyscan/BodyScanCsvUploader';
@@ -81,6 +81,13 @@ export default function BodyScanPage() {
             >
               <ScanLine className="h-3.5 w-3.5 inline mr-1" />
               Body Scan
+            </button>
+            <button
+              onClick={() => navigate('/app/training/weight')}
+              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <Scale className="h-3.5 w-3.5 inline mr-1" />
+              Gewicht
             </button>
           </div>
         </div>
