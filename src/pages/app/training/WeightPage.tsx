@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Dumbbell, ScanLine, Scale } from 'lucide-react';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
+import { useForecastSnapshots } from '@/hooks/useForecastSnapshots';
 import WeightInput from '@/components/weight/WeightInput';
 import WeightTerrainChart from '@/components/weight/WeightTerrainChart';
 import WeightKPICards from '@/components/weight/WeightKPICards';
@@ -10,6 +11,7 @@ import MonthSummaryBar from '@/components/weight/MonthSummaryBar';
 
 export default function WeightPage() {
   const { entries, isLoading, upsert } = useWeightEntries();
+  const { snapshots } = useForecastSnapshots();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,7 +63,7 @@ export default function WeightPage() {
             <>
               <WeightKPICards entries={entries} />
               <MonthSummaryBar entries={entries} selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} />
-              <WeightTerrainChart entries={entries} selectedMonth={selectedMonth} />
+              <WeightTerrainChart entries={entries} selectedMonth={selectedMonth} snapshots={snapshots} />
               <WeightHeatmapStrip entries={entries} />
             </>
           )}

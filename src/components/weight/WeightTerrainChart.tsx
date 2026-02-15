@@ -6,9 +6,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Info } from 'lucide-react';
+import { Info, History } from 'lucide-react';
 import { movingAverage, linearRegression, forecast } from '@/lib/weight/analytics';
-import type { WeightEntry } from '@/lib/weight/types';
+import type { WeightEntry, ForecastSnapshot } from '@/lib/weight/types';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -27,10 +27,12 @@ const TREND_CONFIG: Record<TrendKey, { label: string; color: string; dash?: stri
 interface Props {
   entries: WeightEntry[];
   selectedMonth: string | null;
+  snapshots?: ForecastSnapshot[];
 }
 
-export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
+export default function WeightTerrainChart({ entries, selectedMonth, snapshots = [] }: Props) {
   const [activeTrends, setActiveTrends] = useState<Set<TrendKey>>(new Set(['ma7', 'forecast14']));
+  const [showHistory, setShowHistory] = useState(false);
 
   const toggleTrend = (key: TrendKey) => {
     setActiveTrends(prev => {
@@ -68,23 +70,44 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
   const forecastPoints = activeForecast?.points ?? [];
   const dailySwing = activeForecast?.dailySwing ?? forecast14Data.dailySwing;
 
+  // Filter snapshots by active forecast days
+  const activeForecastDays = activeForecastKey === 'forecast14' ? 14 : activeForecastKey === 'forecast30' ? 30 : null;
+  const filteredSnapshots = useMemo(() => {
+    if (!showHistory || !activeForecastDays) return [];
+    return snapshots
+      .filter(s => s.forecast_days === activeForecastDays)
+      .sort((a, b) => b.snapshot_date.localeCompare(a.snapshot_date))
+      .slice(0, 10);
+  }, [snapshots, showHistory, activeForecastDays]);
+
   // Build chart data: real points + forecast points
   const { chartData, lastRealLabel, forecastStartLabel } = useMemo(() => {
     const showForecast = activeForecastKey !== null && !selectedMonth && forecastPoints.length > 0;
 
-    const realPoints = filtered.map(e => ({
-      date: e.date,
-      weight: e.weight_kg,
-      ma7: ma7.get(e.date) ?? null,
-      ma30: ma30.get(e.date) ?? null,
-      regression: reg.get(e.date) ?? null,
-      forecast: null as number | null,
-      forecastSimulated: null as number | null,
-      forecastLower: null as number | null,
-      forecastUpper: null as number | null,
-      label: format(parseISO(e.date), 'dd. MMM', { locale: de }),
-      isForecast: false,
-    }));
+    const realPoints = filtered.map(e => {
+      const point: Record<string, any> = {
+        date: e.date,
+        weight: e.weight_kg,
+        ma7: ma7.get(e.date) ?? null,
+        ma30: ma30.get(e.date) ?? null,
+        regression: reg.get(e.date) ?? null,
+        forecast: null,
+        forecastSimulated: null,
+        forecastLower: null,
+        forecastUpper: null,
+        label: format(parseISO(e.date), 'dd. MMM', { locale: de }),
+        isForecast: false,
+      };
+      // Add snapshot values for dates that fall in historical forecast ranges
+      filteredSnapshots.forEach((snap, idx) => {
+        const pts = snap.points_json;
+        const match = pts.find(p => p.date === e.date);
+        if (match) {
+          point[`history_${idx}`] = match.value;
+        }
+      });
+      return point;
+    });
 
     // Bridge: last real point also gets forecast value for seamless connection
     if (showForecast && realPoints.length > 0) {
@@ -98,19 +121,29 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
     const lastLabel = realPoints.length > 0 ? realPoints[realPoints.length - 1].label : null;
 
     const fcPoints = showForecast
-      ? forecastPoints.map(f => ({
-          date: f.date,
-          weight: null as number | null,
-          ma7: null as number | null,
-          ma30: null as number | null,
-          regression: null as number | null,
-          forecast: f.value,
-          forecastSimulated: f.simulated,
-          forecastLower: f.lower,
-          forecastUpper: f.upper,
-          label: format(parseISO(f.date), 'dd. MMM', { locale: de }),
-          isForecast: true,
-        }))
+      ? forecastPoints.map(f => {
+          const point: Record<string, any> = {
+            date: f.date,
+            weight: null,
+            ma7: null,
+            ma30: null,
+            regression: null,
+            forecast: f.value,
+            forecastSimulated: f.simulated,
+            forecastLower: f.lower,
+            forecastUpper: f.upper,
+            label: format(parseISO(f.date), 'dd. MMM', { locale: de }),
+            isForecast: true,
+          };
+          filteredSnapshots.forEach((snap, idx) => {
+            const pts = snap.points_json;
+            const match = pts.find(p => p.date === f.date);
+            if (match) {
+              point[`history_${idx}`] = match.value;
+            }
+          });
+          return point;
+        })
       : [];
 
     const firstForecastLabel = fcPoints.length > 0 ? fcPoints[0].label : null;
@@ -120,7 +153,7 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
       lastRealLabel: lastLabel,
       forecastStartLabel: firstForecastLabel,
     };
-  }, [filtered, ma7, ma30, reg, forecastPoints, activeForecastKey, selectedMonth]);
+  }, [filtered, ma7, ma30, reg, forecastPoints, activeForecastKey, selectedMonth, filteredSnapshots]);
 
   const xInterval = useMemo(() => {
     const n = chartData.length;
@@ -137,13 +170,18 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
       if (d.weight != null) allValues.push(d.weight);
       if (d.forecastUpper != null) allValues.push(d.forecastUpper);
       if (d.forecastLower != null) allValues.push(d.forecastLower);
+      // Include history values
+      filteredSnapshots.forEach((_, idx) => {
+        const v = d[`history_${idx}`];
+        if (v != null) allValues.push(v);
+      });
     }
     if (allValues.length === 0) return { domainMin: 60, domainMax: 100 };
     return {
       domainMin: Math.floor(Math.min(...allValues) - 1),
       domainMax: Math.ceil(Math.max(...allValues) + 1),
     };
-  }, [chartData]);
+  }, [chartData, filteredSnapshots]);
 
   const showForecastVisuals = activeForecastKey !== null && !selectedMonth && forecastPoints.length > 0;
 
@@ -225,6 +263,22 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
                 </span>
               );
             })}
+            {/* History toggle */}
+            <button onClick={() => setShowHistory(prev => !prev)}>
+              <Badge
+                variant="outline"
+                className="cursor-pointer text-xs px-2.5 py-1 transition-all inline-flex items-center gap-1"
+                style={{
+                  borderColor: showHistory ? FORECAST_COLOR : 'hsl(var(--border))',
+                  backgroundColor: showHistory ? `${FORECAST_COLOR}15` : 'transparent',
+                  color: showHistory ? FORECAST_COLOR : 'hsl(var(--muted-foreground))',
+                  opacity: showHistory ? 1 : 0.6,
+                }}
+              >
+                <History size={12} />
+                Alte Prognosen
+              </Badge>
+            </button>
           </div>
         </div>
       </CardHeader>
@@ -311,6 +365,14 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
                 if (!active || !payload?.[0]) return null;
                 const d = payload[0].payload;
                 const isFc = d.isForecast;
+                // Collect history values
+                const historyEntries: { snapDate: string; value: number }[] = [];
+                filteredSnapshots.forEach((snap, idx) => {
+                  const v = d[`history_${idx}`];
+                  if (v != null) {
+                    historyEntries.push({ snapDate: snap.snapshot_date, value: v });
+                  }
+                });
                 return (
                   <div className={`rounded-lg border px-3 py-2 text-sm shadow-md ${
                     isFc
@@ -338,6 +400,11 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
                         )}
                       </>
                     )}
+                    {historyEntries.map((h, i) => (
+                      <p key={i} className="text-xs" style={{ color: FORECAST_COLOR, opacity: 0.7 }}>
+                        Prognose vom {format(parseISO(h.snapDate), 'dd.MM.', { locale: de })}: {h.value} kg
+                      </p>
+                    ))}
                     <p className={`text-xs ${isFc ? 'opacity-60' : 'text-muted-foreground'}`}>{d.label}</p>
                   </div>
                 );
@@ -389,6 +456,25 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
               }}
               connectNulls={false}
             />
+
+            {/* Historical forecast overlay lines */}
+            {showHistory && filteredSnapshots.map((snap, idx) => {
+              const opacity = 0.4 - (idx * 0.025); // newest=0.4, fading
+              return (
+                <Line
+                  key={`history-${snap.id}`}
+                  type="monotone"
+                  dataKey={`history_${idx}`}
+                  stroke={FORECAST_COLOR}
+                  strokeWidth={1.2}
+                  strokeOpacity={Math.max(opacity, 0.12)}
+                  strokeDasharray="4 3"
+                  dot={false}
+                  connectNulls
+                  animationDuration={800}
+                />
+              );
+            })}
 
             {/* MA7 */}
             {activeTrends.has('ma7') && (
@@ -481,6 +567,12 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
             <span className="flex items-center gap-1.5">
               <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: FORECAST_COLOR }} />
               <span style={{ color: FORECAST_COLOR }}>Prognose</span>
+            </span>
+          )}
+          {showHistory && filteredSnapshots.length > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-4 border-t border-dashed" style={{ borderColor: FORECAST_COLOR, opacity: 0.4 }} />
+              <span style={{ color: FORECAST_COLOR, opacity: 0.6 }}>Alte Prognosen ({filteredSnapshots.length})</span>
             </span>
           )}
         </div>
