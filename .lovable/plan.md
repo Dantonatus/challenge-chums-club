@@ -1,96 +1,43 @@
 
-# Forecast-Snapshots: Prognosen speichern und als Overlay anzeigen
 
-## Konzept
+# Feedback-Eintraege aus Tasks migrieren
 
-Jedes Mal wenn du einen neuen Gewichtseintrag speicherst, wird die **aktuelle Prognose automatisch als Snapshot gespeichert**. Spaeter kannst du per Toggle-Button ("Alte Prognosen") diese gespeicherten Prognoselinien als halbtransparente Overlay-Linien im Chart anzeigen -- so siehst du direkt, wie genau deine frueheren Prognosen waren im Vergleich zu dem was tatsaechlich passiert ist.
+## Uebersicht
 
-## Neues Datenbank-Schema
+In den Tasks befinden sich Feedback-Notizen zu Personen, die bereits als Feedback-Mitarbeiter angelegt sind. Diese sollen als Feedback-Eintraege verschoben werden. Markus Heid ist bereits vollstaendig migriert (29 Eintraege). Fuer **Marcel Juschak** und **Paul Wenner** fehlen die Eintraege komplett.
 
-Eine neue Tabelle `weight_forecast_snapshots`:
+Fuer **Kathrin Apostel** und **Jacob** gibt es keine Tasks mit Feedback-Charakter.
 
-| Spalte | Typ | Beschreibung |
+## Was wird migriert
+
+### Marcel Juschak (6 Eintraege)
+
+| Datum | Inhalt | Sentiment |
 |---|---|---|
-| id | uuid | Primary Key |
-| user_id | uuid | Dein User |
-| created_at | timestamptz | Wann gespeichert |
-| snapshot_date | text | Datum an dem die Prognose erstellt wurde (YYYY-MM-DD) |
-| forecast_days | integer | 14 oder 30 |
-| daily_swing | numeric | Tagesschwankung zum Zeitpunkt |
-| points_json | jsonb | Array der Prognose-Punkte `[{date, value, simulated, lower, upper}]` |
+| 29.12.25 | Keine Uebergabe JF/Dailey.. Haette mich oder Markus fragen muessen. Grundsaetzlich brauchen wir mehr Klarheit und Visibility fuer Urlaube. | constructive |
+| 05.01.26 | "i'm on holiday"..Keine Uebergabe.. Paul wusste nicht was er tun sollte. | constructive |
+| 06.01.26 | Daily begonnen mit "Whats the status".. danach "You have enough to do"... wirkt nicht strukturiert | constructive |
+| 12.01.26 | Hab das Gefuehl bei harten Deadlines, Projektgeschaeft entsteht das meiste und danach schlaeft alles ein. Zudem koennte er staerker Ownership uebernehmen. | constructive |
+| 12.01.26 | Verwaltung von Tenants nicht ideal, Passwoerter auf Confluence oder Teams gespeichert. Warum haben wir keinen PW-Manager? | observation |
+| 15.01.26 | Hat Initial gesagt, Danke Daniel fuer die Vorarbeit in den Excel und die Interpretation, schaetze ich extrem. Gutes Development! | positive |
 
-RLS: Nur eigene Snapshots lesen/schreiben/loeschen.
+### Paul Wenner (2 Eintraege)
 
-## Ablauf
+| Datum | Inhalt | Sentiment |
+|---|---|---|
+| 12.01.26 | Manchmal hat er nichts zu tun, bzw. weiss nicht was er tun soll. Es gibt genug zu tun, was braucht er, damit er das auch sieht? | constructive |
+| 14.01.26 | Von 14-22 Uhr arbeiten ist nichts.. das ist too far off von allen anderen, wenn irgendwas nicht laeuft, muss man immer bis zum naechsten Tag warten | constructive |
 
-```text
-Neuer Gewichtseintrag
-       |
-       v
-  upsert weight_entry
-       |
-       v
-  forecast(entries, 14) berechnen
-  forecast(entries, 30) berechnen
-       |
-       v
-  Beide als Snapshot in DB speichern
-  (alte Snapshots vom selben Tag ueberschreiben)
-```
+## Technische Umsetzung
 
-## UI-Aenderungen
+Die Migration wird als **einmaliges SQL-Statement** ausgefuehrt (ueber das Datenbank-Migrations-Tool):
 
-### Neuer Toggle-Button im Chart-Header
+1. **8 neue Feedback-Eintraege** in `feedback_entries` einfuegen mit korrektem `employee_id`, `user_id`, `entry_date`, `content`, `category` (observation/improvement), `sentiment`
+2. **Die 8 Quell-Tasks** werden anschliessend als `is_archived = true` markiert, damit sie aus der aktiven Task-Liste verschwinden aber nicht geloescht werden
 
-Ein neuer Badge-Button **"Alte Prognosen"** (mit einem History-Icon) wird neben den bestehenden Trend-Buttons platziert. Bei Klick:
-- Laedt die letzten 5-10 Snapshots aus der DB
-- Zeigt jede gespeicherte Prognose als duenne, halbtransparente Linie im Chart
-- Jede Linie bekommt ein leicht unterschiedliches Opacity-Level (aeltere = blasser)
-- Im Tooltip wird bei Hover auf eine Overlay-Linie angezeigt: "Prognose vom [Datum]: X kg"
+Kein Code-Aenderung noetig -- nur Daten-Migration.
 
-### Visuelles Design
+### Betroffene Task-IDs
 
-- Overlay-Linien: gleiche Farbe wie Forecast (lila), aber mit abnehmender Opacity (neueste: 40%, aelteste: 15%)
-- Gestrichelt wie die aktuelle Prognose
-- Kein Konfidenzband fuer alte Prognosen (wuerde zu unuebersichtlich)
-- Nur die Trend-Linie (value), nicht die simulierte Oszillation
-
-## Technische Aenderungen
-
-### 1. Datenbank-Migration
-
-Neue Tabelle `weight_forecast_snapshots` mit RLS-Policies fuer eigene Daten.
-
-### 2. `src/hooks/useWeightEntries.ts`
-
-- Nach erfolgreichem `upsert` eines Gewichtseintrags: aktuelle 14d und 30d Forecasts berechnen und als Snapshots speichern
-- Dabei `forecast()` aus `analytics.ts` aufrufen mit den aktuellen Entries
-
-### 3. Neuer Hook `src/hooks/useForecastSnapshots.ts`
-
-- Laedt die letzten 10 Snapshots des Users
-- Gibt sie als Array zurueck, sortiert nach Erstelldatum
-- Optional: Filter nach forecast_days (14 oder 30)
-
-### 4. `src/components/weight/WeightTerrainChart.tsx`
-
-- Neuer TrendKey: `'history'`
-- Neuer Badge-Button "Alte Prognosen"
-- Wenn aktiv: Snapshots laden und als zusaetzliche `<Line>` Elemente rendern
-- Jeder Snapshot wird in chartData gemappt (Punkte die in den sichtbaren Datumsbereich fallen)
-- Tooltip erweitern: wenn ein historischer Forecast-Punkt gehovert wird, Datum der Prognose anzeigen
-
-### 5. `src/pages/app/training/WeightPage.tsx`
-
-- Forecast-Snapshot-Logik in den Save-Handler integrieren (nach erfolgreichem Gewichtseintrag)
-
-### Betroffene Dateien
-
-| Datei | Aenderung |
-|---|---|
-| Migration SQL | Neue Tabelle `weight_forecast_snapshots` |
-| `src/hooks/useWeightEntries.ts` | Snapshot-Speicherung nach upsert |
-| `src/hooks/useForecastSnapshots.ts` | Neuer Hook zum Laden der Snapshots |
-| `src/components/weight/WeightTerrainChart.tsx` | Overlay-Linien rendern, neuer Toggle |
-| `src/pages/app/training/WeightPage.tsx` | Snapshots an Chart weitergeben |
-| `src/lib/weight/types.ts` | Typ fuer ForecastSnapshot |
+Marcel: `3a8ef7cd`, `3d1d691a`, `8af7f000`, `bdfe6fae`, `35f2b6d3`, `046b6521`
+Paul: `c6be13ce`, `970e77d7`
