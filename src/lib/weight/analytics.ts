@@ -116,3 +116,53 @@ export function monthSummary(entries: WeightEntry[], yearMonth: string) {
     count: me.length,
   };
 }
+
+/** Holt-Winters Double Exponential Smoothing forecast */
+export function forecast(
+  entries: WeightEntry[],
+  days = 30,
+  alpha = 0.3,
+  beta = 0.2,
+): { date: string; value: number; lower: number; upper: number }[] {
+  if (entries.length < 3) return [];
+  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+  const ys = sorted.map(e => e.weight_kg);
+
+  // Initialise level & trend
+  let level = ys[0];
+  let trend = (ys[Math.min(6, ys.length - 1)] - ys[0]) / Math.min(6, ys.length - 1);
+
+  // Iterate through all data points to fit the model
+  const residuals: number[] = [];
+  for (let i = 0; i < ys.length; i++) {
+    const prevLevel = level;
+    level = alpha * ys[i] + (1 - alpha) * (level + trend);
+    trend = beta * (level - prevLevel) + (1 - beta) * trend;
+    residuals.push(ys[i] - (prevLevel + trend));
+  }
+
+  // Residual standard deviation for confidence bands
+  const sigma = Math.sqrt(
+    residuals.reduce((s, r) => s + r * r, 0) / residuals.length
+  );
+
+  // Generate future data points
+  const lastDate = new Date(sorted[sorted.length - 1].date);
+  const result: { date: string; value: number; lower: number; upper: number }[] = [];
+
+  for (let k = 1; k <= days; k++) {
+    const d = new Date(lastDate);
+    d.setDate(d.getDate() + k);
+    const dateStr = d.toISOString().slice(0, 10);
+    const predicted = Math.round((level + k * trend) * 10) / 10;
+    const margin = Math.round(1.96 * sigma * Math.sqrt(k) * 10) / 10;
+    result.push({
+      date: dateStr,
+      value: predicted,
+      lower: Math.round((predicted - margin) * 10) / 10,
+      upper: Math.round((predicted + margin) * 10) / 10,
+    });
+  }
+
+  return result;
+}
