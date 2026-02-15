@@ -1,30 +1,26 @@
 
 
-# Info-Icons mit Erklaerungen fuer alle Trend-Buttons
+# Prognose 60 Tage hinzufuegen
 
 ## Was wird geaendert
 
-Aktuell hat nur der **Prognose 14d** Button ein Info-Icon mit Popover-Erklaerung. Alle anderen Buttons (7 Tage, 30 Tage, Lineare Regression, Prognose 30d, Alte Prognosen) bekommen dasselbe Pattern: ein kleines Info-Icon das bei Klick eine verstaendliche Erklaerung anzeigt.
+Ein neuer **Prognose 60d** Button wird neben den bestehenden Prognose-Buttons (14d, 30d) ergaenzt. Gleiche Methode (Holt-Winters), nur mit 60 Tagen Horizont und entsprechend breiterem Konfidenzband.
 
-## Erklaerungstexte
+## Aenderungen
 
-| Button | Erklaerung |
-|---|---|
-| **Oe 7 Tage** | Gleitender Durchschnitt der letzten 7 Tage. Glaettet Tagesschwankungen und zeigt den kurzfristigen Trend. Ideal um zu sehen ob sich in der aktuellen Woche etwas bewegt. |
-| **Oe 30 Tage** | Gleitender Durchschnitt der letzten 30 Tage. Filtert Wasser- und Verdauungsschwankungen fast komplett raus. Zeigt den echten mittelfristigen Trend. |
-| **Lineare Regression** | Berechnet eine gerade "Best-Fit"-Linie durch alle Datenpunkte. Zeigt die durchschnittliche Richtung ueber den gesamten Zeitraum -- steigt die Linie, nimmst du insgesamt zu, faellt sie, nimmst du ab. |
-| **Prognose 14d** | (bleibt wie bisher mit Holt-Winters Erklaerung) |
-| **Prognose 30d** | Gleiche Methode wie die 14-Tage-Prognose, aber auf 30 Tage in die Zukunft. Die Unsicherheit waechst mit der Zeit, daher ist das Konfidenzband breiter. |
-| **Alte Prognosen** | Zeigt fruehere gespeicherte Prognosen als Overlay-Linien. So kannst du vergleichen wie genau deine Vorhersagen waren vs. was tatsaechlich passiert ist. |
+### Datei: `src/components/weight/WeightTerrainChart.tsx`
 
-## Technische Umsetzung
+1. **TrendKey-Typ** erweitern: `'forecast60'` hinzufuegen
+2. **TREND_CONFIG** um `forecast60` ergaenzen mit Label "Prognose 60d", gleicher Farbe, und angepasstem Beschreibungstext (laengerer Horizont, breiteres Konfidenzband)
+3. **Forecast-Daten** berechnen: `forecast60Data = forecast(entries, 60)` als neues `useMemo`
+4. **Toggle-Logik** anpassen: Die `toggleTrend`-Funktion behandelt aktuell nur `forecast14` und `forecast30` als gegenseitig exklusiv. Das wird auf alle drei Forecast-Keys (`forecast14`, `forecast30`, `forecast60`) erweitert -- nur einer kann gleichzeitig aktiv sein
+5. **activeForecastKey** Logik erweitern: `forecast60` als dritte Option in die Kette aufnehmen
+6. **activeForecastDays** Mapping: `forecast60` auf 60 mappen
+7. **Snapshot-Speicherung** (in `useWeightEntries.ts`): Beim Upsert auch einen 60-Tage-Snapshot speichern, damit "Alte Prognosen" auch fuer 60d funktioniert
 
-**Datei: `src/components/weight/WeightTerrainChart.tsx`**
+### Datei: `src/hooks/useWeightEntries.ts`
 
-1. Die `TREND_CONFIG` Map um ein `description`-Feld erweitern (Titel + Beschreibungstext)
-2. Im Badge-Render-Loop: fuer **jeden** Button das gleiche Info-Popover-Pattern einbauen (nicht nur fuer forecast14)
-3. Das bestehende `isForecast14`-Sonderbehandlung entfernen und stattdessen generisch aus der Config lesen
-4. Den "Alte Prognosen"-Button ebenfalls mit einem Info-Popover versehen
+8. In der `upsert`-Mutation den Loop `[14, fc14], [30, fc30]` um `[60, fc60]` erweitern, damit bei jedem neuen Eintrag auch ein 60-Tage-Forecast-Snapshot gespeichert wird
 
-Nur eine einzige Datei wird geaendert.
+Keine Datenbank-Aenderung noetig -- die `weight_forecast_snapshots` Tabelle speichert `forecast_days` bereits als Zahl.
 
