@@ -62,6 +62,7 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
       ma30: ma30.get(e.date) ?? null,
       regression: reg.get(e.date) ?? null,
       forecast: null as number | null,
+      forecastSimulated: null as number | null,
       forecastLower: null as number | null,
       forecastUpper: null as number | null,
       label: format(parseISO(e.date), 'dd. MMM', { locale: de }),
@@ -72,6 +73,7 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
     if (showForecast && realPoints.length > 0) {
       const last = realPoints[realPoints.length - 1];
       last.forecast = last.weight;
+      last.forecastSimulated = last.weight;
       last.forecastLower = last.weight;
       last.forecastUpper = last.weight;
     }
@@ -86,6 +88,7 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
           ma30: null as number | null,
           regression: null as number | null,
           forecast: f.value,
+          forecastSimulated: f.simulated,
           forecastLower: f.lower,
           forecastUpper: f.upper,
           label: format(parseISO(f.date), 'dd. MMM', { locale: de }),
@@ -155,56 +158,50 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
               const active = activeTrends.has(key);
               const isForecast = key === 'forecast';
               return (
-                <span key={key} className="inline-flex items-center gap-0">
+              <span key={key} className="inline-flex items-center">
                   <button onClick={() => toggleTrend(key)}>
                     <Badge
                       variant="outline"
-                      className="cursor-pointer text-xs px-2.5 py-1 transition-all"
+                      className="cursor-pointer text-xs px-2.5 py-1 transition-all inline-flex items-center gap-1"
                       style={{
                         borderColor: active ? cfg.color : 'hsl(var(--border))',
                         backgroundColor: active ? `${cfg.color}15` : 'transparent',
                         color: active ? cfg.color : 'hsl(var(--muted-foreground))',
                         opacity: active ? 1 : 0.6,
-                        borderTopRightRadius: isForecast ? 0 : undefined,
-                        borderBottomRightRadius: isForecast ? 0 : undefined,
                       }}
                     >
                       <span
-                        className="inline-block w-2 h-2 rounded-full mr-1.5"
+                        className="inline-block w-2 h-2 rounded-full"
                         style={{ backgroundColor: cfg.color, opacity: active ? 1 : 0.3 }}
                       />
                       {cfg.label}
+                      {isForecast && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <span
+                              role="button"
+                              className="inline-flex items-center ml-0.5 hover:opacity-100 opacity-60 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Info size={11} />
+                            </span>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72 text-sm space-y-2" side="bottom" align="end">
+                            <p className="font-semibold">Holt-Winters Exponential Smoothing</p>
+                            <p className="text-muted-foreground text-xs">
+                              Gewichtet die letzten 30 Tage besonders stark (α=0.4). Der Trend wird leicht gedämpft (φ=0.95), um zu zeigen wohin es geht wenn du so weitermachst.
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              Die dünne Linie simuliert realistische Tagesschwankungen. Das Konfidenzband zeigt die erwartete Schwankungsbreite (max ±1.5 kg).
+                            </p>
+                            <p className="text-muted-foreground text-xs italic">
+                              Jeder neue Eintrag verfeinert die Prognose automatisch.
+                            </p>
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </Badge>
                   </button>
-                  {isForecast && (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          className="inline-flex items-center justify-center h-[26px] w-6 rounded-r-md border border-l-0 transition-all"
-                          style={{
-                            borderColor: active ? cfg.color : 'hsl(var(--border))',
-                            backgroundColor: active ? `${cfg.color}15` : 'transparent',
-                            color: active ? cfg.color : 'hsl(var(--muted-foreground))',
-                            opacity: active ? 1 : 0.6,
-                          }}
-                        >
-                          <Info size={12} />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-72 text-sm space-y-2" side="bottom" align="end">
-                        <p className="font-semibold">Holt-Winters Exponential Smoothing</p>
-                        <p className="text-muted-foreground text-xs">
-                          Gewichtet jüngste Werte stärker. Der Trend wird gedämpft (φ=0.85), damit die Prognose realistisch bleibt und sich einem Plateau nähert.
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          Das Konfidenzband zeigt die erwartete Schwankungsbreite (max ±1.5 kg) basierend auf deinen bisherigen Tagesschwankungen.
-                        </p>
-                        <p className="text-muted-foreground text-xs italic">
-                          Jeder neue Eintrag verfeinert die Prognose automatisch.
-                        </p>
-                      </PopoverContent>
-                    </Popover>
-                  )}
                 </span>
               );
             })}
@@ -401,7 +398,7 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
                 filter="url(#forecastGlow)"
               />
             )}
-            {/* Forecast sharp line */}
+            {/* Forecast sharp line (trend) */}
             {showForecastVisuals && (
               <Line
                 type="monotone"
@@ -418,6 +415,19 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
                   stroke: 'hsl(var(--background))',
                   strokeWidth: 2,
                 }}
+              />
+            )}
+            {/* Forecast simulated oscillation line */}
+            {showForecastVisuals && (
+              <Line
+                type="monotone"
+                dataKey="forecastSimulated"
+                stroke={FORECAST_COLOR}
+                strokeWidth={1.2}
+                strokeOpacity={0.5}
+                dot={false}
+                connectNulls
+                animationDuration={1800}
               />
             )}
           </ComposedChart>
