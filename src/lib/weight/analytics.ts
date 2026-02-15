@@ -78,6 +78,25 @@ export function trendDirection(entries: WeightEntry[]): 'up' | 'down' | 'stable'
   return 'stable';
 }
 
+/** Linear regression (least-squares fit) */
+export function linearRegression(entries: WeightEntry[]): { date: string; value: number }[] {
+  if (entries.length < 2) return [];
+  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+  const n = sorted.length;
+  const xs = sorted.map((_, i) => i);
+  const ys = sorted.map(e => e.weight_kg);
+  const sumX = xs.reduce((s, x) => s + x, 0);
+  const sumY = ys.reduce((s, y) => s + y, 0);
+  const sumXY = xs.reduce((s, x, i) => s + x * ys[i], 0);
+  const sumX2 = xs.reduce((s, x) => s + x * x, 0);
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  return sorted.map((e, i) => ({
+    date: e.date,
+    value: Math.round((slope * i + intercept) * 10) / 10,
+  }));
+}
+
 /** Get unique months from entries */
 export function getMonths(entries: WeightEntry[]): string[] {
   const months = new Set(entries.map(e => e.date.slice(0, 7)));
