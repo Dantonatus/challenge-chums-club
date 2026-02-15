@@ -117,12 +117,13 @@ export function monthSummary(entries: WeightEntry[], yearMonth: string) {
   };
 }
 
-/** Holt-Winters Double Exponential Smoothing forecast */
+/** Damped Holt-Winters Double Exponential Smoothing forecast */
 export function forecast(
   entries: WeightEntry[],
-  days = 30,
+  days = 14,
   alpha = 0.3,
   beta = 0.2,
+  phi = 0.85,
 ): { date: string; value: number; lower: number; upper: number }[] {
   if (entries.length < 3) return [];
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
@@ -136,26 +137,32 @@ export function forecast(
   const residuals: number[] = [];
   for (let i = 0; i < ys.length; i++) {
     const prevLevel = level;
-    level = alpha * ys[i] + (1 - alpha) * (level + trend);
-    trend = beta * (level - prevLevel) + (1 - beta) * trend;
-    residuals.push(ys[i] - (prevLevel + trend));
+    level = alpha * ys[i] + (1 - alpha) * (level + phi * trend);
+    trend = beta * (level - prevLevel) + (1 - beta) * phi * trend;
+    residuals.push(ys[i] - (prevLevel + phi * trend));
   }
 
-  // Residual standard deviation for confidence bands
-  const sigma = Math.sqrt(
+  // Residual standard deviation, capped at 0.5 kg (normal daily variance)
+  const rawSigma = Math.sqrt(
     residuals.reduce((s, r) => s + r * r, 0) / residuals.length
   );
+  const cappedSigma = Math.min(rawSigma, 0.5);
 
-  // Generate future data points
+  // Generate future data points with damped trend
   const lastDate = new Date(sorted[sorted.length - 1].date);
   const result: { date: string; value: number; lower: number; upper: number }[] = [];
 
+  let sumPhi = 0;
   for (let k = 1; k <= days; k++) {
+    sumPhi += Math.pow(phi, k);
     const d = new Date(lastDate);
     d.setDate(d.getDate() + k);
     const dateStr = d.toISOString().slice(0, 10);
-    const predicted = Math.round((level + k * trend) * 10) / 10;
-    const margin = Math.round(1.96 * sigma * Math.sqrt(k) * 10) / 10;
+    const predicted = Math.round((level + sumPhi * trend) * 10) / 10;
+    const margin = Math.min(
+      Math.round(1.96 * cappedSigma * Math.sqrt(k) * 10) / 10,
+      1.5,
+    );
     result.push({
       date: dateStr,
       value: predicted,
