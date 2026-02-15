@@ -18,8 +18,8 @@ export default function CompositionTrendChart({ scans, showLabels }: Props) {
     <Card>
       <CardContent className="p-4">
         <h3 className="text-sm font-semibold mb-4">Körperkomposition – Verlauf</h3>
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={data}>
+        <ResponsiveContainer width="100%" height={340}>
+          <LineChart data={data} margin={{ top: 45 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
             <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />

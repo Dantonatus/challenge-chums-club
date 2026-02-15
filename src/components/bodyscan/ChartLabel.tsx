@@ -23,7 +23,10 @@ export function createChartLabel({ color = 'hsl(var(--foreground))', offsetY = -
           height={height}
           rx={3}
           fill="hsl(var(--card))"
-          fillOpacity={0.85}
+          fillOpacity={0.95}
+          stroke="hsl(var(--border))"
+          strokeWidth={1}
+          strokeOpacity={0.5}
         />
         <text
           x={tx}
@@ -31,7 +34,7 @@ export function createChartLabel({ color = 'hsl(var(--foreground))', offsetY = -
           textAnchor="middle"
           fontSize={9}
           fill={color}
-          fillOpacity={0.8}
+          fillOpacity={0.9}
         >
           {text}
         </text>
