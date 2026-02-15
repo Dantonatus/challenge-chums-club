@@ -10,7 +10,7 @@ interface Props { scans: BodyScan[]; showLabels?: boolean }
 export default function FatMuscleAreaChart({ scans, showLabels }: Props) {
   const data = fatMuscleChartData(scans);
   const labelFat = useMemo(() => createChartLabel({ color: 'hsl(0 60% 55%)', offsetY: -18 }), []);
-  const labelMuscle = useMemo(() => createChartLabel({ color: 'hsl(210 70% 55%)', offsetY: -34 }), []);
+  const labelMuscle = useMemo(() => createChartLabel({ color: 'hsl(210 70% 55%)', offsetY: 20 }), []);
   if (data.length < 2) return null;
   return (
     <Card>
