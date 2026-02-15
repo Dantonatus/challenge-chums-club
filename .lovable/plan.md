@@ -1,45 +1,50 @@
 
+# Labels lesbar machen -- Hintergrund-Halo und gestaffelte Positionen
 
-# Datenwerte auf Body-Scan-Grafiken anzeigen
+## Problem
 
-## Ziel
+Die `LabelList`-Labels (fontSize 9, halbtransparent) werden von Linien, Flaechen und anderen Datenpunkten ueberdeckt und sind schwer lesbar.
 
-Ein globaler Toggle-Button auf der Body-Scan-Seite, der auf allen Grafiken kleine, halbtransparente Zahlenlabels an den Datenpunkten ein- und ausblendet. So sind Unterschiede zwischen Scans sofort ablesbar, ohne auf jeden Punkt hovern zu muessen.
+## Loesung
 
-## Umsetzung
+Einen **Custom Label Renderer** erstellen, der jeden Wert mit einem kleinen halbtransparenten Hintergrund-Rechteck ("Halo") rendert. Zusaetzlich werden Labels bei LineCharts und AreaCharts abwechselnd oben/unten positioniert, damit sie sich nicht gegenseitig verdecken.
 
-### 1. BodyScanPage.tsx -- globaler State + Button
+## Aenderungen
 
-- Neuer State: `const [showLabels, setShowLabels] = useState(false)`
-- Ein kleiner Toggle-Button (z.B. Icon `Hash` oder `Eye` aus lucide) neben dem PDF-Button in der Header-Leiste
-- `showLabels` wird als Prop an alle Chart-Komponenten weitergereicht
+### 1. Neuer Shared Helper: `src/components/bodyscan/ChartLabel.tsx`
 
-### 2. CompositionTrendChart.tsx -- Labels auf LineChart
+- Eine React-Komponente `ChartLabel`, die als `content`-Prop fuer Recharts `<LabelList content={...} />` dient
+- Rendert fuer jeden Datenpunkt:
+  - Ein `<rect>` als Hintergrund (Farbe `hsl(var(--card))`, opacity 0.85, abgerundete Ecken)
+  - Ein `<text>` mit dem Wert darueber (fontSize 9, Farbe passend zur Serie)
+- Props: `color` (Textfarbe), `offsetY` (Versatz nach oben/unten, default -12)
+- Ergebnis: Labels "schweben" auf einem kleinen undurchsichtigen Kaestchen ueber dem Datenpunkt und werden nie von Linien/Flaechen verdeckt
 
-- Neue Prop `showLabels?: boolean`
-- Auf jeder `<Line>` wird ein `<LabelList>` ergaenzt, das nur gerendert wird wenn `showLabels` aktiv ist
-- Styling: `fontSize: 9`, `fill` passend zur jeweiligen Linienfarbe, `fillOpacity: 0.6`, Position `top`
-- Recharts `<LabelList dataKey="Gewicht" position="top" ... />` etc.
+### 2. CompositionTrendChart.tsx
 
-### 3. FatMuscleAreaChart.tsx -- Labels auf AreaChart
+- Import `ChartLabel`
+- Statt dem einfachen `<LabelList position="top" ...>` wird `<LabelList content={<ChartLabel color="..." />} />` verwendet
+- Die drei Serien bekommen unterschiedliche `offsetY`-Werte (-14, -24, -34), damit sich "Gewicht", "Muskelmasse" und "Fettmasse" nicht ueberlagern
 
-- Gleiche Prop `showLabels?: boolean`
-- `<LabelList>` auf jeder `<Area>`, Position `top`, gleiche transparente Schriftgroesse
-- Koerperfett-Label links, Muskelmasse-Label rechts positioniert
+### 3. FatMuscleAreaChart.tsx
 
-### 4. SegmentMuscleChart.tsx + SegmentFatChart.tsx -- Labels auf BarChart
+- Import `ChartLabel`
+- Koerperfett-Label bekommt `offsetY={-14}`, Muskelmasse `offsetY={-26}` -- so liegen sie gestaffelt uebereinander statt aufeinander
 
-- Prop `showLabels?: boolean`
-- `<LabelList>` auf jeder `<Bar>`, Position `top`, fontSize 9, halbtransparent
+### 4. SegmentMuscleChart.tsx + SegmentFatChart.tsx
 
-### 5. Zusammenfassung der Aenderungen
+- Import `ChartLabel`
+- Hier reicht ein einheitlicher `offsetY={-12}`, da Bars nebeneinander stehen und sich weniger ueberlagern
+- Der Halo-Hintergrund sorgt dafuer, dass Gridlines die Zahlen nicht durchschneiden
+
+### Zusammenfassung
 
 | Datei | Aenderung |
 |---|---|
-| `BodyScanPage.tsx` | State `showLabels`, Toggle-Button, Prop-Weitergabe an 4 Charts |
-| `CompositionTrendChart.tsx` | Prop + bedingte `LabelList` auf 3 Lines |
-| `FatMuscleAreaChart.tsx` | Prop + bedingte `LabelList` auf 2 Areas |
-| `SegmentMuscleChart.tsx` | Prop + bedingte `LabelList` auf 1-2 Bars |
-| `SegmentFatChart.tsx` | Prop + bedingte `LabelList` auf 1-2 Bars |
+| `src/components/bodyscan/ChartLabel.tsx` | Neue shared Komponente -- Custom SVG Label mit Hintergrund-Rect |
+| `CompositionTrendChart.tsx` | `LabelList content={ChartLabel}` mit gestaffeltem offsetY |
+| `FatMuscleAreaChart.tsx` | `LabelList content={ChartLabel}` mit gestaffeltem offsetY |
+| `SegmentMuscleChart.tsx` | `LabelList content={ChartLabel}` |
+| `SegmentFatChart.tsx` | `LabelList content={ChartLabel}` |
 
-Keine neuen Abhaengigkeiten -- `LabelList` ist bereits Teil von Recharts.
+Keine neuen Abhaengigkeiten noetig.
