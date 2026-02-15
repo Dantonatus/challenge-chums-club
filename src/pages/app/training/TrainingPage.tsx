@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Dumbbell, FileDown, Loader2, ScanLine } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Dumbbell, FileDown, Loader2, ScanLine, Scale } from 'lucide-react';
 import { toJpeg } from 'html-to-image';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
 import CsvUploader from '@/components/training/CsvUploader';
@@ -78,8 +78,6 @@ export default function TrainingPage() {
   };
 
   const navigate = useNavigate();
-  const location = useLocation();
-  const isBodyScan = location.pathname.includes('/bodyscan');
 
   return (
     <div className="space-y-6">
@@ -89,26 +87,24 @@ export default function TrainingPage() {
           <h1 className="text-2xl font-bold">Training</h1>
           <div className="flex items-center gap-1 ml-2 bg-muted rounded-lg p-1">
             <button
-              onClick={() => navigate('/app/training')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                !isBodyScan
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors bg-background text-foreground shadow-sm"
             >
               <Dumbbell className="h-3.5 w-3.5 inline mr-1" />
               Check-ins
             </button>
             <button
               onClick={() => navigate('/app/training/bodyscan')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                isBodyScan
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
             >
               <ScanLine className="h-3.5 w-3.5 inline mr-1" />
               Body Scan
+            </button>
+            <button
+              onClick={() => navigate('/app/training/weight')}
+              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <Scale className="h-3.5 w-3.5 inline mr-1" />
+              Gewicht
             </button>
           </div>
         </div>
