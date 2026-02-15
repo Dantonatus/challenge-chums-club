@@ -1,58 +1,76 @@
 
 
-# Gewichtsverlauf-Chart verbessern
+# Gewichtsprognose -- EWMA + Trend mit futuristischer Darstellung
 
-## Probleme
+## Modell
 
-1. **Chart zu klein** -- Hoehe nur 320px, wirkt gequetscht
-2. **Zu viele Datumslabels** -- `interval="preserveStartEnd"` zeigt zu viele Ticks bei 54 Datenpunkten
-3. **Keine Legende** -- Die gestrichelte graue Linie (7-Tage-Durchschnitt) ist nicht erklaert
-4. **Keine statistischen Trendlinien** -- Nur der gleitende Durchschnitt existiert
+Holt-Winters Double Exponential Smoothing ohne Saisonalitaet:
+- Level: S_t = alpha * y_t + (1 - alpha) * (S_{t-1} + T_{t-1})
+- Trend: T_t = beta * (S_t - S_{t-1}) + (1 - beta) * T_{t-1}
+- Forecast: F_{t+k} = S_t + k * T_t
+- Konfidenzband: +/- 1.96 * sigma * sqrt(k)
 
-## Aenderungen
+Alpha = 0.3, Beta = 0.2. Refinement passiert automatisch: jeder neue Eintrag triggert React Query Invalidation, useMemo berechnet Forecast neu.
 
-### 1. Chart groesser machen
+## Futuristische visuelle Trennung
 
-`WeightTerrainChart.tsx`: Hoehe von 320px auf **420px** erhoehen.
+Die Prognose-Zone wird klar vom realen Bereich abgegrenzt:
 
-### 2. Weniger Datumslabels
+1. **Vertikale Trennlinie** am letzten realen Datenpunkt -- gestrichelte weisse/helle ReferenceLine mit Label "Heute"
+2. **Hintergrund-Split**: Der Prognose-Bereich bekommt einen eigenen subtilen Hintergrund-Gradient (violett/dunkel) via ReferenceArea
+3. **Prognose-Linie**: Leuchtend violette gestrichelte Linie mit Glow-Effekt (doppelte Line -- eine breitere mit niedriger Opacity als "Glow", eine duenne scharfe darueber)
+4. **Konfidenzband**: Halbtransparente violette Area die sich nach rechts auffaechert -- zeigt wachsende Unsicherheit
+5. **Pulsierender Endpunkt**: Der letzte Prognose-Punkt bekommt einen animierten pulsierenden Dot (CSS Animation)
+6. **Label**: Kleines "PROGNOSE" Label im Prognose-Bereich
 
-XAxis `interval` dynamisch berechnen statt `"preserveStartEnd"`:
-- Unter 15 Datenpunkte: jeden zeigen
-- 15-30: jeden 3. zeigen
-- 30+: jeden 5. zeigen
+## Technische Umsetzung
 
-### 3. Legende hinzufuegen
+### 1. `src/lib/weight/analytics.ts` -- Neue `forecast()` Funktion
 
-Unterhalb des Charts eine kompakte, handgebaute Legende mit 3 Eintraegen:
-- Durchgezogene Linie + Farbflaeche = "Gewicht"
-- Gestrichelte graue Linie = "Ø 7 Tage"
-- Neue Trendlinie (siehe Punkt 4)
+```text
+export function forecast(
+  entries: WeightEntry[],
+  days = 30,
+  alpha = 0.3,
+  beta = 0.2
+): { date: string; value: number; lower: number; upper: number }[]
+```
 
-### 4. Statistische Trendlinien
+- Sortiert Eintraege chronologisch
+- Berechnet Level und Trend iterativ ueber alle Datenpunkte
+- Berechnet Residuen-Standardabweichung (sigma)
+- Generiert 30 zukuenftige Datenpunkte mit Konfidenzband
+- Konfidenz waechst mit sqrt(k) -- Tag 1 ist eng, Tag 30 ist breit
 
-Folgende Trendlinien werden als zuschaltbare Optionen angeboten (Toggle-Chips oberhalb des Charts):
+### 2. `src/components/weight/WeightTerrainChart.tsx` -- Erweiterungen
 
-| Trendlinie | Beschreibung | Farbe |
-|---|---|---|
-| **Ø 7 Tage** | Bereits vorhanden, gleitender 7-Tage-Durchschnitt | Grau gestrichelt (bleibt) |
-| **Ø 30 Tage** | Gleitender 30-Tage-Durchschnitt fuer langfristigen Trend | Blau gestrichelt |
-| **Lineare Regression** | Gerade Linie (Least-Squares-Fit) ueber gesamten Zeitraum -- zeigt Gesamtrichtung | Orange durchgezogen, duenn |
+**Neuer TrendKey**: `'forecast'` mit Farbe `hsl(270, 70%, 55%)` (leuchtendes Violett)
 
-**Umsetzung:**
+**Chart-Daten erweitern**:
+- Reale Punkte: `weight` gefuellt, `forecast`/`forecastLower`/`forecastUpper` = null
+- Prognose-Punkte: `weight` = null, `forecast`/`forecastLower`/`forecastUpper` gefuellt
+- Letzter realer Punkt bekommt auch forecast-Wert (nahtloser Uebergang)
 
-- `analytics.ts`: Neue Funktion `linearRegression(entries)` die Steigung + Achsenabschnitt berechnet und fuer jeden Datenpunkt den Regressionswert liefert
-- `analytics.ts`: `movingAverage` wird bereits mit variablem Window aufgerufen -- fuer MA30 einfach `movingAverage(entries, 30)`
-- `WeightTerrainChart.tsx`: 
-  - State fuer aktive Trendlinien: `activeTrends: Set<'ma7' | 'ma30' | 'regression'>`
-  - Toggle-Chips (kleine klickbare Badges) oberhalb des Charts
-  - Zusaetzliche `<Line>`-Komponenten fuer MA30 und Regression, nur gerendert wenn aktiv
-  - MA7 standardmaessig aktiv, die anderen aus
+**Neue Recharts-Elemente**:
+- `<ReferenceArea>` fuer den Prognose-Hintergrund (violetter Tint)
+- `<ReferenceLine>` vertikal am letzten realen Datum mit "Heute"-Label
+- `<Area>` fuer Konfidenzband (`forecastUpper` bis `forecastLower`)
+- `<Line>` breit + transparent fuer Glow-Effekt
+- `<Line>` duenn + scharf fuer die eigentliche Prognose-Linie
+- Beide gestrichelt
+
+**Toggle-Chip**: "Prognose 30d" als vierter Chip neben den bestehenden drei, standardmaessig aktiv
+
+**Tooltip erweitert**: Bei Prognose-Punkten zeigt es "Prognose: X kg" und "Bereich: Y - Z kg"
+
+**CSS/Glow**: SVG-Filter `<feGaussianBlur>` im `<defs>` Block fuer den Leuchteffekt der Prognose-Linie
+
+**Y-Achse**: Domain erweitert sich automatisch auf Konfidenzband-Extremwerte
 
 ### Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/lib/weight/analytics.ts` | Neue `linearRegression()` Funktion |
-| `src/components/weight/WeightTerrainChart.tsx` | Groesserer Chart, dynamisches Interval, Legende, Toggle-Chips, 2 neue Trendlinien |
+| `src/lib/weight/analytics.ts` | Neue `forecast()` Funktion mit Holt-Winters EWMA |
+| `src/components/weight/WeightTerrainChart.tsx` | Neuer "Prognose 30d" Toggle, Glow-Linie, Konfidenzband, ReferenceArea, ReferenceLine, erweitertes Tooltip |
 
