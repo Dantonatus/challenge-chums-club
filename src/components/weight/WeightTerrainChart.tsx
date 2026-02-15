@@ -12,7 +12,7 @@ import type { WeightEntry } from '@/lib/weight/types';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 
-type TrendKey = 'ma7' | 'ma30' | 'regression' | 'forecast';
+type TrendKey = 'ma7' | 'ma30' | 'regression' | 'forecast14' | 'forecast30';
 
 const FORECAST_COLOR = 'hsl(270, 70%, 55%)';
 
@@ -20,7 +20,8 @@ const TREND_CONFIG: Record<TrendKey, { label: string; color: string; dash?: stri
   ma7: { label: 'Ø 7 Tage', color: 'hsl(var(--muted-foreground))', dash: '6 4' },
   ma30: { label: 'Ø 30 Tage', color: 'hsl(220, 70%, 55%)', dash: '8 4' },
   regression: { label: 'Lineare Regression', color: 'hsl(30, 90%, 55%)' },
-  forecast: { label: 'Prognose 14d', color: FORECAST_COLOR, dash: '6 3' },
+  forecast14: { label: 'Prognose 14d', color: FORECAST_COLOR, dash: '6 3' },
+  forecast30: { label: 'Prognose 30d', color: FORECAST_COLOR, dash: '6 3' },
 };
 
 interface Props {
@@ -29,12 +30,22 @@ interface Props {
 }
 
 export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
-  const [activeTrends, setActiveTrends] = useState<Set<TrendKey>>(new Set(['ma7', 'forecast']));
+  const [activeTrends, setActiveTrends] = useState<Set<TrendKey>>(new Set(['ma7', 'forecast14']));
 
   const toggleTrend = (key: TrendKey) => {
     setActiveTrends(prev => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (key === 'forecast14' || key === 'forecast30') {
+        const other = key === 'forecast14' ? 'forecast30' : 'forecast14';
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.add(key);
+          next.delete(other);
+        }
+      } else {
+        next.has(key) ? next.delete(key) : next.add(key);
+      }
       return next;
     });
   };
@@ -49,11 +60,17 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
   const ma7 = useMemo(() => new Map(movingAverage(entries, 7).map(m => [m.date, m.avg])), [entries]);
   const ma30 = useMemo(() => new Map(movingAverage(entries, 30).map(m => [m.date, m.avg])), [entries]);
   const reg = useMemo(() => new Map(linearRegression(entries).map(m => [m.date, m.value])), [entries]);
-  const forecastData = useMemo(() => forecast(entries), [entries]);
+  const forecast14Data = useMemo(() => forecast(entries, 14), [entries]);
+  const forecast30Data = useMemo(() => forecast(entries, 30), [entries]);
+
+  const activeForecastKey = activeTrends.has('forecast14') ? 'forecast14' : activeTrends.has('forecast30') ? 'forecast30' : null;
+  const activeForecast = activeForecastKey === 'forecast14' ? forecast14Data : activeForecastKey === 'forecast30' ? forecast30Data : null;
+  const forecastPoints = activeForecast?.points ?? [];
+  const dailySwing = activeForecast?.dailySwing ?? forecast14Data.dailySwing;
 
   // Build chart data: real points + forecast points
   const { chartData, lastRealLabel, forecastStartLabel } = useMemo(() => {
-    const showForecast = activeTrends.has('forecast') && !selectedMonth && forecastData.length > 0;
+    const showForecast = activeForecastKey !== null && !selectedMonth && forecastPoints.length > 0;
 
     const realPoints = filtered.map(e => ({
       date: e.date,
@@ -80,8 +97,8 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
 
     const lastLabel = realPoints.length > 0 ? realPoints[realPoints.length - 1].label : null;
 
-    const forecastPoints = showForecast
-      ? forecastData.map(f => ({
+    const fcPoints = showForecast
+      ? forecastPoints.map(f => ({
           date: f.date,
           weight: null as number | null,
           ma7: null as number | null,
@@ -96,14 +113,14 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
         }))
       : [];
 
-    const firstForecastLabel = forecastPoints.length > 0 ? forecastPoints[0].label : null;
+    const firstForecastLabel = fcPoints.length > 0 ? fcPoints[0].label : null;
 
     return {
-      chartData: [...realPoints, ...forecastPoints],
+      chartData: [...realPoints, ...fcPoints],
       lastRealLabel: lastLabel,
       forecastStartLabel: firstForecastLabel,
     };
-  }, [filtered, ma7, ma30, reg, forecastData, activeTrends, selectedMonth]);
+  }, [filtered, ma7, ma30, reg, forecastPoints, activeForecastKey, selectedMonth]);
 
   const xInterval = useMemo(() => {
     const n = chartData.length;
@@ -128,7 +145,7 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
     };
   }, [chartData]);
 
-  const showForecastVisuals = activeTrends.has('forecast') && !selectedMonth && forecastData.length > 0;
+  const showForecastVisuals = activeForecastKey !== null && !selectedMonth && forecastPoints.length > 0;
 
   if (chartData.length === 0) return null;
 
@@ -156,7 +173,7 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
             {(Object.keys(TREND_CONFIG) as TrendKey[]).map(key => {
               const cfg = TREND_CONFIG[key];
               const active = activeTrends.has(key);
-              const isForecast = key === 'forecast';
+              const isForecast14 = key === 'forecast14';
               return (
               <span key={key} className="inline-flex items-center">
                   <button onClick={() => toggleTrend(key)}>
@@ -175,7 +192,7 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
                         style={{ backgroundColor: cfg.color, opacity: active ? 1 : 0.3 }}
                       />
                       {cfg.label}
-                      {isForecast && (
+                      {isForecast14 && (
                         <Popover>
                           <PopoverTrigger asChild>
                             <span
@@ -192,7 +209,10 @@ export default function WeightTerrainChart({ entries, selectedMonth }: Props) {
                               Gewichtet die letzten 30 Tage besonders stark (α=0.4). Der Trend wird leicht gedämpft (φ=0.95), um zu zeigen wohin es geht wenn du so weitermachst.
                             </p>
                             <p className="text-muted-foreground text-xs">
-                              Die dünne Linie simuliert realistische Tagesschwankungen. Das Konfidenzband zeigt die erwartete Schwankungsbreite (max ±1.5 kg).
+                              Die dünne Linie zeigt einen simulierten realistischen Verlauf mit deinen typischen Tagesschwankungen (aktuell ca. <strong>{dailySwing} kg</strong>). Diese Schwankung wird aus deinen bisherigen Tag-zu-Tag-Differenzen berechnet.
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              Das Konfidenzband basiert ebenfalls auf deiner persönlichen Schwankung und wächst mit der Zeit (max ±2.0 kg).
                             </p>
                             <p className="text-muted-foreground text-xs italic">
                               Jeder neue Eintrag verfeinert die Prognose automatisch.

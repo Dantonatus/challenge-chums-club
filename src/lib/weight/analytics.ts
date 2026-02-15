@@ -124,8 +124,8 @@ export function forecast(
   alpha = 0.4,
   beta = 0.2,
   phi = 0.95,
-): { date: string; value: number; simulated: number; lower: number; upper: number }[] {
-  if (entries.length < 3) return [];
+): { points: { date: string; value: number; simulated: number; lower: number; upper: number }[]; dailySwing: number } {
+  if (entries.length < 3) return { points: [], dailySwing: 0 };
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   const ys = sorted.map(e => e.weight_kg);
 
@@ -143,19 +143,11 @@ export function forecast(
   let trend = (ys[Math.min(6, ys.length - 1)] - ys[0]) / Math.min(6, ys.length - 1);
 
   // Iterate through all data points to fit the model
-  const residuals: number[] = [];
   for (let i = 0; i < ys.length; i++) {
     const prevLevel = level;
     level = alpha * ys[i] + (1 - alpha) * (level + phi * trend);
     trend = beta * (level - prevLevel) + (1 - beta) * phi * trend;
-    residuals.push(ys[i] - (prevLevel + phi * trend));
   }
-
-  // Residual standard deviation, capped at 0.5 kg (normal daily variance)
-  const rawSigma = Math.sqrt(
-    residuals.reduce((s, r) => s + r * r, 0) / residuals.length
-  );
-  const cappedSigma = Math.min(rawSigma, 0.5);
 
   // Generate future data points with damped trend
   const lastDate = new Date(sorted[sorted.length - 1].date);
@@ -171,9 +163,10 @@ export function forecast(
     // Deterministic oscillation for realistic daily fluctuation
     const oscillation = dailySwing * Math.sin(k * 1.3 + Math.cos(k * 0.7));
     const simulated = Math.round((predicted + oscillation) * 10) / 10;
+    // Confidence band based on user's actual daily variance
     const margin = Math.min(
-      Math.round(1.96 * cappedSigma * Math.sqrt(k) * 10) / 10,
-      1.5,
+      Math.round(1.96 * dailySwing * Math.sqrt(k) * 10) / 10,
+      2.0,
     );
     result.push({
       date: dateStr,
@@ -184,5 +177,5 @@ export function forecast(
     });
   }
 
-  return result;
+  return { points: result, dailySwing: Math.round(dailySwing * 100) / 100 };
 }
