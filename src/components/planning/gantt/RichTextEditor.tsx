@@ -1,4 +1,10 @@
 import { useRef, useEffect, useCallback } from 'react';
+import DOMPurify from 'dompurify';
+
+const SANITIZE_CONFIG = {
+  ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'span', 'p', 'br', 'ul', 'ol', 'li', 'font', 'div'],
+  ALLOWED_ATTR: ['style', 'class', 'color', 'size', 'face'],
+};
 import { Bold, Italic, Underline, List, ListOrdered, Paintbrush } from 'lucide-react';
 import { Toggle } from '@/components/ui/toggle';
 
@@ -44,7 +50,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
       return;
     }
     if (editorRef.current && value !== lastExternalValue.current) {
-      editorRef.current.innerHTML = value || '';
+      editorRef.current.innerHTML = DOMPurify.sanitize(value || '', SANITIZE_CONFIG);
       lastExternalValue.current = value;
     }
   }, [value]);
@@ -52,7 +58,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
   // Initial load
   useEffect(() => {
     if (editorRef.current) {
-      editorRef.current.innerHTML = value || '';
+      editorRef.current.innerHTML = DOMPurify.sanitize(value || '', SANITIZE_CONFIG);
       lastExternalValue.current = value;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

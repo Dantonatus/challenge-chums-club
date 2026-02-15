@@ -17,7 +17,7 @@ const handler = async (req: Request): Promise<Response> => {
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
 
-    const supabaseClient = createClient(
+    const serviceClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
@@ -26,10 +26,10 @@ const handler = async (req: Request): Promise<Response> => {
     let userEmail: string;
 
     if (token) {
-      // Token-based approval
+      // Token-based approval (via email link) — no auth header needed
       console.log("Processing token-based approval");
       
-      const { data: tokenData, error: tokenError } = await supabaseClient
+      const { data: tokenData, error: tokenError } = await serviceClient
         .from('approval_tokens')
         .select('user_id, expires_at, used_at')
         .eq('token', token)
@@ -49,18 +49,59 @@ const handler = async (req: Request): Promise<Response> => {
 
       userId = tokenData.user_id;
 
-      const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(userId);
+      const { data: userData, error: userError } = await serviceClient.auth.admin.getUserById(userId);
       if (userError || !userData.user) {
         return new Response("User not found", { status: 404 });
       }
       userEmail = userData.user.email || "Unknown";
 
     } else {
-      // Direct approval (admin interface)
+      // Direct approval (admin interface) — requires authentication + admin role
       console.log("Processing direct admin approval");
       
       if (req.method !== "POST") {
         return new Response("Method not allowed", { status: 405 });
+      }
+
+      // Authenticate the caller
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      const authClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: authHeader } } }
+      );
+
+      const jwtToken = authHeader.replace('Bearer ', '');
+      const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(jwtToken);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      const callerId = claimsData.claims.sub;
+
+      // Verify the caller has admin role
+      const { data: roleData } = await serviceClient
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', callerId)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (!roleData) {
+        return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), {
+          status: 403,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
       }
 
       const body = await req.json();
@@ -75,7 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Approving user:", userId);
 
     // Confirm user's email
-    const { error: confirmError } = await supabaseClient.auth.admin.updateUserById(userId, {
+    const { error: confirmError } = await serviceClient.auth.admin.updateUserById(userId, {
       email_confirm: true
     });
 
@@ -86,14 +127,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Approve the user
-    const { data, error } = await supabaseClient.rpc('approve_user', {
+    const { data, error } = await serviceClient.rpc('approve_user', {
       target_user_id: userId
     });
 
     if (error) {
       console.error("Error approving user:", error);
       return new Response(JSON.stringify({ 
-        error: `Error approving user: ${error.message}` 
+        error: "Error approving user" 
       }), { 
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -102,13 +143,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Mark token as used
     if (token) {
-      await supabaseClient
+      await serviceClient
         .from('approval_tokens')
         .update({ used_at: new Date().toISOString() })
         .eq('token', token);
     }
 
-    console.log("User approved successfully:", userId, userEmail);
+    console.log("User approved successfully:", userId);
 
     // Return appropriate response
     if (token) {
@@ -126,7 +167,6 @@ const handler = async (req: Request): Promise<Response> => {
         <body>
           <div class="success">
             <h2>✅ User Approved Successfully!</h2>
-            <p><strong>User Email:</strong> ${userEmail}</p>
             <p>The user can now log in and access the platform.</p>
           </div>
         </body>
@@ -140,7 +180,6 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ 
         success: true, 
         message: "User approved successfully",
-        userEmail 
       }), {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -149,8 +188,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in approve-user function:", error);
     return new Response(JSON.stringify({ 
-      error: error.message || "An error occurred during approval",
-      timestamp: new Date().toISOString()
+      error: "An error occurred during approval",
     }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
