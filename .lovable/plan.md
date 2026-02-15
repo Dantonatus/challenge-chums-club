@@ -1,43 +1,30 @@
 
 
-# Feedback-Eintraege aus Tasks migrieren
+# Info-Icons mit Erklaerungen fuer alle Trend-Buttons
 
-## Uebersicht
+## Was wird geaendert
 
-In den Tasks befinden sich Feedback-Notizen zu Personen, die bereits als Feedback-Mitarbeiter angelegt sind. Diese sollen als Feedback-Eintraege verschoben werden. Markus Heid ist bereits vollstaendig migriert (29 Eintraege). Fuer **Marcel Juschak** und **Paul Wenner** fehlen die Eintraege komplett.
+Aktuell hat nur der **Prognose 14d** Button ein Info-Icon mit Popover-Erklaerung. Alle anderen Buttons (7 Tage, 30 Tage, Lineare Regression, Prognose 30d, Alte Prognosen) bekommen dasselbe Pattern: ein kleines Info-Icon das bei Klick eine verstaendliche Erklaerung anzeigt.
 
-Fuer **Kathrin Apostel** und **Jacob** gibt es keine Tasks mit Feedback-Charakter.
+## Erklaerungstexte
 
-## Was wird migriert
-
-### Marcel Juschak (6 Eintraege)
-
-| Datum | Inhalt | Sentiment |
-|---|---|---|
-| 29.12.25 | Keine Uebergabe JF/Dailey.. Haette mich oder Markus fragen muessen. Grundsaetzlich brauchen wir mehr Klarheit und Visibility fuer Urlaube. | constructive |
-| 05.01.26 | "i'm on holiday"..Keine Uebergabe.. Paul wusste nicht was er tun sollte. | constructive |
-| 06.01.26 | Daily begonnen mit "Whats the status".. danach "You have enough to do"... wirkt nicht strukturiert | constructive |
-| 12.01.26 | Hab das Gefuehl bei harten Deadlines, Projektgeschaeft entsteht das meiste und danach schlaeft alles ein. Zudem koennte er staerker Ownership uebernehmen. | constructive |
-| 12.01.26 | Verwaltung von Tenants nicht ideal, Passwoerter auf Confluence oder Teams gespeichert. Warum haben wir keinen PW-Manager? | observation |
-| 15.01.26 | Hat Initial gesagt, Danke Daniel fuer die Vorarbeit in den Excel und die Interpretation, schaetze ich extrem. Gutes Development! | positive |
-
-### Paul Wenner (2 Eintraege)
-
-| Datum | Inhalt | Sentiment |
-|---|---|---|
-| 12.01.26 | Manchmal hat er nichts zu tun, bzw. weiss nicht was er tun soll. Es gibt genug zu tun, was braucht er, damit er das auch sieht? | constructive |
-| 14.01.26 | Von 14-22 Uhr arbeiten ist nichts.. das ist too far off von allen anderen, wenn irgendwas nicht laeuft, muss man immer bis zum naechsten Tag warten | constructive |
+| Button | Erklaerung |
+|---|---|
+| **Oe 7 Tage** | Gleitender Durchschnitt der letzten 7 Tage. Glaettet Tagesschwankungen und zeigt den kurzfristigen Trend. Ideal um zu sehen ob sich in der aktuellen Woche etwas bewegt. |
+| **Oe 30 Tage** | Gleitender Durchschnitt der letzten 30 Tage. Filtert Wasser- und Verdauungsschwankungen fast komplett raus. Zeigt den echten mittelfristigen Trend. |
+| **Lineare Regression** | Berechnet eine gerade "Best-Fit"-Linie durch alle Datenpunkte. Zeigt die durchschnittliche Richtung ueber den gesamten Zeitraum -- steigt die Linie, nimmst du insgesamt zu, faellt sie, nimmst du ab. |
+| **Prognose 14d** | (bleibt wie bisher mit Holt-Winters Erklaerung) |
+| **Prognose 30d** | Gleiche Methode wie die 14-Tage-Prognose, aber auf 30 Tage in die Zukunft. Die Unsicherheit waechst mit der Zeit, daher ist das Konfidenzband breiter. |
+| **Alte Prognosen** | Zeigt fruehere gespeicherte Prognosen als Overlay-Linien. So kannst du vergleichen wie genau deine Vorhersagen waren vs. was tatsaechlich passiert ist. |
 
 ## Technische Umsetzung
 
-Die Migration wird als **einmaliges SQL-Statement** ausgefuehrt (ueber das Datenbank-Migrations-Tool):
+**Datei: `src/components/weight/WeightTerrainChart.tsx`**
 
-1. **8 neue Feedback-Eintraege** in `feedback_entries` einfuegen mit korrektem `employee_id`, `user_id`, `entry_date`, `content`, `category` (observation/improvement), `sentiment`
-2. **Die 8 Quell-Tasks** werden anschliessend als `is_archived = true` markiert, damit sie aus der aktiven Task-Liste verschwinden aber nicht geloescht werden
+1. Die `TREND_CONFIG` Map um ein `description`-Feld erweitern (Titel + Beschreibungstext)
+2. Im Badge-Render-Loop: fuer **jeden** Button das gleiche Info-Popover-Pattern einbauen (nicht nur fuer forecast14)
+3. Das bestehende `isForecast14`-Sonderbehandlung entfernen und stattdessen generisch aus der Config lesen
+4. Den "Alte Prognosen"-Button ebenfalls mit einem Info-Popover versehen
 
-Kein Code-Aenderung noetig -- nur Daten-Migration.
+Nur eine einzige Datei wird geaendert.
 
-### Betroffene Task-IDs
-
-Marcel: `3a8ef7cd`, `3d1d691a`, `8af7f000`, `bdfe6fae`, `35f2b6d3`, `046b6521`
-Paul: `c6be13ce`, `970e77d7`
