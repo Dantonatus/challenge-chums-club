@@ -1,26 +1,45 @@
 
 
-# Prognose 60 Tage hinzufuegen
+# Datenwerte auf Body-Scan-Grafiken anzeigen
 
-## Was wird geaendert
+## Ziel
 
-Ein neuer **Prognose 60d** Button wird neben den bestehenden Prognose-Buttons (14d, 30d) ergaenzt. Gleiche Methode (Holt-Winters), nur mit 60 Tagen Horizont und entsprechend breiterem Konfidenzband.
+Ein globaler Toggle-Button auf der Body-Scan-Seite, der auf allen Grafiken kleine, halbtransparente Zahlenlabels an den Datenpunkten ein- und ausblendet. So sind Unterschiede zwischen Scans sofort ablesbar, ohne auf jeden Punkt hovern zu muessen.
 
-## Aenderungen
+## Umsetzung
 
-### Datei: `src/components/weight/WeightTerrainChart.tsx`
+### 1. BodyScanPage.tsx -- globaler State + Button
 
-1. **TrendKey-Typ** erweitern: `'forecast60'` hinzufuegen
-2. **TREND_CONFIG** um `forecast60` ergaenzen mit Label "Prognose 60d", gleicher Farbe, und angepasstem Beschreibungstext (laengerer Horizont, breiteres Konfidenzband)
-3. **Forecast-Daten** berechnen: `forecast60Data = forecast(entries, 60)` als neues `useMemo`
-4. **Toggle-Logik** anpassen: Die `toggleTrend`-Funktion behandelt aktuell nur `forecast14` und `forecast30` als gegenseitig exklusiv. Das wird auf alle drei Forecast-Keys (`forecast14`, `forecast30`, `forecast60`) erweitert -- nur einer kann gleichzeitig aktiv sein
-5. **activeForecastKey** Logik erweitern: `forecast60` als dritte Option in die Kette aufnehmen
-6. **activeForecastDays** Mapping: `forecast60` auf 60 mappen
-7. **Snapshot-Speicherung** (in `useWeightEntries.ts`): Beim Upsert auch einen 60-Tage-Snapshot speichern, damit "Alte Prognosen" auch fuer 60d funktioniert
+- Neuer State: `const [showLabels, setShowLabels] = useState(false)`
+- Ein kleiner Toggle-Button (z.B. Icon `Hash` oder `Eye` aus lucide) neben dem PDF-Button in der Header-Leiste
+- `showLabels` wird als Prop an alle Chart-Komponenten weitergereicht
 
-### Datei: `src/hooks/useWeightEntries.ts`
+### 2. CompositionTrendChart.tsx -- Labels auf LineChart
 
-8. In der `upsert`-Mutation den Loop `[14, fc14], [30, fc30]` um `[60, fc60]` erweitern, damit bei jedem neuen Eintrag auch ein 60-Tage-Forecast-Snapshot gespeichert wird
+- Neue Prop `showLabels?: boolean`
+- Auf jeder `<Line>` wird ein `<LabelList>` ergaenzt, das nur gerendert wird wenn `showLabels` aktiv ist
+- Styling: `fontSize: 9`, `fill` passend zur jeweiligen Linienfarbe, `fillOpacity: 0.6`, Position `top`
+- Recharts `<LabelList dataKey="Gewicht" position="top" ... />` etc.
 
-Keine Datenbank-Aenderung noetig -- die `weight_forecast_snapshots` Tabelle speichert `forecast_days` bereits als Zahl.
+### 3. FatMuscleAreaChart.tsx -- Labels auf AreaChart
 
+- Gleiche Prop `showLabels?: boolean`
+- `<LabelList>` auf jeder `<Area>`, Position `top`, gleiche transparente Schriftgroesse
+- Koerperfett-Label links, Muskelmasse-Label rechts positioniert
+
+### 4. SegmentMuscleChart.tsx + SegmentFatChart.tsx -- Labels auf BarChart
+
+- Prop `showLabels?: boolean`
+- `<LabelList>` auf jeder `<Bar>`, Position `top`, fontSize 9, halbtransparent
+
+### 5. Zusammenfassung der Aenderungen
+
+| Datei | Aenderung |
+|---|---|
+| `BodyScanPage.tsx` | State `showLabels`, Toggle-Button, Prop-Weitergabe an 4 Charts |
+| `CompositionTrendChart.tsx` | Prop + bedingte `LabelList` auf 3 Lines |
+| `FatMuscleAreaChart.tsx` | Prop + bedingte `LabelList` auf 2 Areas |
+| `SegmentMuscleChart.tsx` | Prop + bedingte `LabelList` auf 1-2 Bars |
+| `SegmentFatChart.tsx` | Prop + bedingte `LabelList` auf 1-2 Bars |
+
+Keine neuen Abhaengigkeiten -- `LabelList` ist bereits Teil von Recharts.
