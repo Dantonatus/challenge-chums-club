@@ -1,76 +1,61 @@
 
 
-# Gewichtsprognose -- EWMA + Trend mit futuristischer Darstellung
+# Prognose-Fixes: Proportion, Realismus, Info-Button
 
-## Modell
+## 3 Probleme, 3 Fixes
 
-Holt-Winters Double Exponential Smoothing ohne Saisonalitaet:
-- Level: S_t = alpha * y_t + (1 - alpha) * (S_{t-1} + T_{t-1})
-- Trend: T_t = beta * (S_t - S_{t-1}) + (1 - beta) * T_{t-1}
-- Forecast: F_{t+k} = S_t + k * T_t
-- Konfidenzband: +/- 1.96 * sigma * sqrt(k)
+### 1. Proportion -- Forecast nimmt zu viel Platz ein
 
-Alpha = 0.3, Beta = 0.2. Refinement passiert automatisch: jeder neue Eintrag triggert React Query Invalidation, useMemo berechnet Forecast neu.
+**Aktuell**: 30 Forecast-Tage bei ~53 realen Datenpunkten = 36% des Charts ist Prognose.
 
-## Futuristische visuelle Trennung
+**Fix**: Forecast auf **14 Tage** reduzieren. Das ergibt ~20% Forecast-Anteil -- visuell ausgewogen und trotzdem aussagekraeftig.
 
-Die Prognose-Zone wird klar vom realen Bereich abgegrenzt:
+### 2. Unrealistischer Trend + zu breites Unsicherheitsband
 
-1. **Vertikale Trennlinie** am letzten realen Datenpunkt -- gestrichelte weisse/helle ReferenceLine mit Label "Heute"
-2. **Hintergrund-Split**: Der Prognose-Bereich bekommt einen eigenen subtilen Hintergrund-Gradient (violett/dunkel) via ReferenceArea
-3. **Prognose-Linie**: Leuchtend violette gestrichelte Linie mit Glow-Effekt (doppelte Line -- eine breitere mit niedriger Opacity als "Glow", eine duenne scharfe darueber)
-4. **Konfidenzband**: Halbtransparente violette Area die sich nach rechts auffaechert -- zeigt wachsende Unsicherheit
-5. **Pulsierender Endpunkt**: Der letzte Prognose-Punkt bekommt einen animierten pulsierenden Dot (CSS Animation)
-6. **Label**: Kleines "PROGNOSE" Label im Prognose-Bereich
+**Problem Trend**: Der aktuelle Holt-Winters extrapoliert den Trend linear in die Zukunft (`level + k * trend`). Bei den Daten steigt das Gewicht zuletzt steil (Jan 91 -> Feb 93), und das Modell projiziert diesen Anstieg unveraendert weiter -- unrealistisch.
 
-## Technische Umsetzung
-
-### 1. `src/lib/weight/analytics.ts` -- Neue `forecast()` Funktion
-
+**Fix Trend**: **Damped Trend** (Holt-Winters mit Daempfungsfaktor phi=0.85):
 ```text
-export function forecast(
-  entries: WeightEntry[],
-  days = 30,
-  alpha = 0.3,
-  beta = 0.2
-): { date: string; value: number; lower: number; upper: number }[]
+Statt:   F_{t+k} = Level + k * Trend
+Neu:     F_{t+k} = Level + (phi + phi^2 + ... + phi^k) * Trend
 ```
+Der Daempfungsfaktor sorgt dafuer, dass der Trend sich mit der Zeit abschwaechen und die Prognose sich einem Plateau naehert -- so wie es bei Gewicht in der Realitaet passiert.
 
-- Sortiert Eintraege chronologisch
-- Berechnet Level und Trend iterativ ueber alle Datenpunkte
-- Berechnet Residuen-Standardabweichung (sigma)
-- Generiert 30 zukuenftige Datenpunkte mit Konfidenzband
-- Konfidenz waechst mit sqrt(k) -- Tag 1 ist eng, Tag 30 ist breit
+**Problem Band**: `1.96 * sigma * sqrt(k)` waechst unbegrenzt. Bei Tag 30 und sigma=0.8 waere das +-4.4kg -- voellig unrealistisch.
 
-### 2. `src/components/weight/WeightTerrainChart.tsx` -- Erweiterungen
+**Fix Band**: Physiologisch gecapptes Konfidenzband:
+- Basis: Residual-Sigma wie bisher, aber gecappt auf max 0.5 kg (entspricht normaler Tagesschwankung)
+- Wachstum: `margin = cappedSigma * sqrt(k)`, aber maximal **1.5 kg** (selbst in 14 Tagen realistisch)
+- Reale Tagesschwankung liegt bei 0.5-1.0 kg, absolute Extreme bei 2 kg
 
-**Neuer TrendKey**: `'forecast'` mit Farbe `hsl(270, 70%, 55%)` (leuchtendes Violett)
+### 3. Info-Icon am Prognose-Button
 
-**Chart-Daten erweitern**:
-- Reale Punkte: `weight` gefuellt, `forecast`/`forecastLower`/`forecastUpper` = null
-- Prognose-Punkte: `weight` = null, `forecast`/`forecastLower`/`forecastUpper` gefuellt
-- Letzter realer Punkt bekommt auch forecast-Wert (nahtloser Uebergang)
+Neben dem "Prognose 30d"-Badge (wird zu "Prognose 14d") kommt ein kleines Info-Icon (Lucide `Info`). Bei Klick oeffnet sich ein Popover mit:
+- Modellname: "Holt-Winters Exponential Smoothing"
+- Kurze Erklaerung: "Gewichtet juengste Werte staerker. Der Trend wird gedaempft, damit die Prognose realistisch bleibt."
+- Hinweis zum Konfidenzband: "Das Band zeigt die erwartete Schwankungsbreite basierend auf deinen bisherigen Tagesschwankungen."
+- Hinweis zum Refinement: "Jeder neue Eintrag verfeinert die Prognose automatisch."
 
-**Neue Recharts-Elemente**:
-- `<ReferenceArea>` fuer den Prognose-Hintergrund (violetter Tint)
-- `<ReferenceLine>` vertikal am letzten realen Datum mit "Heute"-Label
-- `<Area>` fuer Konfidenzband (`forecastUpper` bis `forecastLower`)
-- `<Line>` breit + transparent fuer Glow-Effekt
-- `<Line>` duenn + scharf fuer die eigentliche Prognose-Linie
-- Beide gestrichelt
+## Technische Aenderungen
 
-**Toggle-Chip**: "Prognose 30d" als vierter Chip neben den bestehenden drei, standardmaessig aktiv
+### `src/lib/weight/analytics.ts`
 
-**Tooltip erweitert**: Bei Prognose-Punkten zeigt es "Prognose: X kg" und "Bereich: Y - Z kg"
+**forecast() Funktion anpassen:**
+- Parameter `days` Default von 30 auf **14** aendern
+- Damped Trend einfuehren: `phi = 0.85`, Forecast-Formel wird `level + sumPhi * trend` wobei `sumPhi = phi + phi^2 + ... + phi^k`
+- Sigma cappen: `cappedSigma = Math.min(sigma, 0.5)`
+- Margin cappen: `Math.min(margin, 1.5)`
 
-**CSS/Glow**: SVG-Filter `<feGaussianBlur>` im `<defs>` Block fuer den Leuchteffekt der Prognose-Linie
+### `src/components/weight/WeightTerrainChart.tsx`
 
-**Y-Achse**: Domain erweitert sich automatisch auf Konfidenzband-Extremwerte
+- TREND_CONFIG: Label von "Prognose 30d" auf "Prognose 14d" aendern
+- Info-Icon + Popover beim Forecast-Badge hinzufuegen (Lucide `Info` Icon, Radix Popover)
+- Popover-Inhalt mit Modellbeschreibung
 
 ### Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/lib/weight/analytics.ts` | Neue `forecast()` Funktion mit Holt-Winters EWMA |
-| `src/components/weight/WeightTerrainChart.tsx` | Neuer "Prognose 30d" Toggle, Glow-Linie, Konfidenzband, ReferenceArea, ReferenceLine, erweitertes Tooltip |
+| `src/lib/weight/analytics.ts` | Damped Trend (phi=0.85), Sigma-Cap (0.5), Margin-Cap (1.5), days=14 |
+| `src/components/weight/WeightTerrainChart.tsx` | Label-Update, Info-Icon mit Popover am Forecast-Badge |
 
