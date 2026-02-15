@@ -121,13 +121,22 @@ export function monthSummary(entries: WeightEntry[], yearMonth: string) {
 export function forecast(
   entries: WeightEntry[],
   days = 14,
-  alpha = 0.3,
+  alpha = 0.4,
   beta = 0.2,
-  phi = 0.85,
-): { date: string; value: number; lower: number; upper: number }[] {
+  phi = 0.95,
+): { date: string; value: number; simulated: number; lower: number; upper: number }[] {
   if (entries.length < 3) return [];
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   const ys = sorted.map(e => e.weight_kg);
+
+  // Calculate daily swing from historical day-to-day differences
+  const dailyDiffs: number[] = [];
+  for (let i = 1; i < ys.length; i++) {
+    dailyDiffs.push(ys[i] - ys[i - 1]);
+  }
+  const dailySwing = dailyDiffs.length > 0
+    ? Math.sqrt(dailyDiffs.reduce((s, d) => s + d * d, 0) / dailyDiffs.length)
+    : 0.3;
 
   // Initialise level & trend
   let level = ys[0];
@@ -150,7 +159,7 @@ export function forecast(
 
   // Generate future data points with damped trend
   const lastDate = new Date(sorted[sorted.length - 1].date);
-  const result: { date: string; value: number; lower: number; upper: number }[] = [];
+  const result: { date: string; value: number; simulated: number; lower: number; upper: number }[] = [];
 
   let sumPhi = 0;
   for (let k = 1; k <= days; k++) {
@@ -159,6 +168,9 @@ export function forecast(
     d.setDate(d.getDate() + k);
     const dateStr = d.toISOString().slice(0, 10);
     const predicted = Math.round((level + sumPhi * trend) * 10) / 10;
+    // Deterministic oscillation for realistic daily fluctuation
+    const oscillation = dailySwing * Math.sin(k * 1.3 + Math.cos(k * 0.7));
+    const simulated = Math.round((predicted + oscillation) * 10) / 10;
     const margin = Math.min(
       Math.round(1.96 * cappedSigma * Math.sqrt(k) * 10) / 10,
       1.5,
@@ -166,6 +178,7 @@ export function forecast(
     result.push({
       date: dateStr,
       value: predicted,
+      simulated,
       lower: Math.round((predicted - margin) * 10) / 10,
       upper: Math.round((predicted + margin) * 10) / 10,
     });
