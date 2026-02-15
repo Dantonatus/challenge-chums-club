@@ -12,7 +12,7 @@ import type { WeightEntry, ForecastSnapshot } from '@/lib/weight/types';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 
-type TrendKey = 'ma7' | 'ma30' | 'regression' | 'forecast14' | 'forecast30';
+type TrendKey = 'ma7' | 'ma30' | 'regression' | 'forecast14' | 'forecast30' | 'forecast60';
 
 const FORECAST_COLOR = 'hsl(270, 70%, 55%)';
 
@@ -22,6 +22,7 @@ const TREND_CONFIG: Record<TrendKey, { label: string; color: string; dash?: stri
   regression: { label: 'Lineare Regression', color: 'hsl(30, 90%, 55%)', description: { title: 'Lineare Regression', text: 'Berechnet eine gerade „Best-Fit"-Linie durch alle Datenpunkte. Zeigt die durchschnittliche Richtung über den gesamten Zeitraum – steigt die Linie, nimmst du insgesamt zu, fällt sie, nimmst du ab.', calc: 'Least-Squares-Fit: Berechnet Steigung m = (n·ΣxY - Σx·Σy) / (n·Σx² - (Σx)²) und Achsenabschnitt b = (Σy - m·Σx) / n. Jeder Punkt liegt auf y = m·x + b.' } },
   forecast14: { label: 'Prognose 14d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (14 Tage)', text: 'Gewichtet die letzten 30 Tage besonders stark. Der Trend wird leicht gedämpft, um zu zeigen wohin es geht wenn du so weitermachst. Die dünne Linie zeigt einen simulierten realistischen Verlauf mit deinen typischen Tagesschwankungen.', calc: 'Damped Holt-Winters mit α=0.4, β=0.2, φ=0.95. Level: L = α·y + (1-α)·(L + φ·T). Trend: T = β·(L - L_prev) + (1-β)·φ·T. Konfidenzband: ±1.96 · dailySwing · √k (max ±2.0 kg). DailySwing = RMS der täglichen Differenzen.' } },
   forecast30: { label: 'Prognose 30d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (30 Tage)', text: 'Gleiche Methode wie die 14-Tage-Prognose, aber auf 30 Tage in die Zukunft. Die Unsicherheit wächst mit der Zeit, daher ist das Konfidenzband breiter.', calc: 'Identische Holt-Winters-Parameter (α=0.4, β=0.2, φ=0.95), nur k läuft bis 30 statt 14. Dadurch wächst das Konfidenzband auf bis zu ±2.0 kg.' } },
+  forecast60: { label: 'Prognose 60d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (60 Tage)', text: 'Langfristprognose über 2 Monate. Gleiche Methode, aber das Konfidenzband wird deutlich breiter – ideal um zu sehen wohin der aktuelle Trend langfristig führt.', calc: 'Identische Holt-Winters-Parameter (α=0.4, β=0.2, φ=0.95), k läuft bis 60. Das Konfidenzband ist breiter, bleibt aber bei max ±2.0 kg gedeckelt.' } },
 };
 
 interface Props {
@@ -37,13 +38,15 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
   const toggleTrend = (key: TrendKey) => {
     setActiveTrends(prev => {
       const next = new Set(prev);
-      if (key === 'forecast14' || key === 'forecast30') {
-        const other = key === 'forecast14' ? 'forecast30' : 'forecast14';
+      const forecastKeys: TrendKey[] = ['forecast14', 'forecast30', 'forecast60'];
+      if (forecastKeys.includes(key)) {
         if (next.has(key)) {
           next.delete(key);
         } else {
           next.add(key);
-          next.delete(other);
+          for (const fk of forecastKeys) {
+            if (fk !== key) next.delete(fk);
+          }
         }
       } else {
         next.has(key) ? next.delete(key) : next.add(key);
@@ -64,14 +67,15 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
   const reg = useMemo(() => new Map(linearRegression(entries).map(m => [m.date, m.value])), [entries]);
   const forecast14Data = useMemo(() => forecast(entries, 14), [entries]);
   const forecast30Data = useMemo(() => forecast(entries, 30), [entries]);
+  const forecast60Data = useMemo(() => forecast(entries, 60), [entries]);
 
-  const activeForecastKey = activeTrends.has('forecast14') ? 'forecast14' : activeTrends.has('forecast30') ? 'forecast30' : null;
-  const activeForecast = activeForecastKey === 'forecast14' ? forecast14Data : activeForecastKey === 'forecast30' ? forecast30Data : null;
+  const activeForecastKey = activeTrends.has('forecast14') ? 'forecast14' : activeTrends.has('forecast30') ? 'forecast30' : activeTrends.has('forecast60') ? 'forecast60' : null;
+  const activeForecast = activeForecastKey === 'forecast14' ? forecast14Data : activeForecastKey === 'forecast30' ? forecast30Data : activeForecastKey === 'forecast60' ? forecast60Data : null;
   const forecastPoints = activeForecast?.points ?? [];
   const dailySwing = activeForecast?.dailySwing ?? forecast14Data.dailySwing;
 
   // Filter snapshots by active forecast days
-  const activeForecastDays = activeForecastKey === 'forecast14' ? 14 : activeForecastKey === 'forecast30' ? 30 : null;
+  const activeForecastDays = activeForecastKey === 'forecast14' ? 14 : activeForecastKey === 'forecast30' ? 30 : activeForecastKey === 'forecast60' ? 60 : null;
   const filteredSnapshots = useMemo(() => {
     if (!showHistory || !activeForecastDays) return [];
     return snapshots
