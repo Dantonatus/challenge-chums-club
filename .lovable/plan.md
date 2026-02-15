@@ -1,58 +1,96 @@
 
-# Oszillation im Info-Popover, datenbasierte Unsicherheit, 14d/30d Toggle
+# Forecast-Snapshots: Prognosen speichern und als Overlay anzeigen
 
-## 1. Info-Popover um Oszillations-Erklaerung erweitern
+## Konzept
 
-Der Popover-Text (Zeilen 190-199 in WeightTerrainChart.tsx) wird um einen Absatz zur Oszillationslinie ergaenzt:
-- "Die duenne Linie zeigt einen simulierten realistischen Verlauf mit deinen typischen Tagesschwankungen (aktuell ca. X kg). Diese Schwankung wird aus deinen bisherigen Tag-zu-Tag-Differenzen berechnet."
+Jedes Mal wenn du einen neuen Gewichtseintrag speicherst, wird die **aktuelle Prognose automatisch als Snapshot gespeichert**. Spaeter kannst du per Toggle-Button ("Alte Prognosen") diese gespeicherten Prognoselinien als halbtransparente Overlay-Linien im Chart anzeigen -- so siehst du direkt, wie genau deine frueheren Prognosen waren im Vergleich zu dem was tatsaechlich passiert ist.
 
-Dafuer muss `dailySwing` aus der `forecast()`-Funktion heraus zugaenglich sein. Die Funktion wird erweitert, sodass sie neben dem Array auch die berechnete `dailySwing` zurueckgibt (als Objekt: `{ points, dailySwing }`).
+## Neues Datenbank-Schema
 
-## 2. Unsicherheitsband auf eigenen Daten basieren
+Eine neue Tabelle `weight_forecast_snapshots`:
 
-**Aktuell**: Das Konfidenzband nutzt `cappedSigma` (Residual-Standardabweichung, gecappt auf 0.5 kg). Das ist modellbasiert, nicht direkt aus den Tagesschwankungen.
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| id | uuid | Primary Key |
+| user_id | uuid | Dein User |
+| created_at | timestamptz | Wann gespeichert |
+| snapshot_date | text | Datum an dem die Prognose erstellt wurde (YYYY-MM-DD) |
+| forecast_days | integer | 14 oder 30 |
+| daily_swing | numeric | Tagesschwankung zum Zeitpunkt |
+| points_json | jsonb | Array der Prognose-Punkte `[{date, value, simulated, lower, upper}]` |
 
-**Neu**: Das Band nutzt `dailySwing` (Standardabweichung der Tag-zu-Tag-Differenzen) als Basis -- das ist die **tatsaechliche Schwankung des Users**. Formel wird:
+RLS: Nur eigene Snapshots lesen/schreiben/loeschen.
+
+## Ablauf
+
 ```text
-margin = min(1.96 * dailySwing * sqrt(k), 2.0)
+Neuer Gewichtseintrag
+       |
+       v
+  upsert weight_entry
+       |
+       v
+  forecast(entries, 14) berechnen
+  forecast(entries, 30) berechnen
+       |
+       v
+  Beide als Snapshot in DB speichern
+  (alte Snapshots vom selben Tag ueberschreiben)
 ```
-Der Cap wird auf 2.0 kg erhoeht (bei 30 Tagen braucht man etwas mehr Spielraum). So waechst die Unsicherheit mit der Zeit, aber basiert auf den echten Schwankungen.
 
-## 3. 14d und 30d Prognose-Buttons
+## UI-Aenderungen
 
-Statt eines einzelnen Forecast-Buttons gibt es zwei separate Buttons: **Prognose 14d** und **Prognose 30d**. Nur einer kann gleichzeitig aktiv sein.
+### Neuer Toggle-Button im Chart-Header
 
-### Technische Umsetzung
+Ein neuer Badge-Button **"Alte Prognosen"** (mit einem History-Icon) wird neben den bestehenden Trend-Buttons platziert. Bei Klick:
+- Laedt die letzten 5-10 Snapshots aus der DB
+- Zeigt jede gespeicherte Prognose als duenne, halbtransparente Linie im Chart
+- Jede Linie bekommt ein leicht unterschiedliches Opacity-Level (aeltere = blasser)
+- Im Tooltip wird bei Hover auf eine Overlay-Linie angezeigt: "Prognose vom [Datum]: X kg"
 
-**TrendKey** wird erweitert: `'forecast'` wird ersetzt durch `'forecast14'` und `'forecast30'`.
+### Visuelles Design
 
-Die State-Logik stellt sicher, dass beim Aktivieren von `forecast14` automatisch `forecast30` deaktiviert wird und umgekehrt.
-
-Beide Forecasts werden mit `forecast(entries, 14)` bzw. `forecast(entries, 30)` berechnet. Die aktive Variante wird angezeigt.
-
-Das Info-Icon mit Popover wird nur beim ersten Forecast-Button angezeigt (gilt fuer beide Varianten).
+- Overlay-Linien: gleiche Farbe wie Forecast (lila), aber mit abnehmender Opacity (neueste: 40%, aelteste: 15%)
+- Gestrichelt wie die aktuelle Prognose
+- Kein Konfidenzband fuer alte Prognosen (wuerde zu unuebersichtlich)
+- Nur die Trend-Linie (value), nicht die simulierte Oszillation
 
 ## Technische Aenderungen
 
-### `src/lib/weight/analytics.ts`
+### 1. Datenbank-Migration
 
-- **Return-Typ** von `forecast()` aendern: gibt jetzt `{ points: [...], dailySwing: number }` zurueck statt nur das Array
-- **Konfidenzband**: `cappedSigma` durch `dailySwing` ersetzen. `margin = min(1.96 * dailySwing * sqrt(k), 2.0)`
-- Die Oszillation und der Trend bleiben unveraendert
+Neue Tabelle `weight_forecast_snapshots` mit RLS-Policies fuer eigene Daten.
 
-### `src/components/weight/WeightTerrainChart.tsx`
+### 2. `src/hooks/useWeightEntries.ts`
 
-- **TrendKey**: `'forecast'` ersetzen durch `'forecast14' | 'forecast30'`
-- **TREND_CONFIG**: Zwei Eintraege statt einem: `forecast14: { label: 'Prognose 14d', ... }` und `forecast30: { label: 'Prognose 30d', ... }`
-- **State-Logik**: `toggleTrend()` anpassen -- wenn `forecast14` aktiviert wird, `forecast30` deaktivieren und umgekehrt
-- **Forecast-Berechnung**: Beide Varianten vorberechnen, nur die aktive nutzen
-- **Info-Popover**: Text erweitern um Oszillations-Erklaerung mit dem berechneten `dailySwing`-Wert (z.B. "Deine typische Tagesschwankung: 0.4 kg")
-- **showForecastVisuals**: Pruefen ob `forecast14` ODER `forecast30` aktiv ist
-- **Default-State**: `new Set(['ma7', 'forecast14'])` statt `new Set(['ma7', 'forecast'])`
+- Nach erfolgreichem `upsert` eines Gewichtseintrags: aktuelle 14d und 30d Forecasts berechnen und als Snapshots speichern
+- Dabei `forecast()` aus `analytics.ts` aufrufen mit den aktuellen Entries
+
+### 3. Neuer Hook `src/hooks/useForecastSnapshots.ts`
+
+- Laedt die letzten 10 Snapshots des Users
+- Gibt sie als Array zurueck, sortiert nach Erstelldatum
+- Optional: Filter nach forecast_days (14 oder 30)
+
+### 4. `src/components/weight/WeightTerrainChart.tsx`
+
+- Neuer TrendKey: `'history'`
+- Neuer Badge-Button "Alte Prognosen"
+- Wenn aktiv: Snapshots laden und als zusaetzliche `<Line>` Elemente rendern
+- Jeder Snapshot wird in chartData gemappt (Punkte die in den sichtbaren Datumsbereich fallen)
+- Tooltip erweitern: wenn ein historischer Forecast-Punkt gehovert wird, Datum der Prognose anzeigen
+
+### 5. `src/pages/app/training/WeightPage.tsx`
+
+- Forecast-Snapshot-Logik in den Save-Handler integrieren (nach erfolgreichem Gewichtseintrag)
 
 ### Betroffene Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/lib/weight/analytics.ts` | Return-Typ erweitert, Konfidenzband auf dailySwing umgestellt |
-| `src/components/weight/WeightTerrainChart.tsx` | Zwei Forecast-Buttons, exklusiver Toggle, Popover-Text mit Oszillation + dailySwing |
+| Migration SQL | Neue Tabelle `weight_forecast_snapshots` |
+| `src/hooks/useWeightEntries.ts` | Snapshot-Speicherung nach upsert |
+| `src/hooks/useForecastSnapshots.ts` | Neuer Hook zum Laden der Snapshots |
+| `src/components/weight/WeightTerrainChart.tsx` | Overlay-Linien rendern, neuer Toggle |
+| `src/pages/app/training/WeightPage.tsx` | Snapshots an Chart weitergeben |
+| `src/lib/weight/types.ts` | Typ fuer ForecastSnapshot |
