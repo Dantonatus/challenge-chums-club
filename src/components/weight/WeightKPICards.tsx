@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, Minus, Activity, ArrowDown, ArrowUp, BarChart3, CalendarDays } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Activity, ArrowDown, ArrowUp, BarChart3, CalendarDays, Info } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { weeklyChange, volatility, allTimeExtremes, monthlyAverage, trendDirection, movingAverage } from '@/lib/weight/analytics';
 import type { WeightEntry } from '@/lib/weight/types';
 import { format, parseISO } from 'date-fns';
@@ -40,6 +41,11 @@ export default function WeightKPICards({ entries }: Props) {
       sub: change !== null ? `${change > 0 ? '+' : ''}${change} kg zur Vorwoche` : 'Keine Vorwoche',
       icon: Activity,
       accent: 'text-primary',
+      calc: {
+        title: 'Letzter Eintrag + Wochenvergleich',
+        text: 'Zeigt den letzten erfassten Wert. Die Differenz wird zum nächstgelegenen Eintrag vor ca. 7 Tagen berechnet (minimale Zeitdifferenz).',
+        formula: 'Δ = weight(latest) − weight(closest to t−7d)',
+      },
     },
     {
       label: 'Trend (Ø7)',
@@ -47,6 +53,11 @@ export default function WeightKPICards({ entries }: Props) {
       sub: trend === 'up' ? 'Steigend' : trend === 'down' ? 'Fallend' : 'Stabil',
       icon: TrendIcon,
       accent: trendColor,
+      calc: {
+        title: 'Gleitender Durchschnitt (7 Tage)',
+        text: 'Durchschnitt der letzten 7 Einträge. Richtung wird aus der Differenz der letzten 3 MA-Werte bestimmt.',
+        formula: 'MA(i) = Σ weight[i−6…i] / n\nRichtung: MA[-1] − MA[-3] > ±0.3 kg',
+      },
     },
     {
       label: 'Volatilität',
@@ -54,6 +65,11 @@ export default function WeightKPICards({ entries }: Props) {
       sub: vol < 0.5 ? 'Sehr stabil' : vol < 1 ? 'Normal' : 'Schwankend',
       icon: BarChart3,
       accent: vol < 0.5 ? 'text-emerald-500' : vol < 1 ? 'text-amber-500' : 'text-rose-400',
+      calc: {
+        title: 'Standardabweichung (14 Tage)',
+        text: 'Misst die Streuung deiner letzten 14 Gewichtseinträge um den Mittelwert.',
+        formula: 'σ = √( Σ(yᵢ − μ)² / n )\nn = letzte 14 Einträge',
+      },
     },
     {
       label: 'Tiefster Wert',
@@ -61,6 +77,11 @@ export default function WeightKPICards({ entries }: Props) {
       sub: extremes.min ? format(parseISO(extremes.min.date), 'dd. MMM yy', { locale: de }) : '',
       icon: ArrowDown,
       accent: 'text-emerald-500',
+      calc: {
+        title: 'Allzeit-Minimum',
+        text: 'Einfacher linearer Scan über alle erfassten Einträge.',
+        formula: 'min(weight_kg) ∀ entries',
+      },
     },
     {
       label: 'Höchster Wert',
@@ -68,6 +89,11 @@ export default function WeightKPICards({ entries }: Props) {
       sub: extremes.max ? format(parseISO(extremes.max.date), 'dd. MMM yy', { locale: de }) : '',
       icon: ArrowUp,
       accent: 'text-rose-400',
+      calc: {
+        title: 'Allzeit-Maximum',
+        text: 'Einfacher linearer Scan über alle erfassten Einträge.',
+        formula: 'max(weight_kg) ∀ entries',
+      },
     },
     {
       label: 'Monatl. Schnitt',
@@ -77,6 +103,11 @@ export default function WeightKPICards({ entries }: Props) {
         : 'Kein Vormonat',
       icon: CalendarDays,
       accent: 'text-primary',
+      calc: {
+        title: 'Monatsdurchschnitt',
+        text: 'Durchschnitt aller Einträge im aktuellen Monat. Vergleich zum Vormonat analog berechnet.',
+        formula: 'Ø = Σ weight(YYYY-MM) / n\nΔ = Ø(aktuell) − Ø(vormonat)',
+      },
     },
   ];
 
@@ -88,6 +119,18 @@ export default function WeightKPICards({ entries }: Props) {
             <div className="flex items-center gap-2 mb-2">
               <card.icon className={`h-4 w-4 ${card.accent}`} />
               <span className="text-xs text-muted-foreground font-medium">{card.label}</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+                    <Info size={12} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" side="top" align="start">
+                  <p className="font-semibold text-sm mb-1">{card.calc.title}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{card.calc.text}</p>
+                  <pre className="text-xs font-mono bg-muted/50 rounded px-2 py-1.5 whitespace-pre-wrap">{card.calc.formula}</pre>
+                </PopoverContent>
+              </Popover>
             </div>
             <p className="text-xl font-bold text-foreground">{card.value}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{card.sub}</p>
