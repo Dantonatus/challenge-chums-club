@@ -1,45 +1,41 @@
 
 
-# Chart-Labels Rework -- Lesbarkeit und Groesse
+# Mathematische Berechnungen in die KPI-Karten-Icons
 
-## Probleme
+## Ziel
 
-1. **Segment-Charts (Muskel + Fett)**: Labels werden von den dunklen Bars ueberlagert -- die Halo-Box mit 0.85 Opacity reicht im Dark Mode nicht, weil `hsl(var(--card))` selbst dunkel ist und mit den Bars verschmilzt
-2. **Koerperfett vs. Muskelmasse (AreaChart)**: Blaue Zahl kann unter die blaue Flaeche rutschen, rote Zahl wird ebenfalls ueberdeckt
-3. **Segment-Charts zu klein**: Bei 280px Hoehe ist zu wenig Platz fuer Labels oberhalb der Bars
+Jede der 6 KPI-Karten im Gewichtsbereich bekommt ein kleines Info-Icon (wie bei den Trend-Buttons im Chart), das per Popover die mathematische Berechnung erklaert.
 
-## Aenderungen
+## Aenderung: `src/components/weight/WeightKPICards.tsx`
 
-### 1. ChartLabel.tsx -- Robusterer Halo
+### Neue Imports
+- `Popover, PopoverContent, PopoverTrigger` aus `@/components/ui/popover`
+- `Info` aus `lucide-react`
 
-- `fillOpacity` der Hintergrund-Box von 0.85 auf **0.95** erhoehen
-- Einen subtilen **Stroke** (1px, `hsl(var(--border))`) um die Box hinzufuegen, damit sie sich auch im Dark Mode klar vom Hintergrund abhebt
-- Text `fillOpacity` von 0.8 auf **0.9** fuer bessere Lesbarkeit
+### Datenstruktur erweitern
 
-### 2. FatMuscleAreaChart.tsx -- Labels weiter nach oben
+Jede Karte bekommt ein neues Feld `calc` mit Titel, Erklaerung und Formel:
 
-- Beide Labels weiter vom Datenpunkt weg positionieren: Fat `offsetY: -18`, Muscle `offsetY: -34`
-- Chart-Hoehe von 280 auf **340px** erhoehen, damit oben genug Platz fuer die gestaffelten Labels bleibt
-- Top-Margin im AreaChart erhoehen (`margin={{ top: 40 }}`)
+| Karte | Titel | Formel |
+|---|---|---|
+| **Aktuell** | Letzter Eintrag + Wochenvergleich | Differenz zum naechstgelegenen Eintrag vor ~7 Tagen. Naechster Eintrag wird ueber minimale Zeitdifferenz bestimmt. |
+| **Trend (Oe7)** | Gleitender Durchschnitt 7 Tage | Summe(Gewicht[i-6..i]) / Anzahl. Richtung: Differenz der letzten 3 MA-Werte, Schwelle +-0.3 kg. |
+| **Volatilitaet** | Standardabweichung (14 Tage) | sigma = sqrt( Summe((y - mean)^2) / n ), letzte 14 Eintraege. |
+| **Tiefster Wert** | Minimum aller Eintraege | Einfacher linearer Scan: min(weight_kg) ueber alle Eintraege. |
+| **Hoechster Wert** | Maximum aller Eintraege | Einfacher linearer Scan: max(weight_kg) ueber alle Eintraege. |
+| **Monatl. Schnitt** | Durchschnitt des aktuellen Monats | Summe(weight_kg fuer YYYY-MM) / Anzahl. Vergleich zum Vormonat analog berechnet. |
 
-### 3. CompositionTrendChart.tsx -- Mehr Platz oben
+### UI-Umsetzung
 
-- Chart-Hoehe von 280 auf **340px**
-- `margin={{ top: 45 }}` damit die drei gestaffelten Labels (-14, -26, -38) nicht abgeschnitten werden
+- Neben dem Label-Text (z.B. "Aktuell") wird ein kleines `<Info size={12} />` Icon platziert
+- Klick oeffnet ein `Popover` mit:
+  - **Titel** (fett)
+  - **Erklaerung** (text-xs, muted)
+  - **Formel** (font-mono, bg-muted/50, rounded)
+- Gleiches Design wie bei den bestehenden Trend-Button-Popovers im WeightTerrainChart
 
-### 4. SegmentMuscleChart.tsx + SegmentFatChart.tsx -- Groesser + Labels hoeher
+### Technische Details
 
-- Chart-Hoehe von 280 auf **340px**
-- `margin={{ top: 30 }}` fuer Platz ueber den Bars
-- "Aktuell"-Label `offsetY: -16`, "Vorher"-Label `offsetY: -16` (Bars stehen nebeneinander, kein Staffeln noetig)
-- Durch die hoeheren Offsets + groessere Charts + robusteren Halo sind die Zahlen klar ueber den Bars sichtbar
-
-### Zusammenfassung
-
-| Datei | Aenderung |
-|---|---|
-| `ChartLabel.tsx` | Opacity 0.95, Stroke-Border, Text-Opacity 0.9 |
-| `FatMuscleAreaChart.tsx` | Hoehe 340px, margin top 40, offsetY -18/-34 |
-| `CompositionTrendChart.tsx` | Hoehe 340px, margin top 45 |
-| `SegmentMuscleChart.tsx` | Hoehe 340px, margin top 30, offsetY -16 |
-| `SegmentFatChart.tsx` | Hoehe 340px, margin top 30, offsetY -16 |
+- Die `cards`-Array-Definition wird um ein `calc`-Objekt pro Karte erweitert: `{ title: string; text: string; formula: string }`
+- Im Render-Loop wird nach dem Label-Span ein `Popover` mit `Info`-Icon eingefuegt
+- Keine neuen Abhaengigkeiten noetig
