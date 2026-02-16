@@ -16,13 +16,35 @@ type TrendKey = 'ma7' | 'ma30' | 'regression' | 'forecast14' | 'forecast30' | 'f
 
 const FORECAST_COLOR = 'hsl(270, 70%, 55%)';
 
-const TREND_CONFIG: Record<TrendKey, { label: string; color: string; dash?: string; description?: { title: string; text: string; calc: string } }> = {
+type TrendDescription = {
+  title: string;
+  text: string;
+  calc?: string;
+  elements?: { name: string; formula: string }[];
+};
+
+const FORECAST_ELEMENTS: { name: string; formula: string }[] = [
+  {
+    name: 'Gestrichelte Linie (Trend)',
+    formula: 'Damped Holt-Winters: L = α·y + (1-α)·(L + φ·T), T = β·(L - L_prev) + (1-β)·φ·T. Vorhersage: P(k) = L + Σ(φ^1..k)·T. Parameter: α=0.4, β=0.2, φ=0.95.',
+  },
+  {
+    name: 'Dünne kurvige Linie (Simulation)',
+    formula: 'Sim(k) = P(k) + dailySwing · sin(1.3k + cos(0.7k)). dailySwing = RMS der täglichen Differenzen = √(Σ(yₜ - yₜ₋₁)² / n).',
+  },
+  {
+    name: 'Konfidenzband (Schattierung)',
+    formula: 'Band = P(k) ± min(1.96 · dailySwing · √k, 2.0 kg). Wächst mit √k, gedeckelt bei ±2.0 kg.',
+  },
+];
+
+const TREND_CONFIG: Record<TrendKey, { label: string; color: string; dash?: string; description?: TrendDescription }> = {
   ma7: { label: 'Ø 7 Tage', color: 'hsl(var(--muted-foreground))', dash: '6 4', description: { title: 'Gleitender Durchschnitt (7 Tage)', text: 'Glättet Tagesschwankungen und zeigt den kurzfristigen Trend. Ideal um zu sehen ob sich in der aktuellen Woche etwas bewegt.', calc: 'Für jeden Tag wird der Durchschnitt der letzten 7 Einträge berechnet: Summe(Gewicht[i-6..i]) / Anzahl. Gerundet auf 1 Dezimalstelle.' } },
   ma30: { label: 'Ø 30 Tage', color: 'hsl(220, 70%, 55%)', dash: '8 4', description: { title: 'Gleitender Durchschnitt (30 Tage)', text: 'Filtert Wasser- und Verdauungsschwankungen fast komplett raus. Zeigt den echten mittelfristigen Trend.', calc: 'Gleiche Methode wie Ø 7, aber mit einem Fenster von 30 Einträgen. Braucht entsprechend mehr Daten um aussagekräftig zu sein.' } },
   regression: { label: 'Lineare Regression', color: 'hsl(30, 90%, 55%)', description: { title: 'Lineare Regression', text: 'Berechnet eine gerade „Best-Fit"-Linie durch alle Datenpunkte. Zeigt die durchschnittliche Richtung über den gesamten Zeitraum – steigt die Linie, nimmst du insgesamt zu, fällt sie, nimmst du ab.', calc: 'Least-Squares-Fit: Berechnet Steigung m = (n·ΣxY - Σx·Σy) / (n·Σx² - (Σx)²) und Achsenabschnitt b = (Σy - m·Σx) / n. Jeder Punkt liegt auf y = m·x + b.' } },
-  forecast14: { label: 'Prognose 14d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (14 Tage)', text: 'Gewichtet die letzten 30 Tage besonders stark. Der Trend wird leicht gedämpft, um zu zeigen wohin es geht wenn du so weitermachst. Die dünne Linie zeigt einen simulierten realistischen Verlauf mit deinen typischen Tagesschwankungen.', calc: 'Damped Holt-Winters mit α=0.4, β=0.2, φ=0.95. Level: L = α·y + (1-α)·(L + φ·T). Trend: T = β·(L - L_prev) + (1-β)·φ·T. Konfidenzband: ±1.96 · dailySwing · √k (max ±2.0 kg). DailySwing = RMS der täglichen Differenzen.' } },
-  forecast30: { label: 'Prognose 30d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (30 Tage)', text: 'Gleiche Methode wie die 14-Tage-Prognose, aber auf 30 Tage in die Zukunft. Die Unsicherheit wächst mit der Zeit, daher ist das Konfidenzband breiter.', calc: 'Identische Holt-Winters-Parameter (α=0.4, β=0.2, φ=0.95), nur k läuft bis 30 statt 14. Dadurch wächst das Konfidenzband auf bis zu ±2.0 kg.' } },
-  forecast60: { label: 'Prognose 60d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (60 Tage)', text: 'Langfristprognose über 2 Monate. Gleiche Methode, aber das Konfidenzband wird deutlich breiter – ideal um zu sehen wohin der aktuelle Trend langfristig führt.', calc: 'Identische Holt-Winters-Parameter (α=0.4, β=0.2, φ=0.95), k läuft bis 60. Das Konfidenzband ist breiter, bleibt aber bei max ±2.0 kg gedeckelt.' } },
+  forecast14: { label: 'Prognose 14d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (14 Tage)', text: 'Gewichtet die letzten 30 Tage besonders stark. Der Trend wird leicht gedämpft, um zu zeigen wohin es geht wenn du so weitermachst.', elements: FORECAST_ELEMENTS } },
+  forecast30: { label: 'Prognose 30d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (30 Tage)', text: 'Gleiche Methode wie die 14-Tage-Prognose, aber auf 30 Tage in die Zukunft. Die Unsicherheit wächst mit der Zeit.', elements: FORECAST_ELEMENTS } },
+  forecast60: { label: 'Prognose 60d', color: FORECAST_COLOR, dash: '6 3', description: { title: 'Holt-Winters Exponential Smoothing (60 Tage)', text: 'Langfristprognose über 2 Monate. Ideal um zu sehen wohin der aktuelle Trend langfristig führt.', elements: FORECAST_ELEMENTS } },
 };
 
 interface Props {
@@ -249,9 +271,23 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
                             <p className="text-muted-foreground text-xs">
                               {cfg.description.text}
                             </p>
-                            <p className="text-muted-foreground text-xs font-mono bg-muted/50 rounded p-1.5">
-                              {cfg.description.calc}
-                            </p>
+                            {cfg.description.calc && (
+                              <p className="text-muted-foreground text-xs font-mono bg-muted/50 rounded p-1.5">
+                                {cfg.description.calc}
+                              </p>
+                            )}
+                            {cfg.description.elements && (
+                              <div className="space-y-1.5">
+                                {cfg.description.elements.map((el) => (
+                                  <div key={el.name}>
+                                    <p className="text-xs font-semibold">{el.name}</p>
+                                    <p className="text-muted-foreground text-[10px] font-mono bg-muted/50 rounded p-1.5 leading-relaxed">
+                                      {el.formula}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </PopoverContent>
                         </Popover>
                       )}
