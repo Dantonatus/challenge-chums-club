@@ -1,41 +1,35 @@
 
 
-# Mathematische Berechnungen in die KPI-Karten-Icons
+# Prognose-Popovers: 3 separate mathematische Beschreibungen
 
-## Ziel
+## Problem
 
-Jede der 6 KPI-Karten im Gewichtsbereich bekommt ein kleines Info-Icon (wie bei den Trend-Buttons im Chart), das per Popover die mathematische Berechnung erklaert.
+Aktuell erklaert das Popover der Prognose-Buttons alles in einem Fliesstext. Der User moechte 3 klar getrennte Abschnitte fuer die 3 visuellen Elemente.
 
-## Aenderung: `src/components/weight/WeightKPICards.tsx`
-
-### Neue Imports
-- `Popover, PopoverContent, PopoverTrigger` aus `@/components/ui/popover`
-- `Info` aus `lucide-react`
+## Aenderung: `src/components/weight/WeightTerrainChart.tsx`
 
 ### Datenstruktur erweitern
 
-Jede Karte bekommt ein neues Feld `calc` mit Titel, Erklaerung und Formel:
+Die `description`-Objekte der 3 Forecast-Eintraege (`forecast14`, `forecast30`, `forecast60`) bekommen statt eines einzelnen `calc`-Strings ein neues Feld `elements` mit 3 Eintraegen:
 
-| Karte | Titel | Formel |
+| Element | Visuell | Formel |
 |---|---|---|
-| **Aktuell** | Letzter Eintrag + Wochenvergleich | Differenz zum naechstgelegenen Eintrag vor ~7 Tagen. Naechster Eintrag wird ueber minimale Zeitdifferenz bestimmt. |
-| **Trend (Oe7)** | Gleitender Durchschnitt 7 Tage | Summe(Gewicht[i-6..i]) / Anzahl. Richtung: Differenz der letzten 3 MA-Werte, Schwelle +-0.3 kg. |
-| **Volatilitaet** | Standardabweichung (14 Tage) | sigma = sqrt( Summe((y - mean)^2) / n ), letzte 14 Eintraege. |
-| **Tiefster Wert** | Minimum aller Eintraege | Einfacher linearer Scan: min(weight_kg) ueber alle Eintraege. |
-| **Hoechster Wert** | Maximum aller Eintraege | Einfacher linearer Scan: max(weight_kg) ueber alle Eintraege. |
-| **Monatl. Schnitt** | Durchschnitt des aktuellen Monats | Summe(weight_kg fuer YYYY-MM) / Anzahl. Vergleich zum Vormonat analog berechnet. |
+| **Gestrichelte Linie** | Dashed line (6 3) | Damped Holt-Winters: L = alpha * y + (1-alpha) * (L + phi * T), T = beta * (L - L_prev) + (1-beta) * phi * T. Vorhersage: P(k) = L + (Summe phi^1..k) * T. Parameter: alpha=0.4, beta=0.2, phi=0.95 |
+| **Duenne kurvige Linie** | Thin solid line | Simulated(k) = P(k) + dailySwing * sin(1.3k + cos(0.7k)). dailySwing = RMS der taeglichen Differenzen = sqrt(Summe(y_t - y_{t-1})^2 / n) |
+| **Konfidenzband** | Schattierte Flaeche | Band = P(k) +/- min(1.96 * dailySwing * sqrt(k), 2.0 kg). Waechst mit sqrt(k), gedeckelt bei +/-2.0 kg |
 
-### UI-Umsetzung
+### UI-Anpassung im Popover
 
-- Neben dem Label-Text (z.B. "Aktuell") wird ein kleines `<Info size={12} />` Icon platziert
-- Klick oeffnet ein `Popover` mit:
-  - **Titel** (fett)
-  - **Erklaerung** (text-xs, muted)
-  - **Formel** (font-mono, bg-muted/50, rounded)
-- Gleiches Design wie bei den bestehenden Trend-Button-Popovers im WeightTerrainChart
+Statt eines einzelnen `calc`-Blocks werden 3 Abschnitte gerendert, jeweils mit:
+- **Label** (fett, text-xs) -- z.B. "Gestrichelte Linie"
+- **Formel** (font-mono, bg-muted/50, rounded)
+
+Der bestehende `text`-Absatz bleibt als Einleitung erhalten. Darunter folgen die 3 Elemente als kompakte Liste.
 
 ### Technische Details
 
-- Die `cards`-Array-Definition wird um ein `calc`-Objekt pro Karte erweitert: `{ title: string; text: string; formula: string }`
-- Im Render-Loop wird nach dem Label-Span ein `Popover` mit `Info`-Icon eingefuegt
-- Keine neuen Abhaengigkeiten noetig
+- Die `description`-Typisierung wird um ein optionales `elements`-Array erweitert: `{ name: string; formula: string }[]`
+- Im Render-Code: Wenn `elements` vorhanden, wird fuer jedes Element ein kleiner Block gerendert
+- Die Aenderung betrifft nur die 3 Forecast-Configs (`forecast14`, `forecast30`, `forecast60`), alle anderen Trend-Buttons bleiben unveraendert (behalten ihr `calc`-Feld)
+- Keine neuen Abhaengigkeiten
+
