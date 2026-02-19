@@ -1,139 +1,81 @@
 
+# Learning-Modul: Sidebar + bessere Formatierung
 
-# Learning-Modul: Smart Paste Knowledge Base
+## 1. Topic-Sidebar (Desktop)
 
-## Konzept
+Statt der horizontalen Topic-Chips wird auf Desktop (ab 768px) eine vertikale Sidebar links angezeigt. Mobile bleibt bei den horizontalen Chips.
 
-Du kopierst beliebigen Text (Artikel-Auszuege, Notizen, Chat-Nachrichten, etc.) in ein grosses Textfeld und drueckst "Verarbeiten". Eine KI-Funktion analysiert den Inhalt und erstellt daraus automatisch:
+### Neue Komponente: `src/components/learning/TopicSidebar.tsx`
 
-- **Titel** (kurz, praegnant)
-- **Zusammenfassung** (2-3 Saetze)
-- **Kategorie/Topic** (aus bestehenden Topics oder Vorschlag fuer neues)
-- **Tags** (Schlagworte)
-- **Kernpunkte** (Bullet Points mit den wichtigsten Erkenntnissen)
-- **Originaltext** (bleibt vollstaendig erhalten)
+- Vertikale Liste aller Topics mit Emoji, Name und Nugget-Zaehler
+- "Alle"-Eintrag oben mit Gesamtanzahl
+- Aktives Topic wird hervorgehoben (bg-accent)
+- "+" Button zum Erstellen neuer Topics
+- Optionaler Loeschen-Button pro Topic (Icon, nur bei Hover sichtbar)
+- Suchfeld unterhalb der Topic-Liste
+- Kompakte, feste Breite (~220px)
 
-Der Originaltext geht nie verloren -- er wird gespeichert und ist jederzeit aufklappbar.
+### Layout-Aenderung: `src/pages/app/learning/LearningPage.tsx`
 
-## Benutzerfluss
+- Desktop: Zwei-Spalten-Layout mit `flex` -- Sidebar links (w-56, shrink-0), Nugget-Feed rechts (flex-1)
+- Mobile: Einspaltiges Layout mit TopicChips horizontal oben (wie bisher)
+- `useIsMobile()` Hook steuert welches Layout gerendert wird
 
-```text
-1. User oeffnet Learning-Seite
-2. Grosses Textfeld oben: "Paste deinen Inhalt hier..."
-3. User fuegt Text ein (beliebig lang)
-4. Klick auf "Verarbeiten"
-5. KI analysiert und zeigt Vorschau:
-   - Vorgeschlagener Titel
-   - Zusammenfassung
-   - Vorgeschlagenes Topic (Dropdown zum Aendern)
-   - Tags (editierbar)
-   - Kernpunkte als Liste
-6. User kann alles anpassen oder direkt "Speichern"
-7. Nugget erscheint in der Liste, schoene Karte
-```
+## 2. Bessere Originaltext-Formatierung
 
-## UI-Aufbau
+### Aenderung: `src/components/learning/NuggetCard.tsx`
 
-```text
-+----------------------------------------------------------+
-|  [Textarea: "Fuege Text, Artikel, Notizen ein..."]       |
-|  [                                                    ]   |
-|  [                                                    ]   |
-|  [Button: Verarbeiten]                                    |
-+----------------------------------------------------------+
-|  Topic-Chips: [Alle] [Ernaehrung] [Tech] [Business] ...  |
-|  [Suchfeld]                                               |
-+----------------------------------------------------------+
-|  [Nugget Card]  Titel + Zusammenfassung + Tags            |
-|    > Kernpunkte aufklappbar                               |
-|    > Originaltext aufklappbar                             |
-|  [Nugget Card]  ...                                       |
-|  [Nugget Card]  ...                                       |
-+----------------------------------------------------------+
-```
+Der Originaltext wird aktuell als roher `whitespace-pre-wrap font-mono` Block gezeigt -- das sieht bei strukturiertem Text schlecht aus.
 
-## Datenbank
+Neue Darstellung:
+- Leerzeilen werden als Absatz-Trenner erkannt
+- Zeilen die mit Aufzaehlungszeichen beginnen (-, *, >) werden als Liste gerendert
+- Zeilen die kurz sind und mit Doppelpunkt enden werden als Zwischenueberschriften (fett) dargestellt
+- Emojis und Sonderzeichen bleiben erhalten
+- Statt `font-mono` wird `font-sans` mit `text-sm leading-relaxed` verwendet
+- Behaelt `bg-muted/50 rounded-md p-4` fuer den Container
 
-### Tabelle: `learning_topics`
+Neue Hilfsfunktion `formatOriginalText(text: string)` die den Rohtext in React-Elemente umwandelt:
+- Splittet nach Doppel-Newlines in Absaetze
+- Erkennt Listen-Zeilen (beginnend mit -, *, Zahl., >)
+- Erkennt Ueberschriften-artige Zeilen (kurz, endet mit Doppelpunkt oder beginnt mit Emoji)
+- Rendert entsprechende HTML-Elemente (`<p>`, `<ul>`, `<li>`, `<strong>`)
 
-| Spalte | Typ | Default |
-|--------|-----|---------|
-| id | uuid PK | gen_random_uuid() |
-| user_id | uuid NOT NULL | |
-| name | text NOT NULL | |
-| emoji | text | |
-| color | text | '#3B82F6' |
-| sort_order | integer | 0 |
-| created_at | timestamptz | now() |
+## 3. Bessere Nugget-Karten-Struktur
 
-### Tabelle: `learning_nuggets`
+### Aenderung: `src/components/learning/NuggetCard.tsx`
 
-| Spalte | Typ | Default |
-|--------|-----|---------|
-| id | uuid PK | gen_random_uuid() |
-| user_id | uuid NOT NULL | |
-| topic_id | uuid FK | |
-| title | text NOT NULL | |
-| summary | text | KI-generierte Zusammenfassung |
-| key_points | jsonb | Array von Bullet Points |
-| content | text | Originaltext (vollstaendig) |
-| source | text | Optionale Quellenangabe |
-| tags | text[] | KI-generierte Schlagworte |
-| is_pinned | boolean | false |
-| created_at | timestamptz | now() |
-| updated_at | timestamptz | now() |
+Reihenfolge und Darstellung optimieren:
 
-Beide Tabellen: RLS mit `user_id = auth.uid()` fuer alle CRUD-Operationen.
+1. **Header**: Titel + Topic-Badge + Zeitstempel + Pin/Delete Buttons
+2. **Zusammenfassung**: Direkt unter dem Titel, etwas groesser und prominenter (`text-sm` statt muted, mit leichtem Hintergrund)
+3. **Kernpunkte**: Standardmaessig OFFEN (nicht zugeklappt) -- das ist der Hauptinhalt
+4. **Tags**: Unterhalb der Kernpunkte
+5. **Originaltext**: Aufklappbar ganz unten (bleibt Collapsible)
 
-## Edge Function: `process-learning-content`
+### Zusammenfassung-Styling
+- Bekommt einen leichten Hintergrund (`bg-primary/5 rounded-md p-3`)
+- Text in `text-sm leading-relaxed` statt `text-muted-foreground`
+- Wirkt dadurch wie ein "Abstract" ueber dem Inhalt
 
-- Empfaengt den Rohtext
-- Nutzt `LOVABLE_API_KEY` mit einem Gemini/GPT-Modell (gleiche Architektur wie `generate-recipe`)
-- Prompt: "Analysiere diesen Text und extrahiere Titel, Zusammenfassung, 3-7 Kernpunkte, Kategorie-Vorschlag, und 2-5 Tags. Antworte als JSON."
-- Gibt strukturiertes JSON zurueck
-- Der Originaltext wird NICHT an die KI-Antwort gehaengt, sondern separat im Frontend gespeichert
+## Technische Details
 
-## Neue Dateien
-
-| Datei | Zweck |
-|-------|-------|
-| `supabase/functions/process-learning-content/index.ts` | KI-Verarbeitung |
-| `src/pages/app/learning/LearningPage.tsx` | Hauptseite |
-| `src/components/learning/PasteCapture.tsx` | Grosses Textfeld + Verarbeiten-Button |
-| `src/components/learning/ProcessingPreview.tsx` | Vorschau nach KI-Analyse (editierbar) |
-| `src/components/learning/NuggetCard.tsx` | Karte fuer gespeichertes Nugget |
-| `src/components/learning/TopicChips.tsx` | Horizontale Topic-Filter |
-| `src/components/learning/NuggetDetailSheet.tsx` | Detail-Ansicht mit Originaltext |
-| `src/components/learning/CreateTopicDialog.tsx` | Neues Topic erstellen |
-| `src/hooks/useLearningTopics.ts` | CRUD fuer Topics |
-| `src/hooks/useLearningNuggets.ts` | CRUD + Suche fuer Nuggets |
-
-## Bestehende Dateien (Anpassungen)
+### Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/App.tsx` | Route `/app/learning` hinzufuegen |
-| `src/components/layout/AppLayout.tsx` | "Learning" in PRIMARY_NAV (Icon: `BookOpen`) |
+| `src/components/learning/TopicSidebar.tsx` | **Neu** -- Vertikale Topic-Navigation |
+| `src/pages/app/learning/LearningPage.tsx` | Zwei-Spalten-Layout mit Sidebar (Desktop) vs. Chips (Mobile) |
+| `src/components/learning/NuggetCard.tsx` | Formatierung Originaltext + Reihenfolge + Zusammenfassung prominent |
 
-## Nugget-Karte: Darstellung
+### formatOriginalText Logik (in NuggetCard.tsx)
 
-Jede Karte zeigt:
-- **Titel** (fett, gross)
-- **Topic-Badge** (farbig, mit Emoji)
-- **Zusammenfassung** (1-3 Zeilen, Text)
-- **Tags** als kleine Badges
-- **Zeitstempel** ("vor 2 Tagen")
-- Aufklappbar: **Kernpunkte** (Bullet-Liste)
-- Aufklappbar: **Originaltext** (grauer Hintergrund, monospace-aehnlich)
-- Pin-Icon zum Anpinnen
-
-## Features
-
-1. **Paste und Verarbeiten**: Rohtext einfuegen, KI strukturiert automatisch
-2. **Editierbare Vorschau**: Vor dem Speichern alles anpassen
-3. **Topic-Management**: Topics erstellen, Farbe/Emoji waehlen
-4. **Freitextsuche**: Durchsucht Titel, Zusammenfassung, Originaltext
-5. **Topic-Filter**: Chips oben zum schnellen Filtern
-6. **Pinning**: Wichtige Nuggets oben anpinnen
-7. **Originaltext bewahrt**: Immer aufklappbar, nichts geht verloren
-
+```text
+Input: Rohtext mit \n getrennt
+1. Split nach \n\n -> Absaetze
+2. Pro Absatz:
+   a. Wenn alle Zeilen mit -, *, oder Zahl. beginnen -> <ul><li>...</li></ul>
+   b. Wenn Zeile kurz (<80 Zeichen) und endet mit : -> <strong>Zeile</strong>
+   c. Sonst -> <p>Zeile</p>
+3. Emojis (z.B. ➡️) bleiben erhalten
+```
