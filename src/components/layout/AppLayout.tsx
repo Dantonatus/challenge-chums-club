@@ -26,14 +26,14 @@ const PRIMARY_NAV: NavItem[] = [
   { to: "/app/entry", label: "Entry" },
   { to: "/app/tasks", label: "Tasks", icon: ListTodo },
   { to: "/app/training", label: "Training", icon: Dumbbell },
+  { to: "/app/recipes", label: "Recipes", icon: UtensilsCrossed },
+  { to: "/app/planning", label: "Planung", icon: CalendarRange },
+  { to: "/app/feedback", label: "Feedback", icon: MessageSquare },
 ];
 
 const SECONDARY_NAV_BASE: NavItem[] = [
   { to: "/app/groups", label: "Groups", icon: Users },
   { to: "/app/profile", label: "Profile", icon: User },
-  { to: "/app/recipes", label: "Recipes", icon: UtensilsCrossed },
-  { to: "/app/planning", label: "Planung", icon: CalendarRange },
-  { to: "/app/feedback", label: "Feedback", icon: MessageSquare },
 ];
 
 const AppLayout = () => {
