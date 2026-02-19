@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
-import { ArrowLeft, Home, ListTodo, UtensilsCrossed, CalendarRange, MessageSquare, Dumbbell, MoreHorizontal, ShieldCheck, Users, User } from "lucide-react";
+import { ArrowLeft, Home, ListTodo, UtensilsCrossed, CalendarRange, MessageSquare, Dumbbell, MoreHorizontal, ShieldCheck, Users, User, BookOpen } from "lucide-react";
 import { MatrixDarkModeToggle } from "@/components/ui/MatrixDarkModeToggle";
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ const PRIMARY_NAV: NavItem[] = [
   { to: "/app/recipes", label: "Recipes", icon: UtensilsCrossed },
   { to: "/app/planning", label: "Planung", icon: CalendarRange },
   { to: "/app/feedback", label: "Feedback", icon: MessageSquare },
+  { to: "/app/learning", label: "Learning", icon: BookOpen },
 ];
 
 const SECONDARY_NAV_BASE: NavItem[] = [

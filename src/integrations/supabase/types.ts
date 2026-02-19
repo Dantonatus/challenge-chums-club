@@ -807,6 +807,89 @@ export type Database = {
           },
         ]
       }
+      learning_nuggets: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          is_pinned: boolean
+          key_points: Json | null
+          source: string | null
+          summary: string | null
+          tags: string[] | null
+          title: string
+          topic_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          key_points?: Json | null
+          source?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title: string
+          topic_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          key_points?: Json | null
+          source?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title?: string
+          topic_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_nuggets_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "learning_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_topics: {
+        Row: {
+          color: string
+          created_at: string
+          emoji: string | null
+          id: string
+          name: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       logs: {
         Row: {
           challenge_id: string
