@@ -1,35 +1,76 @@
 
 
-# Prognose-Popovers: 3 separate mathematische Beschreibungen
+# Hybrid Top-Nav mit "Mehr"-Menu
 
-## Problem
+## Konzept
 
-Aktuell erklaert das Popover der Prognose-Buttons alles in einem Fliesstext. Der User moechte 3 klar getrennte Abschnitte fuer die 3 visuellen Elemente.
+Die 5 wichtigsten Module bleiben als direkte Links in der Top-Leiste sichtbar. Alle weiteren Module werden in einem "Mehr..."-Dropdown am Ende zusammengefasst. Auf Mobile wird eine kompakte Bottom-Nav mit den Top-5 + Mehr-Button angezeigt.
 
-## Aenderung: `src/components/weight/WeightTerrainChart.tsx`
+## Gruppierung
 
-### Datenstruktur erweitern
+**Primaere Links (immer sichtbar):**
+1. Challenges
+2. Summary / Uebersicht
+3. Entry
+4. Tasks
+5. Training
 
-Die `description`-Objekte der 3 Forecast-Eintraege (`forecast14`, `forecast30`, `forecast60`) bekommen statt eines einzelnen `calc`-Strings ein neues Feld `elements` mit 3 Eintraegen:
+**Im "Mehr"-Dropdown:**
+- Groups
+- Profile
+- Recipes
+- Planung
+- Feedback
+- Approval (nur Admin)
 
-| Element | Visuell | Formel |
-|---|---|---|
-| **Gestrichelte Linie** | Dashed line (6 3) | Damped Holt-Winters: L = alpha * y + (1-alpha) * (L + phi * T), T = beta * (L - L_prev) + (1-beta) * phi * T. Vorhersage: P(k) = L + (Summe phi^1..k) * T. Parameter: alpha=0.4, beta=0.2, phi=0.95 |
-| **Duenne kurvige Linie** | Thin solid line | Simulated(k) = P(k) + dailySwing * sin(1.3k + cos(0.7k)). dailySwing = RMS der taeglichen Differenzen = sqrt(Summe(y_t - y_{t-1})^2 / n) |
-| **Konfidenzband** | Schattierte Flaeche | Band = P(k) +/- min(1.96 * dailySwing * sqrt(k), 2.0 kg). Waechst mit sqrt(k), gedeckelt bei +/-2.0 kg |
+## Aenderung: `src/components/layout/AppLayout.tsx`
 
-### UI-Anpassung im Popover
+### Neue Imports
+- `DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger` aus `@/components/ui/dropdown-menu`
+- `MoreHorizontal` aus `lucide-react`
+- `useIsMobile` aus `@/hooks/use-mobile`
 
-Statt eines einzelnen `calc`-Blocks werden 3 Abschnitte gerendert, jeweils mit:
-- **Label** (fett, text-xs) -- z.B. "Gestrichelte Linie"
-- **Formel** (font-mono, bg-muted/50, rounded)
+### Datenstruktur
 
-Der bestehende `text`-Absatz bleibt als Einleitung erhalten. Darunter folgen die 3 Elemente als kompakte Liste.
+Zwei Arrays definieren:
 
-### Technische Details
+```text
+PRIMARY_NAV = [
+  { to: '/app/challenges', label: 'Challenges' },
+  { to: '/app/summary',    label: 'Uebersicht' },
+  { to: '/app/entry',      label: 'Entry' },
+  { to: '/app/tasks',      label: 'Tasks',     icon: ListTodo },
+  { to: '/app/training',   label: 'Training',  icon: Dumbbell },
+]
 
-- Die `description`-Typisierung wird um ein optionales `elements`-Array erweitert: `{ name: string; formula: string }[]`
-- Im Render-Code: Wenn `elements` vorhanden, wird fuer jedes Element ein kleiner Block gerendert
-- Die Aenderung betrifft nur die 3 Forecast-Configs (`forecast14`, `forecast30`, `forecast60`), alle anderen Trend-Buttons bleiben unveraendert (behalten ihr `calc`-Feld)
-- Keine neuen Abhaengigkeiten
+SECONDARY_NAV = [
+  { to: '/app/groups',    label: 'Groups' },
+  { to: '/app/profile',   label: 'Profile' },
+  { to: '/app/recipes',   label: 'Recipes',   icon: UtensilsCrossed },
+  { to: '/app/planning',  label: 'Planung',   icon: CalendarRange },
+  { to: '/app/feedback',  label: 'Feedback',  icon: MessageSquare },
+]
+```
+
+Approval wird dynamisch in SECONDARY_NAV eingefuegt wenn `userRole === 'admin'`.
+
+### Desktop-Rendering
+
+- Die 5 PRIMARY_NAV Links werden wie bisher als `NavLink` gerendert
+- Am Ende kommt ein `DropdownMenu` mit einem "Mehr"-Button (`MoreHorizontal` Icon)
+- Das Dropdown zeigt alle SECONDARY_NAV Eintraege als `DropdownMenuItem` mit `NavLink` darin
+- Aktiver Sekundaer-Link: Der "Mehr"-Button bekommt die aktive Farbe wenn einer der Sekundaer-Routes aktiv ist
+- Dropdown bekommt `bg-popover` Hintergrund (nicht transparent) und hohen `z-50`
+
+### Mobile-Rendering
+
+- Bottom-Nav zeigt die 5 PRIMARY_NAV als Icons
+- Letzter Slot ist ein "Mehr"-Button der das gleiche Dropdown oeffnet (nach oben geoeffnet via `side="top"`)
+
+### Visuelle Details
+
+- "Mehr"-Button nutzt das gleiche `linkClass`-Styling wie die anderen Nav-Links
+- Wenn ein sekundaerer Link aktiv ist, wird der "Mehr"-Button hervorgehoben (`bg-accent`)
+- DropdownMenuContent bekommt `className="bg-popover border z-50"` fuer soliden Hintergrund
+- Jeder DropdownMenuItem zeigt Icon (falls vorhanden) + Label
 
