@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
 Antworte IMMER mit einem validen JSON-Objekt in exakt diesem Format:
 {
   "title": "Kurzer, praegnanter Titel (max 60 Zeichen)",
-  "summary": "Zusammenfassung in 2-3 Saetzen, die den Kern des Inhalts erfasst",
+  "summary": "Quintessenz in 1 knappen Satz – was ist der Kern?",
   "key_points": ["Kernpunkt 1", "Kernpunkt 2", "Kernpunkt 3"],
   "suggested_topic": "Themenvorschlag",
   "tags": ["tag1", "tag2", "tag3"]
@@ -63,7 +63,7 @@ Antworte IMMER mit einem validen JSON-Objekt in exakt diesem Format:
 
 Regeln:
 - Titel: Kurz und praegnant, beschreibt den Inhalt
-- Zusammenfassung: 2-3 Saetze, sachlich, informativ
+- Zusammenfassung: Maximal 1 knapper Satz, der die Quintessenz auf den Punkt bringt. Kein Bla-Bla, keine Einleitungen wie "Der Text erlaeutert..." – sondern direkt die Kernaussage.
 - Kernpunkte: 3-7 Bullet Points mit den wichtigsten Erkenntnissen
 - Topic: Waehle aus den bestehenden Topics wenn passend: [${topicNames.join(", ")}]. Sonst schlage ein neues vor.
 - Tags: 2-5 relevante Schlagworte (lowercase)
@@ -92,7 +92,7 @@ Regeln:
                 type: "object",
                 properties: {
                   title: { type: "string", description: "Short descriptive title" },
-                  summary: { type: "string", description: "2-3 sentence summary" },
+                  summary: { type: "string", description: "1 concise sentence capturing the quintessence" },
                   key_points: { type: "array", items: { type: "string" }, description: "3-7 key points" },
                   suggested_topic: { type: "string", description: "Topic suggestion" },
                   tags: { type: "array", items: { type: "string" }, description: "2-5 tags" },
