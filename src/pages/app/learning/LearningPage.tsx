@@ -3,9 +3,11 @@ import { PasteCapture } from "@/components/learning/PasteCapture";
 import { ProcessingPreview, ProcessedResult } from "@/components/learning/ProcessingPreview";
 import { NuggetCard } from "@/components/learning/NuggetCard";
 import { TopicChips } from "@/components/learning/TopicChips";
+import { TopicSidebar } from "@/components/learning/TopicSidebar";
 import { CreateTopicDialog } from "@/components/learning/CreateTopicDialog";
 import { useLearningTopics } from "@/hooks/useLearningTopics";
 import { useLearningNuggets } from "@/hooks/useLearningNuggets";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Input } from "@/components/ui/input";
 import { Search, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,8 +21,9 @@ export default function LearningPage() {
   const [search, setSearch] = useState("");
   const [createTopicOpen, setCreateTopicOpen] = useState(false);
   const [pendingTopicName, setPendingTopicName] = useState<string | undefined>();
+  const isMobile = useIsMobile();
 
-  const { topics, create: createTopic } = useLearningTopics();
+  const { topics, create: createTopic, remove: removeTopic } = useLearningTopics();
   const { nuggets, isLoading, create: createNugget, togglePin, remove } = useLearningNuggets(selectedTopicId, search);
 
   // Count nuggets per topic (unfiltered)
@@ -61,13 +64,10 @@ export default function LearningPage() {
   }) => {
     try {
       let topicId = data.topic_id;
-
-      // Create new topic if needed
       if (!topicId && data.new_topic_name) {
         const newTopic = await createTopic.mutateAsync({ name: data.new_topic_name });
         topicId = newTopic.id;
       }
-
       await createNugget.mutateAsync({
         title: data.title,
         summary: data.summary,
@@ -78,7 +78,6 @@ export default function LearningPage() {
         source: null,
         is_pinned: false,
       });
-
       setProcessedResult(null);
       setOriginalText("");
       toast({ title: "Gespeichert!", description: "Nugget wurde erstellt." });
@@ -91,8 +90,33 @@ export default function LearningPage() {
     createTopic.mutate(topic);
   };
 
+  const nuggetFeed = (
+    <div className="space-y-3">
+      {isLoading ? (
+        <div className="text-center py-8 text-muted-foreground">Laden...</div>
+      ) : nuggets.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">Noch keine Nuggets. Paste deinen ersten Text oben!</p>
+        </div>
+      ) : (
+        nuggets.map((nugget) => (
+          <NuggetCard
+            key={nugget.id}
+            nugget={nugget}
+            topic={topics.find((t) => t.id === nugget.topic_id)}
+            onTogglePin={(id, pinned) => togglePin.mutate({ id, is_pinned: pinned })}
+            onDelete={(id) => {
+              if (confirm("Nugget wirklich löschen?")) remove.mutate(id);
+            }}
+          />
+        ))
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-2">
         <BookOpen className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Learning</h1>
@@ -112,50 +136,48 @@ export default function LearningPage() {
         <PasteCapture onProcess={handleProcess} isProcessing={isProcessing} />
       )}
 
-      {/* Topic chips + Search */}
-      <div className="space-y-3">
-        <TopicChips
-          topics={topics}
-          selectedTopicId={selectedTopicId}
-          onSelect={setSelectedTopicId}
-          onCreateTopic={() => { setPendingTopicName(undefined); setCreateTopicOpen(true); }}
-          nuggetCounts={nuggetCounts}
-          totalCount={allNuggets.nuggets.length}
-        />
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Suche in Nuggets..."
-            className="pl-9"
+      {/* Desktop: sidebar + feed | Mobile: chips + search + feed */}
+      {isMobile ? (
+        <div className="space-y-3">
+          <TopicChips
+            topics={topics}
+            selectedTopicId={selectedTopicId}
+            onSelect={setSelectedTopicId}
+            onCreateTopic={() => { setPendingTopicName(undefined); setCreateTopicOpen(true); }}
+            nuggetCounts={nuggetCounts}
+            totalCount={allNuggets.nuggets.length}
           />
-        </div>
-      </div>
-
-      {/* Nugget list */}
-      <div className="space-y-3">
-        {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">Laden...</div>
-        ) : nuggets.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Noch keine Nuggets. Paste deinen ersten Text oben!</p>
-          </div>
-        ) : (
-          nuggets.map((nugget) => (
-            <NuggetCard
-              key={nugget.id}
-              nugget={nugget}
-              topic={topics.find((t) => t.id === nugget.topic_id)}
-              onTogglePin={(id, pinned) => togglePin.mutate({ id, is_pinned: pinned })}
-              onDelete={(id) => {
-                if (confirm("Nugget wirklich löschen?")) remove.mutate(id);
-              }}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Suche in Nuggets..."
+              className="pl-9"
             />
-          ))
-        )}
-      </div>
+          </div>
+          {nuggetFeed}
+        </div>
+      ) : (
+        <div className="flex gap-6">
+          <TopicSidebar
+            topics={topics}
+            selectedTopicId={selectedTopicId}
+            onSelect={setSelectedTopicId}
+            onCreateTopic={() => { setPendingTopicName(undefined); setCreateTopicOpen(true); }}
+            onDeleteTopic={(id) => {
+              if (confirm("Topic löschen?")) removeTopic.mutate(id);
+            }}
+            nuggetCounts={nuggetCounts}
+            totalCount={allNuggets.nuggets.length}
+            search={search}
+            onSearchChange={setSearch}
+          />
+          <div className="flex-1 min-w-0">
+            {nuggetFeed}
+          </div>
+        </div>
+      )}
 
       <CreateTopicDialog
         open={createTopicOpen}

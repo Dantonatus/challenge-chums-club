@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,72 @@ import { LearningTopic } from "@/hooks/useLearningTopics";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 
+// --- formatOriginalText helper ---
+
+function formatOriginalText(text: string): ReactNode[] {
+  const paragraphs = text.split(/\n\s*\n/);
+  const elements: ReactNode[] = [];
+
+  paragraphs.forEach((para, pi) => {
+    const lines = para.split("\n").filter((l) => l.trim() !== "");
+    if (lines.length === 0) return;
+
+    // Check if all lines are list items
+    const isListBlock = lines.every((l) =>
+      /^\s*[-*•›>]\s/.test(l) || /^\s*\d+[.)]\s/.test(l)
+    );
+
+    if (isListBlock) {
+      elements.push(
+        <ul key={`p${pi}`} className="space-y-1 pl-4 my-1.5">
+          {lines.map((l, li) => (
+            <li key={li} className="list-disc text-foreground/80">
+              {l.replace(/^\s*[-*•›>]\s*/, "").replace(/^\s*\d+[.)]\s*/, "")}
+            </li>
+          ))}
+        </ul>
+      );
+      return;
+    }
+
+    // Process lines individually
+    lines.forEach((line, li) => {
+      const trimmed = line.trim();
+
+      // Heading-like: short line ending with colon, or starts with emoji
+      if (
+        (trimmed.length < 80 && trimmed.endsWith(":")) ||
+        (trimmed.length < 80 && /^[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u.test(trimmed))
+      ) {
+        elements.push(
+          <p key={`p${pi}-${li}`} className="font-semibold text-foreground mt-2 first:mt-0">
+            {trimmed}
+          </p>
+        );
+      } else if (/^\s*[-*•›>]\s/.test(line) || /^\s*\d+[.)]\s/.test(line)) {
+        // Single list item in mixed paragraph
+        elements.push(
+          <ul key={`p${pi}-${li}`} className="pl-4 my-0.5">
+            <li className="list-disc text-foreground/80">
+              {trimmed.replace(/^[-*•›>]\s*/, "").replace(/^\d+[.)]\s*/, "")}
+            </li>
+          </ul>
+        );
+      } else {
+        elements.push(
+          <p key={`p${pi}-${li}`} className="text-foreground/80 my-1">
+            {trimmed}
+          </p>
+        );
+      }
+    });
+  });
+
+  return elements;
+}
+
+// --- NuggetCard ---
+
 interface NuggetCardProps {
   nugget: LearningNugget;
   topic?: LearningTopic;
@@ -17,7 +83,6 @@ interface NuggetCardProps {
 }
 
 export function NuggetCard({ nugget, topic, onTogglePin, onDelete }: NuggetCardProps) {
-  const [keyPointsOpen, setKeyPointsOpen] = useState(false);
   const [originalOpen, setOriginalOpen] = useState(false);
 
   const timeAgo = formatDistanceToNow(new Date(nugget.created_at), { addSuffix: true, locale: de });
@@ -62,9 +127,25 @@ export function NuggetCard({ nugget, topic, onTogglePin, onDelete }: NuggetCardP
           </div>
         </div>
 
-        {/* Summary */}
+        {/* Summary - prominent */}
         {nugget.summary && (
-          <p className="text-sm text-muted-foreground leading-relaxed">{nugget.summary}</p>
+          <div className="bg-primary/5 rounded-md p-3">
+            <p className="text-sm leading-relaxed">{nugget.summary}</p>
+          </div>
+        )}
+
+        {/* Key Points - open by default */}
+        {nugget.key_points.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">
+              Kernpunkte ({nugget.key_points.length})
+            </p>
+            <ul className="space-y-1 pl-4">
+              {nugget.key_points.map((kp, i) => (
+                <li key={i} className="text-sm list-disc text-foreground/80">{kp}</li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {/* Tags */}
@@ -78,24 +159,7 @@ export function NuggetCard({ nugget, topic, onTogglePin, onDelete }: NuggetCardP
           </div>
         )}
 
-        {/* Key Points collapsible */}
-        {nugget.key_points.length > 0 && (
-          <Collapsible open={keyPointsOpen} onOpenChange={setKeyPointsOpen}>
-            <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-              {keyPointsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-              Kernpunkte ({nugget.key_points.length})
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <ul className="space-y-1 pl-4">
-                {nugget.key_points.map((kp, i) => (
-                  <li key={i} className="text-sm list-disc text-foreground/80">{kp}</li>
-                ))}
-              </ul>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Original text collapsible */}
+        {/* Original text collapsible - formatted */}
         {nugget.content && (
           <Collapsible open={originalOpen} onOpenChange={setOriginalOpen}>
             <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
@@ -103,8 +167,8 @@ export function NuggetCard({ nugget, topic, onTogglePin, onDelete }: NuggetCardP
               Originaltext
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2">
-              <div className="bg-muted/50 rounded-md p-3 text-xs leading-relaxed whitespace-pre-wrap font-mono max-h-[300px] overflow-y-auto">
-                {nugget.content}
+              <div className="bg-muted/50 rounded-md p-4 text-sm leading-relaxed max-h-[400px] overflow-y-auto">
+                {formatOriginalText(nugget.content)}
               </div>
             </CollapsibleContent>
           </Collapsible>
