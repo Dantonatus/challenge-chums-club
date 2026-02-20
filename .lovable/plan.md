@@ -1,62 +1,32 @@
 
-# Learning-Modul: Sidebar + bessere Formatierung
+# Gewichtseintraege bearbeiten und loeschen
 
-## 1. Topic-Sidebar (Desktop)
+## Uebersicht
 
-Statt der horizontalen Topic-Chips wird auf Desktop (ab 768px) eine vertikale Sidebar links angezeigt. Mobile bleibt bei den horizontalen Chips.
+Gewichtseintraege koennen aktuell nur hinzugefuegt werden. Es fehlt die Moeglichkeit, fehlerhafte Eintraege zu korrigieren oder zu loeschen. Das wird ueber eine editierbare Eintrags-Liste und Inline-Aktionen geloest.
 
-### Neue Komponente: `src/components/learning/TopicSidebar.tsx`
+## Loesung: Weight Entry History mit Edit/Delete
 
-- Vertikale Liste aller Topics mit Emoji, Name und Nugget-Zaehler
-- "Alle"-Eintrag oben mit Gesamtanzahl
-- Aktives Topic wird hervorgehoben (bg-accent)
-- "+" Button zum Erstellen neuer Topics
-- Optionaler Loeschen-Button pro Topic (Icon, nur bei Hover sichtbar)
-- Suchfeld unterhalb der Topic-Liste
-- Kompakte, feste Breite (~220px)
+### 1. Neuer Hook: `deleteWeightEntry` Mutation in `useWeightEntries.ts`
 
-### Layout-Aenderung: `src/pages/app/learning/LearningPage.tsx`
+- Neue `deleteMutation` hinzufuegen die per `id` loescht
+- Neue `updateMutation` die per `id` Gewicht und/oder Datum aktualisiert
+- Beide invalidieren die Query-Keys `weight-entries` und `forecast-snapshots`
 
-- Desktop: Zwei-Spalten-Layout mit `flex` -- Sidebar links (w-56, shrink-0), Nugget-Feed rechts (flex-1)
-- Mobile: Einspaltiges Layout mit TopicChips horizontal oben (wie bisher)
-- `useIsMobile()` Hook steuert welches Layout gerendert wird
+### 2. Neue Komponente: `WeightEntryList.tsx`
 
-## 2. Bessere Originaltext-Formatierung
+Eine kompakte, scrollbare Liste der letzten Eintraege (neueste zuerst):
 
-### Aenderung: `src/components/learning/NuggetCard.tsx`
+- Jede Zeile zeigt: **Datum** | **Uhrzeit** | **Gewicht (kg)** | Edit-Icon | Delete-Icon
+- **Edit**: Oeffnet Inline-Edit (Input-Feld ersetzt den Gewichtswert, Enter speichert, Escape bricht ab)
+- **Delete**: Bestaetigung via AlertDialog ("Eintrag vom 15.02 loeschen?"), dann Loeschung
+- Maximal die letzten 30 Eintraege anzeigen, aeltere per "Mehr laden" nachladen
+- Kompaktes Design passend zum bestehenden Card-Stil
 
-Der Originaltext wird aktuell als roher `whitespace-pre-wrap font-mono` Block gezeigt -- das sieht bei strukturiertem Text schlecht aus.
+### 3. Integration in `WeightPage.tsx`
 
-Neue Darstellung:
-- Leerzeilen werden als Absatz-Trenner erkannt
-- Zeilen die mit Aufzaehlungszeichen beginnen (-, *, >) werden als Liste gerendert
-- Zeilen die kurz sind und mit Doppelpunkt enden werden als Zwischenueberschriften (fett) dargestellt
-- Emojis und Sonderzeichen bleiben erhalten
-- Statt `font-mono` wird `font-sans` mit `text-sm leading-relaxed` verwendet
-- Behaelt `bg-muted/50 rounded-md p-4` fuer den Container
-
-Neue Hilfsfunktion `formatOriginalText(text: string)` die den Rohtext in React-Elemente umwandelt:
-- Splittet nach Doppel-Newlines in Absaetze
-- Erkennt Listen-Zeilen (beginnend mit -, *, Zahl., >)
-- Erkennt Ueberschriften-artige Zeilen (kurz, endet mit Doppelpunkt oder beginnt mit Emoji)
-- Rendert entsprechende HTML-Elemente (`<p>`, `<ul>`, `<li>`, `<strong>`)
-
-## 3. Bessere Nugget-Karten-Struktur
-
-### Aenderung: `src/components/learning/NuggetCard.tsx`
-
-Reihenfolge und Darstellung optimieren:
-
-1. **Header**: Titel + Topic-Badge + Zeitstempel + Pin/Delete Buttons
-2. **Zusammenfassung**: Direkt unter dem Titel, etwas groesser und prominenter (`text-sm` statt muted, mit leichtem Hintergrund)
-3. **Kernpunkte**: Standardmaessig OFFEN (nicht zugeklappt) -- das ist der Hauptinhalt
-4. **Tags**: Unterhalb der Kernpunkte
-5. **Originaltext**: Aufklappbar ganz unten (bleibt Collapsible)
-
-### Zusammenfassung-Styling
-- Bekommt einen leichten Hintergrund (`bg-primary/5 rounded-md p-3`)
-- Text in `text-sm leading-relaxed` statt `text-muted-foreground`
-- Wirkt dadurch wie ein "Abstract" ueber dem Inhalt
+- `WeightEntryList` wird unterhalb der KPI-Cards und oberhalb der Heatmap eingefuegt
+- Bekommt `entries`, `onUpdate`, `onDelete` als Props
 
 ## Technische Details
 
@@ -64,18 +34,37 @@ Reihenfolge und Darstellung optimieren:
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/learning/TopicSidebar.tsx` | **Neu** -- Vertikale Topic-Navigation |
-| `src/pages/app/learning/LearningPage.tsx` | Zwei-Spalten-Layout mit Sidebar (Desktop) vs. Chips (Mobile) |
-| `src/components/learning/NuggetCard.tsx` | Formatierung Originaltext + Reihenfolge + Zusammenfassung prominent |
+| `src/hooks/useWeightEntries.ts` | `update` und `remove` Mutations hinzufuegen |
+| `src/components/weight/WeightEntryList.tsx` | **Neu** -- Editierbare Eintrags-Liste |
+| `src/pages/app/training/WeightPage.tsx` | WeightEntryList einbinden |
 
-### formatOriginalText Logik (in NuggetCard.tsx)
+### useWeightEntries Erweiterung
 
 ```text
-Input: Rohtext mit \n getrennt
-1. Split nach \n\n -> Absaetze
-2. Pro Absatz:
-   a. Wenn alle Zeilen mit -, *, oder Zahl. beginnen -> <ul><li>...</li></ul>
-   b. Wenn Zeile kurz (<80 Zeichen) und endet mit : -> <strong>Zeile</strong>
-   c. Sonst -> <p>Zeile</p>
-3. Emojis (z.B. ➡️) bleiben erhalten
+update: useMutation
+  - Input: { id: string, weight_kg: number }
+  - Supabase: .update({ weight_kg }).eq('id', id)
+  - Invalidiert weight-entries + forecast-snapshots
+
+remove: useMutation
+  - Input: { id: string }
+  - Supabase: .delete().eq('id', id)
+  - Invalidiert weight-entries + forecast-snapshots
+```
+
+### WeightEntryList Aufbau
+
+```text
++----------------------------------------------+
+| Letzte Eintraege                    [History] |
++----------------------------------------------+
+| 19.02.2026  08:15   82.3 kg    [Edit] [Del]  |
+| 18.02.2026  07:50   82.1 kg    [Edit] [Del]  |
+| 17.02.2026  08:00   82.5 kg    [Edit] [Del]  |
+| ...                                           |
+| [Mehr anzeigen]                               |
++----------------------------------------------+
+
+Edit-Modus fuer eine Zeile:
+| 18.02.2026  07:50   [___82.1___] kg  [OK] [X] |
 ```
