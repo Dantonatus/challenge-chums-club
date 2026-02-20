@@ -34,7 +34,6 @@ export function useWeightEntries() {
       if (error) throw error;
 
       // After successful upsert, save forecast snapshots
-      // Get the latest entries including the new one
       const { data: latestEntries } = await supabase
         .from('weight_entries')
         .select('*')
@@ -47,9 +46,7 @@ export function useWeightEntries() {
         const fc30 = forecast(typedEntries, 30);
         const fc60 = forecast(typedEntries, 60);
 
-        // Upsert all snapshots (overwrite same day)
         for (const [days, fc] of [[14, fc14], [30, fc30], [60, fc60]] as const) {
-          // Delete existing snapshot for same date + days
           await supabase
             .from('weight_forecast_snapshots' as any)
             .delete()
@@ -75,5 +72,33 @@ export function useWeightEntries() {
     },
   });
 
-  return { entries, isLoading, upsert };
+  const update = useMutation({
+    mutationFn: async ({ id, weight_kg }: { id: string; weight_kg: number }) => {
+      const { error } = await supabase
+        .from('weight_entries')
+        .update({ weight_kg } as any)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['weight-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['forecast-snapshots'] });
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { error } = await supabase
+        .from('weight_entries')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['weight-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['forecast-snapshots'] });
+    },
+  });
+
+  return { entries, isLoading, upsert, update, remove };
 }

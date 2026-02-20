@@ -8,9 +8,10 @@ import WeightTerrainChart from '@/components/weight/WeightTerrainChart';
 import WeightKPICards from '@/components/weight/WeightKPICards';
 import WeightHeatmapStrip from '@/components/weight/WeightHeatmapStrip';
 import MonthSummaryBar from '@/components/weight/MonthSummaryBar';
+import WeightEntryList from '@/components/weight/WeightEntryList';
 
 export default function WeightPage() {
-  const { entries, isLoading, upsert } = useWeightEntries();
+  const { entries, isLoading, upsert, update, remove } = useWeightEntries();
   const { snapshots } = useForecastSnapshots();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -62,6 +63,11 @@ export default function WeightPage() {
           {entries.length > 0 && (
             <>
               <WeightKPICards entries={entries} />
+              <WeightEntryList
+                entries={entries}
+                onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
+                onDelete={(id) => remove.mutate({ id })}
+              />
               <MonthSummaryBar entries={entries} selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} />
               <WeightTerrainChart entries={entries} selectedMonth={selectedMonth} snapshots={snapshots} />
               <WeightHeatmapStrip entries={entries} />
