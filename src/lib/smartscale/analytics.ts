@@ -77,6 +77,33 @@ export function heartRateZone(bpm: number): 'low' | 'normal' | 'elevated' {
   return 'elevated';
 }
 
+/** Daily mass breakdown (non-overlapping kg components) */
+export function dailyMassBreakdown(
+  entries: SmartScaleEntry[],
+): { date: string; label: string; fatKg: number | null; muscleKg: number | null; boneKg: number | null }[] {
+  const groups = groupByDate(entries);
+  const result: { date: string; label: string; fatKg: number | null; muscleKg: number | null; boneKg: number | null }[] = [];
+  for (const [date, group] of Object.entries(groups)) {
+    const fatVals: number[] = [];
+    const muscleVals: number[] = [];
+    const boneVals: number[] = [];
+    for (const e of group) {
+      if (e.weight_kg != null && e.fat_percent != null) fatVals.push(e.weight_kg * e.fat_percent / 100);
+      if (e.muscle_mass_kg != null) muscleVals.push(e.muscle_mass_kg);
+      if (e.bone_mass_kg != null) boneVals.push(e.bone_mass_kg);
+    }
+    const avg = (arr: number[]) => arr.length ? Math.round((arr.reduce((s, v) => s + v, 0) / arr.length) * 100) / 100 : null;
+    result.push({
+      date,
+      label: new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+      fatKg: avg(fatVals),
+      muscleKg: avg(muscleVals),
+      boneKg: avg(boneVals),
+    });
+  }
+  return result.sort((a, b) => a.date.localeCompare(b.date));
+}
+
 /** Morning vs evening comparison for a given date */
 export function morningVsEvening(
   entries: SmartScaleEntry[],
