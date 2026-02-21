@@ -1,10 +1,9 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, Minus, Activity, ArrowDown, ArrowUp, BarChart3, CalendarDays, Info } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Activity, TrendingUp, TrendingDown, Minus, BarChart3, ArrowDown, ArrowUp, CalendarDays } from 'lucide-react';
 import { weeklyChange, volatility, allTimeExtremes, monthlyAverage, trendDirection, movingAverage } from '@/lib/weight/analytics';
 import type { WeightEntry } from '@/lib/weight/types';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import KPICard, { type KPICardData } from './KPICard';
 
 interface Props {
   entries: WeightEntry[];
@@ -34,7 +33,7 @@ export default function WeightKPICards({ entries }: Props) {
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   const trendColor = trend === 'down' ? 'text-emerald-500' : trend === 'up' ? 'text-rose-400' : 'text-muted-foreground';
 
-  const cards = [
+  const cards: KPICardData[] = [
     {
       label: 'Aktuell',
       value: `${latest.weight_kg} kg`,
@@ -43,7 +42,7 @@ export default function WeightKPICards({ entries }: Props) {
       accent: 'text-primary',
       calc: {
         title: 'Letzter Eintrag + Wochenvergleich',
-        text: 'Zeigt den letzten erfassten Wert. Die Differenz wird zum nächstgelegenen Eintrag vor ca. 7 Tagen berechnet (minimale Zeitdifferenz).',
+        text: 'Zeigt den letzten erfassten Wert. Die Differenz wird zum nächstgelegenen Eintrag vor ca. 7 Tagen berechnet.',
         formula: 'Δ = weight(latest) − weight(closest to t−7d)',
       },
     },
@@ -114,28 +113,7 @@ export default function WeightKPICards({ entries }: Props) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       {cards.map(card => (
-        <Card key={card.label} className="overflow-hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <card.icon className={`h-4 w-4 ${card.accent}`} />
-              <span className="text-xs text-muted-foreground font-medium">{card.label}</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="text-muted-foreground/60 hover:text-muted-foreground transition-colors">
-                    <Info size={12} />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-3" side="top" align="start">
-                  <p className="font-semibold text-sm mb-1">{card.calc.title}</p>
-                  <p className="text-xs text-muted-foreground mb-2">{card.calc.text}</p>
-                  <pre className="text-xs font-mono bg-muted/50 rounded px-2 py-1.5 whitespace-pre-wrap">{card.calc.formula}</pre>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <p className="text-xl font-bold text-foreground">{card.value}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{card.sub}</p>
-          </CardContent>
-        </Card>
+        <KPICard key={card.label} card={card} />
       ))}
     </div>
   );

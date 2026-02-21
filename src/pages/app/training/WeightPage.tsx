@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Dumbbell, ScanLine, Scale } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
 import { useForecastSnapshots } from '@/hooks/useForecastSnapshots';
 import { useSmartScaleEntries } from '@/hooks/useSmartScaleEntries';
+import { mergeWeightSources } from '@/lib/weight/unifiedTimeline';
 import WeightInput from '@/components/weight/WeightInput';
 import WeightTerrainChart from '@/components/weight/WeightTerrainChart';
 import WeightKPICards from '@/components/weight/WeightKPICards';
@@ -24,9 +26,16 @@ export default function WeightPage() {
   const { entries: scaleEntries, isLoading: scaleLoading, bulkImport } = useSmartScaleEntries();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const pathname = location.pathname;
+  const hasScaleData = scaleEntries.length > 0;
+  const hasHRData = scaleEntries.some(e => e.heart_rate_bpm !== null);
+
+  // Unified weight timeline: manual + scale
+  const unifiedEntries = useMemo(
+    () => mergeWeightSources(entries, scaleEntries),
+    [entries, scaleEntries],
+  );
+
   const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
 
   const handleSave = async (data: { date: string; time: string; weight_kg: number }) => {
@@ -35,6 +44,7 @@ export default function WeightPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Dumbbell className="h-6 w-6 text-primary" />
@@ -54,9 +64,7 @@ export default function WeightPage() {
               <ScanLine className="h-3.5 w-3.5 inline mr-1" />
               Body Scan
             </button>
-            <button
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors bg-background text-foreground shadow-sm"
-            >
+            <button className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors bg-background text-foreground shadow-sm">
               <Scale className="h-3.5 w-3.5 inline mr-1" />
               Gewicht
             </button>
@@ -74,34 +82,85 @@ export default function WeightPage() {
         <>
           <WeightInput lastEntry={lastEntry} onSave={handleSave} isSaving={upsert.isPending} />
 
-          {/* Smart Scale Dashboard */}
-          {scaleEntries.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Smart Scale</h2>
-              <ScaleKPIStrip entries={scaleEntries} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <BodyCompositionChart entries={scaleEntries} />
-                <HeartHealthChart entries={scaleEntries} />
-                <VisceralFatChart entries={scaleEntries} />
-                <MetabolismChart entries={scaleEntries} />
-              </div>
-              <DailyComparisonCard entries={scaleEntries} />
-            </div>
-          )}
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList className="w-full justify-start overflow-x-auto">
+              <TabsTrigger value="overview" className="gap-1.5 text-xs">
+                <Activity className="h-3.5 w-3.5" />
+                Übersicht
+              </TabsTrigger>
+              {hasScaleData && (
+                <TabsTrigger value="body" className="gap-1.5 text-xs">
+                  <Scale className="h-3.5 w-3.5" />
+                  Körper
+                </TabsTrigger>
+              )}
+              {hasHRData && (
+                <TabsTrigger value="heart" className="gap-1.5 text-xs">
+                  <Heart className="h-3.5 w-3.5" />
+                  Herz
+                </TabsTrigger>
+              )}
+              {hasScaleData && (
+                <TabsTrigger value="fat" className="gap-1.5 text-xs">
+                  <Droplets className="h-3.5 w-3.5" />
+                  Fett
+                </TabsTrigger>
+              )}
+              {hasScaleData && (
+                <TabsTrigger value="metabolism" className="gap-1.5 text-xs">
+                  <Flame className="h-3.5 w-3.5" />
+                  Stoffwechsel
+                </TabsTrigger>
+              )}
+            </TabsList>
 
-          {entries.length > 0 && (
-            <>
-              <WeightKPICards entries={entries} />
-              <WeightEntryList
-                entries={entries}
-                onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
-                onDelete={(id) => remove.mutate({ id })}
-              />
-              <MonthSummaryBar entries={entries} selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} />
-              <WeightTerrainChart entries={entries} selectedMonth={selectedMonth} snapshots={snapshots} />
-              <WeightHeatmapStrip entries={entries} />
-            </>
-          )}
+            {/* Tab: Übersicht */}
+            <TabsContent value="overview" className="space-y-4">
+              {unifiedEntries.length > 0 && (
+                <>
+                  <WeightKPICards entries={unifiedEntries} />
+                  <WeightEntryList
+                    entries={unifiedEntries}
+                    onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
+                    onDelete={(id) => remove.mutate({ id })}
+                  />
+                  {hasScaleData && <DailyComparisonCard entries={scaleEntries} />}
+                  <MonthSummaryBar entries={unifiedEntries} selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} />
+                  <WeightTerrainChart entries={unifiedEntries} selectedMonth={selectedMonth} snapshots={snapshots} />
+                  <WeightHeatmapStrip entries={unifiedEntries} />
+                </>
+              )}
+            </TabsContent>
+
+            {/* Tab: Körper */}
+            {hasScaleData && (
+              <TabsContent value="body" className="space-y-4">
+                <ScaleKPIStrip entries={scaleEntries} />
+                <BodyCompositionChart entries={scaleEntries} />
+              </TabsContent>
+            )}
+
+            {/* Tab: Herz */}
+            {hasHRData && (
+              <TabsContent value="heart" className="space-y-4">
+                <HeartHealthChart entries={scaleEntries} />
+              </TabsContent>
+            )}
+
+            {/* Tab: Fett */}
+            {hasScaleData && (
+              <TabsContent value="fat" className="space-y-4">
+                <VisceralFatChart entries={scaleEntries} />
+              </TabsContent>
+            )}
+
+            {/* Tab: Stoffwechsel */}
+            {hasScaleData && (
+              <TabsContent value="metabolism" className="space-y-4">
+                <MetabolismChart entries={scaleEntries} />
+              </TabsContent>
+            )}
+          </Tabs>
         </>
       )}
     </div>
