@@ -1,59 +1,154 @@
 
 
-# Scan-Bericht Navigator mit Pfeiltasten
+# Smart Scale Dashboard -- Starfit XLS Import + Visualisierungen
 
-## Konzept
+## Ausgangslage
 
-Ein eleganter Navigator oben auf der Seite, mit dem du zwischen deinen Scan-Berichten blaettern kannst. Zwei Pfeile (links/rechts) plus Anzeige von Datum und Geraet des aktuell ausgewaehlten Scans.
+Die Starfit-Waage exportiert XLS-Dateien (trotz .csv Endung) mit 15 Metriken und mehreren Messungen pro Tag. Die aktuelle `weight_entries`-Tabelle speichert nur Gewicht mit einer Messung pro Tag. Wir brauchen eine komplett neue Datenstruktur und umfangreiche Visualisierungen.
+
+## Datenformat der Starfit-Waage
+
+Spalten aus der XLS-Datei:
+
+| Feld | Beispielwert | Einheit |
+|------|-------------|---------|
+| Zeit | 21:15 16/02/2026 | HH:MM DD/MM/YYYY |
+| Gewicht | 94.65 | kg |
+| BMI | 26.8 | - |
+| Koerperfettanteil | 20.9 | % |
+| Unterhautfett | 18.1 | % |
+| Herzfrequenz | 82 | bpm |
+| Herzindex | 2.6 | L/Min/M2 |
+| Bauchfett | 9.6 | Rating |
+| Koerperwasser | 57.1 | % |
+| Skelettmuskelanteil | 51.1 | % |
+| Muskelmasse | 71.1 | kg |
+| Knochenmasse | 3.74 | kg |
+| Protein | 18.0 | % |
+| Grundumsatz | 1986 | kcal |
+| Koerperalter | 32 | Jahre |
+
+Nicht jede Messung hat alle Werte -- manche Felder sind leer (z.B. nur HR-Messung ohne Koerperzusammensetzung).
+
+## Mehrere Messungen pro Tag
+
+- Alle Messpunkte werden einzeln gespeichert (mit Uhrzeit)
+- Trend-Charts zeigen einzelne Punkte, Tages-Durchschnitte als dickere Linie
+- KPI-Cards verwenden den jeweils letzten verfuegbaren Wert
+- Morgens- vs Abend-Vergleich wo sinnvoll (z.B. Gewicht typisch morgens leichter)
+
+## Datenbank
+
+Neue Tabelle `smart_scale_entries`:
 
 ```text
-+------------------------------------------------------------------+
-| Training   [Check-ins] [Body Scan] [Gewicht]    [#] [PDF] [CSV]  |
-+------------------------------------------------------------------+
-|         <  24.09.2022 -- InBody 770  (3 von 8)  >                |
-+------------------------------------------------------------------+
-| KPI Cards (basierend auf ausgewaehltem Scan)                      |
-| Charts (weiterhin alle Scans fuer Trends)                         |
-| Anatomie-Figur (ausgewaehlter Scan vs. vorheriger)                |
-| ...                                                               |
-+------------------------------------------------------------------+
+id              uuid PK
+user_id         uuid NOT NULL
+measured_at     timestamptz NOT NULL     -- Datum + Uhrzeit kombiniert
+weight_kg       numeric
+bmi             numeric
+fat_percent     numeric
+subcutaneous_fat_percent  numeric
+heart_rate_bpm  integer
+cardiac_index   numeric
+visceral_fat    numeric
+body_water_percent  numeric
+skeletal_muscle_percent  numeric
+muscle_mass_kg  numeric
+bone_mass_kg    numeric
+protein_percent numeric
+bmr_kcal        integer
+metabolic_age   integer
+created_at      timestamptz DEFAULT now()
+
+UNIQUE(user_id, measured_at)
 ```
 
-## Verhalten
+RLS-Policies: Standard-Pattern (user can CRUD own entries).
 
-- **Standard**: Neuester Scan ist ausgewaehlt (letzter in der Liste)
-- **Pfeil links**: Einen aelteren Scan anzeigen
-- **Pfeil rechts**: Einen neueren Scan anzeigen
-- **Betroffene Komponenten**: KPI Cards, AnatomyFigure, MetabolismCard, ScanTimeline zeigen den ausgewaehlten Scan
-- **Trend-Charts** (CompositionTrendChart, FatMuscleAreaChart, SegmentMuscle/FatChart): Zeigen weiterhin **alle Scans** fuer den Gesamttrend, aber mit einer visuellen Markierung des ausgewaehlten Datums
+## XLS Import
 
-## Technische Umsetzung
+- **Neue Dependency**: `xlsx` (SheetJS) -- parst binaere XLS/XLSX-Dateien im Browser
+- **Parser**: `src/lib/smartscale/xlsParser.ts` -- liest das Starfit-Format, extrahiert alle Zeilen, mapped deutsche Spaltenkoepfe auf DB-Felder, gibt `ParsedScaleEntry[]` zurueck
+- **Uploader-Komponente**: `src/components/smartscale/ScaleFileUploader.tsx` -- akzeptiert .xls/.xlsx/.csv, zeigt Anzahl erkannter Eintraege, bulk-upsert via Hook
+- **Hook**: `src/hooks/useSmartScaleEntries.ts` -- Query + Bulk-Import-Mutation
 
-### 1. BodyScanPage.tsx -- State + Navigator
+## Visualisierungen (5 Bereiche)
 
-- Neuer State: `selectedIndex` (default: `scans.length - 1`)
-- Neuer `selectedScan` = `scans[selectedIndex]`
-- `previousOfSelected` = `scans[selectedIndex - 1]` (fuer Diff-Berechnung)
-- Navigator-UI direkt unter der Header-Zeile: `ChevronLeft` Button, Datum + Geraet + "X von Y", `ChevronRight` Button
-- Pfeile deaktiviert am jeweiligen Ende (erster/letzter Scan)
+### 1. Koerperzusammensetzung
 
-### 2. Props anpassen
+KPI-Strip mit den aktuellsten Werten + Trend:
 
-Komponenten die aktuell `scans` bekommen und intern `latestScan()` aufrufen, erhalten zusaetzlich `selectedScan` und `previousScan`:
-- **BodyScanKPICards**: Bekommt `selectedScan` statt intern `latestScan(scans)` zu nutzen
-- **AnatomyFigure**: Bekommt `selectedScan` + `previousScan` statt intern zu berechnen
-- **MetabolismCard**: Bekommt `selectedScan`
-- **ScanTimeline**: Bekommt `selectedIndex` fuer Hervorhebung
+```text
+[ Gewicht    ] [ Koerperfett ] [ Muskelmasse ] [ Wasser  ] [ Protein ] [ BMI    ]
+  94.15 kg      20.9%           71.1 kg         57.1%       18.0%       26.8
+  -0.5 7d       -0.3% 7d       +0.2 7d         +0.1% 7d    --          -0.1 7d
+```
 
-Trend-Charts bleiben unveraendert -- sie zeigen immer alle Scans.
+Darunter ein gestackter Area-Chart: Fettmasse vs Muskelmasse vs Knochenmasse vs Rest (Wasser/Protein) ueber die Zeit. Einzelne Messpunkte als Dots, Tagesdurchschnitt als Linie.
 
-### Dateien
+### 2. Herz-Kreislauf
+
+```text
+[ Herzfrequenz ] [ Herzindex     ]
+  82 bpm          2.6 L/Min/M2
+  Ruhe: normal    Normal
+```
+
+Linien-Chart mit HR ueber Zeit (farbcodiert: gruen <70, gelb 70-90, rot >90). Zweite Y-Achse fuer Herzindex. Tageszeitliche Verteilung als Scatter-Plot (X=Uhrzeit, Y=HR, Farbe=Tag).
+
+### 3. Viszeralfett + Unterhautfett
+
+```text
+[ Bauchfett  ] [ Unterhautfett ]
+  9.6 Rating    18.1%
+  Erhoehtes R.  Trend: stabil
+```
+
+Dual-Line-Chart mit Referenzbereichen (gruen/gelb/rot Zonen fuer Viszeralfett-Rating). Unterhautfett als zweite Linie.
+
+### 4. Stoffwechsel
+
+```text
+[ Grundumsatz ] [ Koerperalter ]
+  1986 kcal      32 Jahre
+  +12 kcal 7d    vs. echt: 30
+```
+
+Trend-Chart BMR ueber Zeit. Metabolisches Alter vs echtes Alter als Vergleichsbalken.
+
+### 5. Gewichtsverlauf (erweitert)
+
+Der bestehende WeightTerrainChart wird weiterhin die manuellen `weight_entries` anzeigen. Zusaetzlich werden Smart-Scale-Gewichtswerte als Overlay eingeblendet, damit man ein vollstaendiges Bild hat. Tagesdurchschnitt-Linie glaettet die Mehrfachmessungen.
+
+## Dateien und Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/pages/app/training/BodyScanPage.tsx` | Neuer `selectedIndex` State, Navigator-UI mit Pfeilen unter dem Header, `selectedScan`/`previousScan` berechnen und an Kinder weitergeben |
-| `src/components/bodyscan/BodyScanKPICards.tsx` | Neue optionale Prop `selectedScan` -- wenn gesetzt, diesen statt `latestScan()` verwenden |
-| `src/components/bodyscan/AnatomyFigure.tsx` | Neue optionale Props `selectedScan` + `previousScan` -- wenn gesetzt, diese statt intern berechnete verwenden |
-| `src/components/bodyscan/MetabolismCard.tsx` | Neue optionale Prop `selectedScan` |
-| `src/components/bodyscan/ScanTimeline.tsx` | Neue optionale Prop `selectedIndex` fuer visuelle Hervorhebung |
+| **Neue Dateien** | |
+| `src/lib/smartscale/types.ts` | TypeScript-Interfaces fuer SmartScaleEntry + ParsedScaleEntry |
+| `src/lib/smartscale/xlsParser.ts` | XLS/XLSX Parser mit SheetJS, mapped Starfit-Spalten |
+| `src/lib/smartscale/analytics.ts` | Hilfsfunktionen: Tagesdurchschnitt, Trends, Referenzbereiche |
+| `src/hooks/useSmartScaleEntries.ts` | Query + Bulk-Upsert Hook |
+| `src/components/smartscale/ScaleFileUploader.tsx` | Upload-Button fuer XLS-Dateien |
+| `src/components/smartscale/ScaleKPIStrip.tsx` | KPI-Cards fuer alle 6 Hauptmetriken |
+| `src/components/smartscale/BodyCompositionChart.tsx` | Stacked Area: Fett/Muskel/Knochen/Wasser |
+| `src/components/smartscale/HeartHealthChart.tsx` | HR + Herzindex Dual-Axis Chart |
+| `src/components/smartscale/VisceralFatChart.tsx` | Viszeralfett + Unterhautfett mit Zonen |
+| `src/components/smartscale/MetabolismChart.tsx` | BMR-Trend + Koerperalter-Vergleich |
+| `src/components/smartscale/DailyComparisonCard.tsx` | Morgen vs Abend Gewichts-Diff |
+| **Bestehende Dateien** | |
+| `src/pages/app/training/WeightPage.tsx` | Smart-Scale-Sektionen unterhalb der bestehenden Gewichts-UI einbauen, Uploader in Header |
+| `package.json` | Dependency `xlsx` hinzufuegen |
+| **Migration** | Neue Tabelle `smart_scale_entries` mit RLS |
+
+## Reihenfolge
+
+1. DB-Migration (Tabelle + RLS)
+2. `xlsx` Dependency installieren
+3. Types + Parser + Analytics
+4. Hook
+5. Uploader-Komponente
+6. Visualisierungs-Komponenten (5 Bereiche)
+7. WeightPage Integration
 
