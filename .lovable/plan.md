@@ -1,95 +1,63 @@
 
 
-# Mehrfachmessungen pro Tag: Analytisch korrekte Darstellung
+# Zeitraum-Navigation im Uebersicht-Tab
 
-## Ausgangslage
+## Ueberblick
 
-Die Datenbank zeigt, dass es regelmaessig mehrere Messungen pro Tag gibt (bis zu 4), zu unterschiedlichen Tageszeiten:
-- 20. Feb: 08:17, 22:33, 23:16 (3 Messungen)
-- 18. Feb: 01:08, 09:03, 22:16, 22:21 (4 Messungen)
-- 17. Feb: 10:14, 14:32 (2 Messungen)
+Der Uebersicht-Tab zeigt aktuell alle Daten auf einmal. Neu wird ein Zeitraum-Umschalter (Woche / Monat / Quartal) mit Vor-/Zurueck-Navigation eingefuehrt, sodass KPIs, Eintraege, Chart und Heatmap nur den gewaehlten Zeitraum zeigen.
 
-## Fachlicher Hintergrund
-
-BIA-Messungen (Bioimpedanzanalyse) variieren stark je nach Tageszeit:
-- **Morgens nuechtern**: Niedrigstes Gewicht, hoechster Koerperfettanteil (weniger Wasser), niedrigster Wasseranteil. Dies ist der Goldstandard fuer Vergleichbarkeit.
-- **Abends**: Hoeheres Gewicht (Nahrung, Wasser), niedrigerer relativer Fettanteil, hoeherer Wasseranteil.
-- **Differenz**: 0.5-2 kg Gewicht, 1-3% Fett sind normal.
-
-Einfach den Tagesdurchschnitt zu nehmen (aktueller Ansatz) verwischt diese systematische Variation und erzeugt inkonsistente Trends.
-
-## Loesung: Tageszeit-Filter + Punktwolke
-
-### 1. Globaler Tageszeit-Filter (Segment Control)
-
-Ein Toggle-Control auf Tab-Ebene mit drei Optionen:
-
-| Option | Zeitfenster | Nutzen |
-|--------|-------------|--------|
-| Morgens | 04:00 - 11:59 | Vergleichbarste Werte (nuechtern, ausgeruht) |
-| Abends | 17:00 - 03:59 | Sehen wie sich der Tag auswirkt |
-| Alle | 00:00 - 23:59 | Gesamtbild mit Streuung |
-
-Default: **Morgens** (wissenschaftlich empfohlen)
-
-### 2. Charts: Einzelpunkte + Trendlinie
-
-Statt nur Tagesdurchschnitte zu zeigen:
-- **Punkte (Dots)**: Jede einzelne Messung als kleiner Punkt (Transparenz 50%)
-- **Linie**: Tagesdurchschnitt der gefilterten Messungen als dickere Verbindungslinie
-- So sieht man sofort die Streuung innerhalb eines Tages
-
-### 3. Betroffene Komponenten
-
-Alle Smart-Scale-Charts nutzen `dailyAverages()` aus analytics.ts. Der Filter wird dort angesetzt:
-
-| Komponente | Aenderung |
-|------------|-----------|
-| `WeightPage.tsx` | State fuer Tageszeit-Filter + Toggle-UI |
-| `analytics.ts` | Neue Funktion `filterByTimeOfDay(entries, slot)` |
-| `BodyCompositionChart.tsx` | Empfaengt gefilterte Entries |
-| `HeartHealthChart.tsx` | Empfaengt gefilterte Entries |
-| `VisceralFatChart.tsx` | Empfaengt gefilterte Entries |
-| `MetabolismChart.tsx` | Empfaengt gefilterte Entries |
-| `ScaleKPIStrip.tsx` | KPI-Werte basierend auf gefiltertem Zeitfenster |
-| `DailyComparisonCard.tsx` | Bleibt unveraendert (zeigt explizit Morgen vs Abend) |
-
-## Technische Umsetzung
-
-### A. Neue Filterfunktion in `analytics.ts`
+## UI-Design
 
 ```text
-type TimeSlot = 'morning' | 'evening' | 'all';
-
-filterByTimeOfDay(entries, slot):
-  morning: 04:00 - 11:59
-  evening: 17:00 - 03:59 (naechster Tag)
-  all: keine Filterung
+  [  <  ]   KW 8 · 17.–23. Feb 2026   [  >  ]
+         [ Woche | Monat | Quartal ]
 ```
 
-### B. Toggle-UI in `WeightPage.tsx`
+- Obere Zeile: Pfeil-Buttons links/rechts, in der Mitte das aktuelle Zeitfenster-Label
+- Untere Zeile: ToggleGroup mit drei Segmenten (Woche / Monat / Quartal)
+- "Alle"-Option bleibt ueber die bestehende MonthSummaryBar erreichbar (wird weiterhin angezeigt)
 
-Innerhalb des Tabs-Bereichs, oberhalb der Tab-Inhalte:
-- Drei Segmente: Morgens / Abends / Alle
-- Icon: Sun, Moon, Clock
-- Kompakter Style, konsistent mit bestehendem Design
-- State wird an alle Scale-Komponenten als `filteredScaleEntries` weitergereicht
+## Filterlogik
 
-### C. Chart-Anpassung (alle 4 Charts)
+| Modus | Berechnung | Label-Beispiel |
+|-------|-----------|----------------|
+| Woche | ISO-Woche (Mo-So), Offset in ganzen Wochen | KW 8 · 17.–23. Feb 2026 |
+| Monat | 1. bis letzter Tag des Monats, Offset in Monaten | Februar 2026 |
+| Quartal | 3-Monats-Bloecke (Jan-Mär, Apr-Jun, ...), Offset in Quartalen | Q1 2026 (Jan–Mär) |
 
-Die Charts erhalten bereits gefilterte Entries. Keine interne Aenderung noetig ausser dass `HeartHealthChart` bereits Einzelpunkte zeigt (gut so). Die anderen Charts nutzen `dailyAverages` auf den gefilterten Daten -- das ist korrekt, weil nach Filterung z.B. nur noch Morgen-Messungen uebrig sind.
+Standardwert: **Woche** mit aktuellem Datum als Ausgangspunkt. Vor/Zurueck verschiebt den Offset um -1/+1. "Zurueck zum Heute" ist implizit (Offset 0 = aktuelle Periode).
 
-### D. Punkt-Wolke fuer "Alle"-Modus
+## Betroffene Komponenten
 
-Im "Alle"-Modus werden Charts um eine Scatter-Schicht ergaenzt:
-- Kleine transparente Punkte fuer jede Einzelmessung
-- Dickere Linie fuer den Tagesdurchschnitt
-- So wird die Tagesvariation sichtbar
+### Neue Datei: `src/components/weight/PeriodNavigator.tsx`
 
-## Ergebnis
+Eigenstaendige Komponente mit:
+- State: `mode` ('week' | 'month' | 'quarter'), `offset` (number, 0 = aktuelle Periode)
+- Props: `onChange(startDate, endDate)` Callback
+- Berechnet Start-/Enddatum basierend auf Modus + Offset
+- Rendert ToggleGroup + Pfeil-Navigation + Label
+- Nutzt bestehende `date-fns` Funktionen und `src/lib/date.ts` Hilfsfunktionen
 
-- Nutzer waehlt "Morgens" (Default) und sieht konsistente, vergleichbare Trends
-- Nutzer waehlt "Abends" und sieht wie sich Ernaehrung/Hydration auswirkt
-- Nutzer waehlt "Alle" und sieht die volle Streuung mit Einzelpunkten
-- Die DailyComparisonCard zeigt weiterhin den direkten Morgen/Abend-Vergleich
+### Aenderung: `src/pages/app/training/WeightPage.tsx`
+
+- Neuer State: `periodStart` / `periodEnd` (Date | null)
+- PeriodNavigator wird oberhalb der Overview-Inhalte eingebaut
+- Alle Komponenten im Overview-Tab erhalten gefilterte Entries:
+  - `WeightKPICards` -- entries gefiltert auf Zeitraum
+  - `WeightEntryList` -- entries gefiltert auf Zeitraum
+  - `WeightTerrainChart` -- entries gefiltert auf Zeitraum (ersetzt `selectedMonth`)
+  - `WeightHeatmapStrip` -- entries gefiltert auf Zeitraum
+  - `MonthSummaryBar` -- wird weiterhin mit allen Entries angezeigt (Quick-Jump)
+  - `DailyComparisonCard` -- unveraendert (nutzt Scale-Daten)
+
+### Aenderung: `src/lib/weight/analytics.ts`
+
+- Neue Hilfsfunktion `filterByDateRange(entries, start, end)`: Filtert Entries auf einen Zeitraum
+
+## Technische Details
+
+- `PeriodNavigator` nutzt `startOfWeek`/`endOfWeek`, `startOfMonth`/`endOfMonth`, `startOfQuarter`/`endOfQuarter` aus date-fns
+- Wochenstart ist Montag (weekStartsOn: 1), konsistent mit `src/lib/date.ts`
+- `selectedMonth` State im WeightPage wird durch das neue `periodStart`/`periodEnd` ersetzt -- die MonthSummaryBar kann optional als Quick-Jump beibehalten werden und setzt dann den PeriodNavigator auf den entsprechenden Monat
+- Pfeil-Buttons deaktiviert wenn keine Daten in der Richtung vorhanden (fruehester/spaetester Eintrag als Grenze)
 
