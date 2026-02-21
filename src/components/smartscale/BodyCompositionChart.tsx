@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { SmartScaleEntry } from '@/lib/smartscale/types';
 import { dailyAverages } from '@/lib/smartscale/analytics';
 
@@ -42,28 +42,32 @@ export default function BodyCompositionChart({ entries }: Props) {
   if (data.length === 0) return null;
 
   return (
-    <Card className="p-4">
-      <h3 className="text-sm font-semibold mb-3">Körperzusammensetzung</h3>
-      <ResponsiveContainer width="100%" height={280}>
-        <AreaChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-          <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-          <YAxis tick={{ fontSize: 10 }} unit="%" />
-          <Tooltip
-            contentStyle={{ fontSize: 12 }}
-            formatter={(value: number, name: string) => {
-              const labels: Record<string, string> = {
-                fat: 'Körperfett', muscle: 'Skelettmuskel', water: 'Wasser', protein: 'Protein',
-              };
-              return [`${value}%`, labels[name] || name];
-            }}
-          />
-          <Area type="monotone" dataKey="muscle" stackId="1" fill="hsl(var(--primary))" stroke="hsl(var(--primary))" fillOpacity={0.6} name="muscle" />
-          <Area type="monotone" dataKey="fat" stackId="1" fill="hsl(0 70% 60%)" stroke="hsl(0 70% 60%)" fillOpacity={0.5} name="fat" />
-          <Area type="monotone" dataKey="water" stackId="1" fill="hsl(200 70% 60%)" stroke="hsl(200 70% 60%)" fillOpacity={0.4} name="water" />
-          <Area type="monotone" dataKey="protein" stackId="1" fill="hsl(45 70% 55%)" stroke="hsl(45 70% 55%)" fillOpacity={0.4} name="protein" />
-        </AreaChart>
-      </ResponsiveContainer>
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold">Körperzusammensetzung</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0 pr-4 pb-4">
+        <ResponsiveContainer width="100%" height={280}>
+          <AreaChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} unit="%" />
+            <Tooltip
+              contentStyle={{ fontSize: 12 }}
+              formatter={(value: number, name: string) => {
+                const labels: Record<string, string> = {
+                  fat: 'Körperfett', muscle: 'Skelettmuskel', water: 'Wasser', protein: 'Protein',
+                };
+                return [`${value}%`, labels[name] || name];
+              }}
+            />
+            <Area type="monotone" dataKey="muscle" stackId="1" fill="hsl(var(--primary))" stroke="hsl(var(--primary))" fillOpacity={0.6} name="muscle" />
+            <Area type="monotone" dataKey="fat" stackId="1" fill="hsl(0 70% 60%)" stroke="hsl(0 70% 60%)" fillOpacity={0.5} name="fat" />
+            <Area type="monotone" dataKey="water" stackId="1" fill="hsl(200 70% 60%)" stroke="hsl(200 70% 60%)" fillOpacity={0.4} name="water" />
+            <Area type="monotone" dataKey="protein" stackId="1" fill="hsl(45 70% 55%)" stroke="hsl(45 70% 55%)" fillOpacity={0.4} name="protein" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </CardContent>
     </Card>
   );
 }

@@ -1,21 +1,17 @@
 import { useState } from 'react';
-import { Pencil, Trash2, Check, X } from 'lucide-react';
+import { Pencil, Trash2, Check, X, Scale } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { WeightEntry } from '@/lib/weight/types';
+import type { UnifiedWeightEntry } from '@/lib/weight/unifiedTimeline';
 
 interface Props {
-  entries: WeightEntry[];
+  entries: (WeightEntry | UnifiedWeightEntry)[];
   onUpdate: (id: string, weight_kg: number) => void;
   onDelete: (id: string) => void;
 }
@@ -25,16 +21,20 @@ function formatDate(dateStr: string) {
   return `${d}.${m}.${y}`;
 }
 
+function isUnified(entry: WeightEntry | UnifiedWeightEntry): entry is UnifiedWeightEntry {
+  return 'source' in entry;
+}
+
 export default function WeightEntryList({ entries, onUpdate, onDelete }: Props) {
   const [visibleCount, setVisibleCount] = useState(30);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [deleteEntry, setDeleteEntry] = useState<WeightEntry | null>(null);
+  const [deleteEntry, setDeleteEntry] = useState<(WeightEntry | UnifiedWeightEntry) | null>(null);
 
   const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
   const visible = sorted.slice(0, visibleCount);
 
-  const startEdit = (entry: WeightEntry) => {
+  const startEdit = (entry: WeightEntry | UnifiedWeightEntry) => {
     setEditingId(entry.id);
     setEditValue(String(entry.weight_kg));
   };
@@ -57,58 +57,83 @@ export default function WeightEntryList({ entries, onUpdate, onDelete }: Props) 
       </div>
 
       <div className="divide-y divide-border max-h-[320px] overflow-y-auto">
-        {visible.map((entry) => (
-          <div
-            key={entry.id}
-            className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
-          >
-            <span className="text-muted-foreground w-20 shrink-0">{formatDate(entry.date)}</span>
-            <span className="text-muted-foreground w-12 shrink-0">{entry.time}</span>
+        {visible.map((entry) => {
+          const source = isUnified(entry) ? entry.source : 'manual';
+          const isScale = source === 'scale';
 
-            {editingId === entry.id ? (
-              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') confirmEdit();
-                    if (e.key === 'Escape') cancelEdit();
-                  }}
-                  className="h-7 w-20 text-sm"
-                  autoFocus
-                />
-                <span className="text-xs text-muted-foreground">kg</span>
-                <button onClick={confirmEdit} className="p-1 text-green-500 hover:bg-green-500/10 rounded">
-                  <Check className="h-3.5 w-3.5" />
-                </button>
-                <button onClick={cancelEdit} className="p-1 text-muted-foreground hover:bg-muted rounded">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <span className="font-medium text-foreground flex-1">{entry.weight_kg} kg</span>
-                <button
-                  onClick={() => startEdit(entry)}
-                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ opacity: undefined }}
-                  onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                  onMouseLeave={(e) => (e.currentTarget.style.opacity = '')}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => setDeleteEntry(entry)}
-                  className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </>
-            )}
-          </div>
-        ))}
+          return (
+            <div
+              key={entry.id}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
+            >
+              {/* Source icon */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="shrink-0 w-5 flex justify-center">
+                    {isScale ? (
+                      <Scale className="h-3.5 w-3.5 text-primary" />
+                    ) : (
+                      <Pencil className="h-3 w-3 text-muted-foreground/50" />
+                    )}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {isScale ? 'Smart Scale Import' : 'Manueller Eintrag'}
+                </TooltipContent>
+              </Tooltip>
+
+              <span className="text-muted-foreground w-20 shrink-0">{formatDate(entry.date)}</span>
+              <span className="text-muted-foreground w-12 shrink-0">{entry.time}</span>
+
+              {editingId === entry.id ? (
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') confirmEdit();
+                      if (e.key === 'Escape') cancelEdit();
+                    }}
+                    className="h-7 w-20 text-sm"
+                    autoFocus
+                  />
+                  <span className="text-xs text-muted-foreground">kg</span>
+                  <button onClick={confirmEdit} className="p-1 text-green-500 hover:bg-green-500/10 rounded">
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={cancelEdit} className="p-1 text-muted-foreground hover:bg-muted rounded">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <span className="font-medium text-foreground flex-1">{entry.weight_kg} kg</span>
+                  {!isScale && (
+                    <>
+                      <button
+                        onClick={() => startEdit(entry)}
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ opacity: undefined }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = '')}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteEntry(entry)}
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {sorted.length > visibleCount && (
