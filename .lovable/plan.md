@@ -1,110 +1,150 @@
 
-# Anatomische Koerperfigur -- Segment-Visualisierung
 
-## Uebersicht
+# Anatomie-Figur: Apple-Level Premium Redesign
 
-Eine interaktive SVG-Koerperfigur wird unten auf der Body Scan Seite eingefuegt. Sie zeigt die segmentale Muskel- und Fettverteilung direkt auf einer stilisierten menschlichen Silhouette -- visuell ansprechend mit Farbverlaeufen und animierten Einblendungen.
+## Problem
 
-## Design-Konzept
+Die aktuelle SVG-Figur ist primitiv -- grobe Pfade, winzige Labels die abgeschnitten werden, keine Segment-Namen sichtbar, keine Entwicklung (Diff), und insgesamt weit entfernt von professionellem Design.
 
-Eine minimalistische, symmetrische Koerper-Silhouette als SVG mit 5 Zonen:
+## Neues Konzept: HTML-First mit minimaler SVG-Silhouette
 
-- **Rumpf** (Trunk) -- Torso-Bereich
-- **Arm Links** -- linker Arm
-- **Arm Rechts** -- rechter Arm
-- **Bein Links** -- linkes Bein
-- **Bein Rechts** -- rechtes Bein
+Komplett anderer Ansatz inspiriert von Apple Health / Apple Fitness+:
 
-Jede Zone wird farblich eingefaerbt basierend auf den Werten:
-- **Muskel-Modus**: Farbintensitaet (hsl-blau/primary) skaliert mit kg-Wert relativ zum hoechsten Segment
-- **Fett-Modus**: Farbintensitaet (hsl-rot) skaliert mit %-Wert relativ zum hoechsten Segment
+### Layout-Architektur
 
-Toggle zwischen Muskel- und Fett-Ansicht oben in der Card.
-
-### Interaktion
-
-- **Hover/Tap** auf ein Segment zeigt Tooltip mit exaktem Wert + Veraenderung zum Vorscan
-- **Eintritts-Animation**: Segmente faden nacheinander ein (staggered, je 100ms versetzt) mit framer-motion
-- **Pulsierendes Gluehen** auf dem Segment mit dem hoechsten Wert
-
-### Labels
-
-Neben jedem Segment werden die Werte als kleine Labels angezeigt (z.B. "12.3 kg" oder "18.2%"), verbunden mit einer feinen Linie zum Segment. Falls keine Segment-Daten vorhanden sind, wird die gesamte Komponente nicht gerendert.
-
-## Technische Umsetzung
-
-### Neue Datei: `src/components/bodyscan/AnatomyFigure.tsx`
-
-Die Komponente besteht aus:
-
-1. **SVG Koerper-Silhouette** -- handgezeichnete Pfade fuer die 5 Zonen (symmetrisch, ca. 300x500 Viewbox)
-2. **Farb-Mapping**: Jedes Segment bekommt eine Fuellfarbe deren Opazitaet/Saettigung proportional zum relativen Wert ist
-3. **Label-Lines**: Feine SVG-Linien von jedem Segment zu einem Text-Label am Rand
-4. **Toggle**: Kleiner Button-Toggle oben ("Muskel" | "Fett") der zwischen den zwei Datensaetzen wechselt
-5. **Hover-State**: framer-motion `whileHover` fuer leichtes Scale + Tooltip
-6. **Eingangs-Animation**: `motion.path` mit `initial={{ opacity: 0 }} animate={{ opacity: 1 }}` und gestaffeltem `transition.delay`
-
-### Datenfluss
+Die gesamte Darstellung wird **HTML/CSS-basiert** mit einer kleinen, eleganten SVG-Silhouette nur als visueller Anker in der Mitte. Alle Daten leben in sauber gestalteten HTML-Karten.
 
 ```text
-Props: { scans: BodyScan[] }
-
-1. latestScan(scans) -> segments_json
-2. previousScan(scans) -> segments_json (fuer Diff)
-3. Falls segments_json === null -> return null
-4. mode state: "muscle" | "fat"
-5. Werte je nach mode aus segments_json.muscle oder segments_json.fat
-6. Relative Intensitaet = wert / max(alle 5 segmente)
-7. Diff = aktuell - vorher (anzeigen als +/- im Tooltip)
++------------------------------------------------------------------+
+| Koerperanalyse                               [Muskel] [Fett]     |
++------------------------------------------------------------------+
+|                                                                    |
+|  +-- Arm L -------+                      +-- Arm R -------+      |
+|  | Linker Arm     |                      | Rechter Arm    |      |
+|  | 1.0 kg         |     +---------+      | 4.4 kg         |      |
+|  | [======--] 14% |     |         |      | [========] 61% |      |
+|  | +0.1           |     |  Human  |      | -0.2           |      |
+|  +-----------------+     | Figure  |      +-----------------+     |
+|                          | (SVG)   |                              |
+|  +-- Bein L ------+     |         |      +-- Bein R ------+      |
+|  | Linkes Bein    |     |         |      | Rechtes Bein   |      |
+|  | 5.0 kg         |     +---------+      | 11.7 kg        |      |
+|  | [========-] 69%|                      | [=========] 100|      |
+|  | -0.2           |    +-- Rumpf --+     | +0.5           |      |
+|  +-----------------+    | Rumpf    |     +-----------------+      |
+|                         | 38.5 kg  |                              |
+|                         | [====] 100%                             |
+|                         | +0.3     |                              |
+|                         +----------+                              |
++------------------------------------------------------------------+
 ```
 
-### SVG-Aufbau (Vereinfacht)
+### SVG-Silhouette: Minimalistisch und edel
 
-```text
-viewBox="0 0 300 500"
+- **Nur Outline** -- keine gefuellten Flaechen im SVG selbst
+- Elegante, duenne Linien (1-1.5px) in `muted-foreground` mit niedriger Opazitaet
+- Anatomisch proportionale Bezier-Kurven: natuerliche Schultern, Taille, Hueften
+- Segmente werden durch **subtile Gradient-Fills** hervorgehoben -- radiale Gradients die von innen nach aussen ausstrahlen
+- Segment-Grenzen sind **unsichtbar** -- die Figur wirkt als Ganzes, die Farbe "fliesst" in die Bereiche
+- Kopf als perfekter Kreis, Hals als sanfte Verjuengung
 
-Kopf:      Kreis bei (150, 40) r=25     -- nur Silhouette, keine Daten
-Rumpf:     Rechteck/Pfad (100-200, 80-250)
-Arm L:     Pfad links (40-100, 100-260)
-Arm R:     Pfad rechts (200-260, 100-260)
-Bein L:    Pfad links (95-145, 260-480)
-Bein R:    Pfad rechts (155-205, 260-480)
+### SegmentInfoCard -- Glassmorphism-Karten
 
-Labels:    Text-Elemente mit Connector-Lines
-           Links:  Arm L (x=10), Bein L (x=10)
-           Rechts: Arm R (x=290), Bein R (x=290)
-           Mitte:  Rumpf (x=150, y=170)
-```
+Jede Karte zeigt:
+1. **Segment-Name** (z.B. "Linker Arm") -- `text-xs text-muted-foreground uppercase tracking-wider`
+2. **Wert** gross und klar -- `text-xl font-semibold` mit Einheit in `text-muted-foreground`
+3. **Relativer Fortschrittsbalken** -- duenner, abgerundeter Balken mit Gradient-Fill, Breite = `wert / maxWert * 100%`
+4. **Diff-Badge** -- Kleiner Pfeil + Wert, gruen (Muskel+/Fett-) oder rot (Muskel-/Fett+), mit `text-xs`
 
-### Farbschema
+Karten-Stil:
+- `backdrop-blur-xl bg-card/60 border border-border/50 rounded-2xl`
+- Hover: `scale-[1.02]` + leicht erhoehte Border-Opazitaet
+- Schatten: `shadow-sm` im Light Mode, kein Schatten im Dark Mode
+
+### Animationen (framer-motion)
+
+1. **Silhouette**: Fade-in mit `opacity: 0 -> 1` ueber 600ms
+2. **Segment-Fills**: Staggered von Kopf nach Fuss (0, 100, 200, 300, 400ms)
+3. **Info-Cards**: Slide-in von links/rechts mit leichtem Spring-Effekt (`type: "spring", stiffness: 200, damping: 20`)
+4. **Mode-Toggle**: Farben morphen smooth via `animate` key change -- kein harter Schnitt
+5. **Hoechstes Segment**: Subtiler aeusserer Glow-Pulse (3s Zyklus, sehr dezent)
+6. **Progress-Balken**: Breite animiert von 0% zum Zielwert ueber 800ms mit `ease-out`
+
+### Responsive
+
+- **Desktop (>= 768px)**: CSS Grid mit `grid-template-areas` -- Arms links/rechts, Figur mittig, Beine unten links/rechts, Rumpf unten mittig
+- **Mobile (< 768px)**: Figur oben zentriert (kleiner), alle 5 Cards als vertikale Liste darunter
+
+### Farbsystem
 
 ```text
 Muskel-Modus:
-  Basis: hsl(210 70% 55%)  -- Blau
-  Opazitaet: 0.3 + 0.7 * (wert / maxWert)
-  Hoechstes Segment: zusaetzlich pulsierender Glow-Filter
+  Gradient: hsl(210 85% 60%) -> hsl(210 70% 45%) radial
+  Opazitaet: 0.2 + 0.8 * intensity
+  Progress-Bar: bg-gradient von hsl(210 80% 55%) zu hsl(210 90% 70%)
 
 Fett-Modus:
-  Basis: hsl(0 60% 55%)    -- Rot
-  Opazitaet: 0.3 + 0.7 * (wert / maxWert)
-  Hoechstes Segment: pulsierender Glow-Filter
+  Gradient: hsl(0 75% 58%) -> hsl(0 60% 45%) radial
+  Opazitaet: 0.2 + 0.8 * intensity
+  Progress-Bar: bg-gradient von hsl(0 70% 55%) zu hsl(0 80% 68%)
+
+Hoechstes Segment: Zusaetzlicher SVG feGaussianBlur Glow-Filter
 ```
 
-### Integration in BodyScanPage.tsx
+## Technische Umsetzung
 
-- Neue Ref `anatomyRef` fuer PDF-Export
-- Neue Section in pdfSections: `{ label: 'Anatomie', ref: anatomyRef }`
-- Platzierung: nach der Segment-Analyse (nach segmentsRef), vor Stoffwechsel
-- Wird auch in den PDF-Export einbezogen
+### Datei: `src/components/bodyscan/AnatomyFigure.tsx` (Komplett neu)
+
+**Komponenten-Struktur:**
+
+```text
+AnatomyFigure ({ scans })
+  |-- Card mit CardHeader (Titel + Mode-Toggle)
+  |-- CardContent
+       |-- Desktop: CSS Grid Container
+       |    |-- SegmentCard "Linker Arm" (grid-area: armL)
+       |    |-- SegmentCard "Rechter Arm" (grid-area: armR)
+       |    |-- SVG Silhouette (grid-area: figure, row-span)
+       |    |-- SegmentCard "Linkes Bein" (grid-area: legL)
+       |    |-- SegmentCard "Rechtes Bein" (grid-area: legR)
+       |    |-- SegmentCard "Rumpf" (grid-area: trunk)
+       |
+       |-- Mobile: Figur + gestackte Card-Liste
+
+SegmentCard ({ name, value, unit, intensity, diff, mode, delay, isHighest })
+  |-- motion.div (entry-animation)
+       |-- Segment-Name (uppercase, tracking-wide)
+       |-- Wert + Einheit
+       |-- Progress-Bar (animierte Breite)
+       |-- Diff-Badge (optional, farbig)
+```
+
+**SVG-Silhouette (200x400 viewBox):**
+
+- Kopf: Perfekter Kreis `(100, 28) r=18`
+- Hals: Sanfte Trapezform
+- Schultern: Natuerliche Bezier-Kurven
+- Torso: Leichte Taillierung
+- Arme: Anatomisch korrekt, leicht gebeugt
+- Beine: Natuerliche Form mit Knie-Andeutung
+- Fuesse: Minimale Andeutung
+
+Jedes Segment bekommt:
+- `<radialGradient>` mit dynamischer Farbe + Opazitaet basierend auf Mode und Intensitaet
+- Smooth-animierte Fill-Farbe beim Mode-Wechsel
+- Hover: Leichtes Aufhellen (+10% Lightness)
+
+**Datenfluss (unveraendert):**
+- `latestScan(scans)` fuer aktuelle Werte
+- `previousScan(scans)` fuer Diff-Berechnung
+- `segments_json === null` -> return null
+- Relative Intensitaet = `wert / max(alle 5)`
 
 ## Dateien
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/bodyscan/AnatomyFigure.tsx` | **Neu** -- SVG Koerperfigur mit Segment-Overlay |
-| `src/pages/app/training/BodyScanPage.tsx` | Import + Einbindung + PDF-Ref |
+| `src/components/bodyscan/AnatomyFigure.tsx` | Komplett neu: HTML/CSS Grid Layout, Glassmorphism SegmentCards mit Name/Wert/Progress/Diff, elegante SVG-Silhouette mit radialen Gradients, staggered Spring-Animationen, responsive Desktop/Mobile |
 
-## Abhaengigkeiten
+Keine weiteren Dateien betroffen -- die Integration in BodyScanPage.tsx ist bereits korrekt.
 
-- `framer-motion` (bereits installiert) -- fuer Einblend-Animationen und Hover-Effekte
-- Kein neues Package noetig
