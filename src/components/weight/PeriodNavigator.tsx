@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-export type PeriodMode = 'week' | 'month' | 'quarter' | 'year';
+export type PeriodMode = 'week' | 'month' | 'quarter' | 'year' | 'all';
 
 interface Props {
   onChange: (start: Date, end: Date) => void;
@@ -32,6 +32,9 @@ function computeRange(mode: PeriodMode, offset: number) {
     const base = addQuarters(today, offset);
     return { start: startOfQuarter(base), end: endOfQuarter(base) };
   }
+  if (mode === 'all') {
+    return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31) };
+  }
   const base = addYears(today, offset);
   return { start: startOfYear(base), end: endOfYear(base) };
 }
@@ -51,8 +54,8 @@ function buildLabel(mode: PeriodMode, start: Date, end: Date) {
   return `${start.getFullYear()}`;
 }
 
-const ALL_MODES: PeriodMode[] = ['week', 'month', 'quarter', 'year'];
-const MODE_LABELS: Record<PeriodMode, string> = { week: 'Woche', month: 'Monat', quarter: 'Quartal', year: 'Jahr' };
+const ALL_MODES: PeriodMode[] = ['week', 'month', 'quarter', 'year', 'all'];
+const MODE_LABELS: Record<PeriodMode, string> = { week: 'Woche', month: 'Monat', quarter: 'Quartal', year: 'Jahr', all: 'Alle' };
 
 export default function PeriodNavigator({ onChange, modes = ALL_MODES, defaultMode }: Props) {
   const availableModes = modes.length > 0 ? modes : ALL_MODES;
@@ -76,23 +79,25 @@ export default function PeriodNavigator({ onChange, modes = ALL_MODES, defaultMo
 
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOffset(o => o - 1)}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="text-sm font-medium min-w-[200px] text-center">
-          {buildLabel(mode, start, end)}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          disabled={offset >= 0}
-          onClick={() => setOffset(o => o + 1)}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+      {mode !== 'all' && (
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOffset(o => o - 1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-medium min-w-[200px] text-center">
+            {buildLabel(mode, start, end)}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            disabled={offset >= 0}
+            onClick={() => setOffset(o => o + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
       <ToggleGroup
         type="single"
         value={mode}
