@@ -152,7 +152,7 @@ export default function BodyScanPage() {
 
       {/* Period Navigator */}
       {scans.length > 0 && (
-        <PeriodNavigator onChange={handlePeriodChange} modes={['month', 'quarter', 'year']} defaultMode="month" />
+        <PeriodNavigator onChange={handlePeriodChange} modes={['month', 'quarter', 'year', 'all']} defaultMode="month" />
       )}
 
       {/* Scan Navigator */}
