@@ -3,16 +3,25 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Dumbbell, ScanLine, Scale } from 'lucide-react';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
 import { useForecastSnapshots } from '@/hooks/useForecastSnapshots';
+import { useSmartScaleEntries } from '@/hooks/useSmartScaleEntries';
 import WeightInput from '@/components/weight/WeightInput';
 import WeightTerrainChart from '@/components/weight/WeightTerrainChart';
 import WeightKPICards from '@/components/weight/WeightKPICards';
 import WeightHeatmapStrip from '@/components/weight/WeightHeatmapStrip';
 import MonthSummaryBar from '@/components/weight/MonthSummaryBar';
 import WeightEntryList from '@/components/weight/WeightEntryList';
+import ScaleFileUploader from '@/components/smartscale/ScaleFileUploader';
+import ScaleKPIStrip from '@/components/smartscale/ScaleKPIStrip';
+import BodyCompositionChart from '@/components/smartscale/BodyCompositionChart';
+import HeartHealthChart from '@/components/smartscale/HeartHealthChart';
+import VisceralFatChart from '@/components/smartscale/VisceralFatChart';
+import MetabolismChart from '@/components/smartscale/MetabolismChart';
+import DailyComparisonCard from '@/components/smartscale/DailyComparisonCard';
 
 export default function WeightPage() {
   const { entries, isLoading, upsert, update, remove } = useWeightEntries();
   const { snapshots } = useForecastSnapshots();
+  const { entries: scaleEntries, isLoading: scaleLoading, bulkImport } = useSmartScaleEntries();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,13 +62,33 @@ export default function WeightPage() {
             </button>
           </div>
         </div>
+        <ScaleFileUploader
+          onImport={(parsed) => bulkImport.mutateAsync(parsed)}
+          isLoading={bulkImport.isPending}
+        />
       </div>
 
-      {isLoading ? (
+      {isLoading || scaleLoading ? (
         <div className="text-muted-foreground text-center py-12">Lade Daten…</div>
       ) : (
         <>
           <WeightInput lastEntry={lastEntry} onSave={handleSave} isSaving={upsert.isPending} />
+
+          {/* Smart Scale Dashboard */}
+          {scaleEntries.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold">Smart Scale</h2>
+              <ScaleKPIStrip entries={scaleEntries} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <BodyCompositionChart entries={scaleEntries} />
+                <HeartHealthChart entries={scaleEntries} />
+                <VisceralFatChart entries={scaleEntries} />
+                <MetabolismChart entries={scaleEntries} />
+              </div>
+              <DailyComparisonCard entries={scaleEntries} />
+            </div>
+          )}
+
           {entries.length > 0 && (
             <>
               <WeightKPICards entries={entries} />
