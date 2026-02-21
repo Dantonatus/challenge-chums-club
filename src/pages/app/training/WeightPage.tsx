@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity } from 'lucide-react';
+import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
 import { useForecastSnapshots } from '@/hooks/useForecastSnapshots';
 import { useSmartScaleEntries } from '@/hooks/useSmartScaleEntries';
 import { mergeWeightSources } from '@/lib/weight/unifiedTimeline';
+import { filterByTimeOfDay, type TimeSlot } from '@/lib/smartscale/analytics';
 import WeightInput from '@/components/weight/WeightInput';
 import WeightTerrainChart from '@/components/weight/WeightTerrainChart';
 import WeightKPICards from '@/components/weight/WeightKPICards';
@@ -25,7 +27,13 @@ export default function WeightPage() {
   const { snapshots } = useForecastSnapshots();
   const { entries: scaleEntries, isLoading: scaleLoading, bulkImport } = useSmartScaleEntries();
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [timeSlot, setTimeSlot] = useState<TimeSlot>('morning');
   const navigate = useNavigate();
+
+  const filteredScaleEntries = useMemo(
+    () => filterByTimeOfDay(scaleEntries, timeSlot),
+    [scaleEntries, timeSlot],
+  );
 
   const hasScaleData = scaleEntries.length > 0;
   const hasHRData = scaleEntries.some(e => e.heart_rate_bpm !== null);
@@ -83,36 +91,61 @@ export default function WeightPage() {
           <WeightInput lastEntry={lastEntry} onSave={handleSave} isSaving={upsert.isPending} />
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="w-full justify-start overflow-x-auto">
-              <TabsTrigger value="overview" className="gap-1.5 text-xs">
-                <Activity className="h-3.5 w-3.5" />
-                Übersicht
-              </TabsTrigger>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <TabsList className="justify-start overflow-x-auto">
+                <TabsTrigger value="overview" className="gap-1.5 text-xs">
+                  <Activity className="h-3.5 w-3.5" />
+                  Übersicht
+                </TabsTrigger>
+                {hasScaleData && (
+                  <TabsTrigger value="body" className="gap-1.5 text-xs">
+                    <Scale className="h-3.5 w-3.5" />
+                    Körper
+                  </TabsTrigger>
+                )}
+                {hasHRData && (
+                  <TabsTrigger value="heart" className="gap-1.5 text-xs">
+                    <Heart className="h-3.5 w-3.5" />
+                    Herz
+                  </TabsTrigger>
+                )}
+                {hasScaleData && (
+                  <TabsTrigger value="fat" className="gap-1.5 text-xs">
+                    <Droplets className="h-3.5 w-3.5" />
+                    Fett
+                  </TabsTrigger>
+                )}
+                {hasScaleData && (
+                  <TabsTrigger value="metabolism" className="gap-1.5 text-xs">
+                    <Flame className="h-3.5 w-3.5" />
+                    Stoffwechsel
+                  </TabsTrigger>
+                )}
+              </TabsList>
+
               {hasScaleData && (
-                <TabsTrigger value="body" className="gap-1.5 text-xs">
-                  <Scale className="h-3.5 w-3.5" />
-                  Körper
-                </TabsTrigger>
+                <ToggleGroup
+                  type="single"
+                  value={timeSlot}
+                  onValueChange={(v) => { if (v) setTimeSlot(v as TimeSlot); }}
+                  size="sm"
+                  className="bg-muted rounded-lg p-0.5"
+                >
+                  <ToggleGroupItem value="morning" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+                    <Sun className="h-3 w-3" />
+                    Morgens
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="evening" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+                    <Moon className="h-3 w-3" />
+                    Abends
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="all" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+                    <Clock className="h-3 w-3" />
+                    Alle
+                  </ToggleGroupItem>
+                </ToggleGroup>
               )}
-              {hasHRData && (
-                <TabsTrigger value="heart" className="gap-1.5 text-xs">
-                  <Heart className="h-3.5 w-3.5" />
-                  Herz
-                </TabsTrigger>
-              )}
-              {hasScaleData && (
-                <TabsTrigger value="fat" className="gap-1.5 text-xs">
-                  <Droplets className="h-3.5 w-3.5" />
-                  Fett
-                </TabsTrigger>
-              )}
-              {hasScaleData && (
-                <TabsTrigger value="metabolism" className="gap-1.5 text-xs">
-                  <Flame className="h-3.5 w-3.5" />
-                  Stoffwechsel
-                </TabsTrigger>
-              )}
-            </TabsList>
+            </div>
 
             {/* Tab: Übersicht */}
             <TabsContent value="overview" className="space-y-4">
@@ -135,29 +168,29 @@ export default function WeightPage() {
             {/* Tab: Körper */}
             {hasScaleData && (
               <TabsContent value="body" className="space-y-4">
-                <ScaleKPIStrip entries={scaleEntries} />
-                <BodyCompositionChart entries={scaleEntries} />
+                <ScaleKPIStrip entries={filteredScaleEntries} />
+                <BodyCompositionChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
 
             {/* Tab: Herz */}
             {hasHRData && (
               <TabsContent value="heart" className="space-y-4">
-                <HeartHealthChart entries={scaleEntries} />
+                <HeartHealthChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
 
             {/* Tab: Fett */}
             {hasScaleData && (
               <TabsContent value="fat" className="space-y-4">
-                <VisceralFatChart entries={scaleEntries} />
+                <VisceralFatChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
 
             {/* Tab: Stoffwechsel */}
             {hasScaleData && (
               <TabsContent value="metabolism" className="space-y-4">
-                <MetabolismChart entries={scaleEntries} />
+                <MetabolismChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
           </Tabs>

@@ -1,5 +1,18 @@
 import type { SmartScaleEntry } from './types';
 
+export type TimeSlot = 'morning' | 'evening' | 'all';
+
+/** Filter entries by time-of-day slot */
+export function filterByTimeOfDay(entries: SmartScaleEntry[], slot: TimeSlot): SmartScaleEntry[] {
+  if (slot === 'all') return entries;
+  return entries.filter(e => {
+    const hour = parseInt(e.measured_at.slice(11, 13), 10);
+    if (slot === 'morning') return hour >= 4 && hour < 12;
+    // evening: 17-23 or 0-3
+    return hour >= 17 || hour < 4;
+  });
+}
+
 /** Group entries by date (YYYY-MM-DD) */
 export function groupByDate(entries: SmartScaleEntry[]): Record<string, SmartScaleEntry[]> {
   const groups: Record<string, SmartScaleEntry[]> = {};
