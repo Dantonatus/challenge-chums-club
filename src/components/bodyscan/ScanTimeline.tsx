@@ -3,9 +3,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
 import type { BodyScan } from '@/lib/bodyscan/types';
 
-interface Props { scans: BodyScan[] }
+interface Props {
+  scans: BodyScan[];
+  selectedIndex?: number;
+  onSelectIndex?: (index: number) => void;
+}
 
-export default function ScanTimeline({ scans }: Props) {
+export default function ScanTimeline({ scans, selectedIndex, onSelectIndex }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const reversed = [...scans].reverse();
 
@@ -16,13 +20,20 @@ export default function ScanTimeline({ scans }: Props) {
       <CardContent className="p-4">
         <h3 className="text-sm font-semibold mb-4">Scan-Übersicht ({scans.length} Scans)</h3>
         <div className="space-y-2">
-          {reversed.map(scan => {
+          {reversed.map((scan, revIdx) => {
             const isExpanded = expandedId === scan.id;
+            const originalIndex = scans.length - 1 - revIdx;
+            const isSelected = selectedIndex !== undefined && originalIndex === selectedIndex;
             return (
               <div
                 key={scan.id}
-                className="border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => setExpandedId(isExpanded ? null : scan.id)}
+                className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                  isSelected ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                }`}
+                onClick={() => {
+                  if (onSelectIndex) onSelectIndex(originalIndex);
+                  setExpandedId(isExpanded ? null : scan.id);
+                }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

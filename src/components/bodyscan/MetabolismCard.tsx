@@ -3,10 +3,10 @@ import { Flame, Droplets, Activity } from 'lucide-react';
 import type { BodyScan } from '@/lib/bodyscan/types';
 import { latestScan } from '@/lib/bodyscan/analytics';
 
-interface Props { scans: BodyScan[] }
+interface Props { scans: BodyScan[]; selectedScan?: BodyScan | null }
 
-export default function MetabolismCard({ scans }: Props) {
-  const latest = latestScan(scans);
+export default function MetabolismCard({ scans, selectedScan }: Props) {
+  const latest = selectedScan ?? latestScan(scans);
   if (!latest) return null;
 
   const items = [

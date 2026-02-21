@@ -274,12 +274,20 @@ const SEGMENT_LABELS: Record<string, string> = {
 
 /* ─── Main Component ─── */
 
-export default function AnatomyFigure({ scans }: { scans: BodyScan[] }) {
+export default function AnatomyFigure({
+  scans,
+  selectedScan,
+  previousScan: previousScanProp,
+}: {
+  scans: BodyScan[];
+  selectedScan?: BodyScan | null;
+  previousScan?: BodyScan | null;
+}) {
   const [mode, setMode] = useState<Mode>('muscle');
   const isMobile = useIsMobile();
 
-  const latest = latestScan(scans);
-  const previous = previousScan(scans);
+  const latest = selectedScan ?? latestScan(scans);
+  const previous = previousScanProp !== undefined ? previousScanProp : previousScan(scans);
 
   const segments = latest?.segments_json;
   const prevSegments = previous?.segments_json;
