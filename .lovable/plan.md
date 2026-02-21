@@ -1,87 +1,95 @@
 
 
-# Fix: Koerperzusammensetzung -- fachlich korrekte Darstellung
+# Mehrfachmessungen pro Tag: Analytisch korrekte Darstellung
 
-## Problem
+## Ausgangslage
 
-Der aktuelle Stacked Area Chart addiert vier Prozentwerte, die sich gegenseitig ueberlappen:
+Die Datenbank zeigt, dass es regelmaessig mehrere Messungen pro Tag gibt (bis zu 4), zu unterschiedlichen Tageszeiten:
+- 20. Feb: 08:17, 22:33, 23:16 (3 Messungen)
+- 18. Feb: 01:08, 09:03, 22:16, 22:21 (4 Messungen)
+- 17. Feb: 10:14, 14:32 (2 Messungen)
 
-- **Koerperwasser (57%)** -- verteilt sich auf Muskeln, Organe, Blut, Haut
-- **Skelettmuskel (51%)** -- enthaelt Wasser und Protein
-- **Protein (18%)** -- ist Bestandteil der Muskelmasse
-- **Koerperfett (21%)** -- relativ eigenstaendig, enthaelt aber auch etwas Wasser
+## Fachlicher Hintergrund
 
-Summe = ~147%. Ein Stacked Chart suggeriert, dass die Werte zusammen 100% ergeben -- das ist falsch.
+BIA-Messungen (Bioimpedanzanalyse) variieren stark je nach Tageszeit:
+- **Morgens nuechtern**: Niedrigstes Gewicht, hoechster Koerperfettanteil (weniger Wasser), niedrigster Wasseranteil. Dies ist der Goldstandard fuer Vergleichbarkeit.
+- **Abends**: Hoeheres Gewicht (Nahrung, Wasser), niedrigerer relativer Fettanteil, hoeherer Wasseranteil.
+- **Differenz**: 0.5-2 kg Gewicht, 1-3% Fett sind normal.
 
-## Fachlicher Hintergrund (Bioimpedanzanalyse)
+Einfach den Tagesdurchschnitt zu nehmen (aktueller Ansatz) verwischt diese systematische Variation und erzeugt inkonsistente Trends.
 
-Bei BIA-Waagen wie der Starfit gibt es zwei sinnvolle Betrachtungsebenen:
+## Loesung: Tageszeit-Filter + Punktwolke
 
-### 1. Koerpermasse-Aufteilung (kg, addiert sich zum Koerpergewicht)
+### 1. Globaler Tageszeit-Filter (Segment Control)
 
-```text
-Koerpergewicht (94.15 kg)
-  = Fettmasse  +  Muskelmasse  +  Knochenmasse  +  Rest (Organe, Blut)
-  = ~19.6 kg   +  70.88 kg     +  3.73 kg       +  ~0 kg
-```
+Ein Toggle-Control auf Tab-Ebene mit drei Optionen:
 
-Diese Werte sind nicht-ueberlappend und summieren sich zum Gesamtgewicht.
+| Option | Zeitfenster | Nutzen |
+|--------|-------------|--------|
+| Morgens | 04:00 - 11:59 | Vergleichbarste Werte (nuechtern, ausgeruht) |
+| Abends | 17:00 - 03:59 | Sehen wie sich der Tag auswirkt |
+| Alle | 00:00 - 23:59 | Gesamtbild mit Streuung |
 
-### 2. Unabhaengige Prozentwerte (jeweils eigene Skala)
+Default: **Morgens** (wissenschaftlich empfohlen)
 
-Fett%, Muskel%, Wasser%, Protein% sind eigenstaendige Metriken mit eigenen Referenzbereichen. Sie duerfen nebeneinander, aber NICHT gestapelt dargestellt werden.
+### 2. Charts: Einzelpunkte + Trendlinie
 
-## Loesung
+Statt nur Tagesdurchschnitte zu zeigen:
+- **Punkte (Dots)**: Jede einzelne Messung als kleiner Punkt (Transparenz 50%)
+- **Linie**: Tagesdurchschnitt der gefilterten Messungen als dickere Verbindungslinie
+- So sieht man sofort die Streuung innerhalb eines Tages
 
-Den BodyCompositionChart in zwei Darstellungen aufteilen:
+### 3. Betroffene Komponenten
 
-### A. Koerpermasse-Aufteilung (Stacked Bar / Stacked Area -- in kg)
+Alle Smart-Scale-Charts nutzen `dailyAverages()` aus analytics.ts. Der Filter wird dort angesetzt:
 
-Nicht-ueberlappende Komponenten des Koerpergewichts:
-
-| Komponente | Berechnung | Beispiel |
-|------------|------------|----------|
-| Fettmasse | weight_kg * fat_percent / 100 | 19.58 kg |
-| Muskelmasse | muscle_mass_kg (direkt) | 70.88 kg |
-| Knochenmasse | bone_mass_kg (direkt) | 3.73 kg |
-
-Diese drei summieren sich (naeherungsweise) zum Koerpergewicht und duerfen gestapelt werden.
-
-### B. Prozentwerte als Linien-Chart (nicht gestapelt)
-
-Jede Metrik als eigene Linie mit eigenem Referenzbereich:
-
-| Metrik | Referenz (Maenner) | Farbe |
-|--------|-------------------|-------|
-| Koerperfett % | 10-20% (gesund) | Rot |
-| Skelettmuskel % | 40-60% | Blau/Primary |
-| Koerperwasser % | 50-65% | Cyan |
-| Protein % | 16-20% | Gelb/Amber |
-
-Referenzbereiche werden als halbtransparente horizontale Baender hinterlegt, damit der Nutzer sofort sieht, ob er im gesunden Bereich liegt.
+| Komponente | Aenderung |
+|------------|-----------|
+| `WeightPage.tsx` | State fuer Tageszeit-Filter + Toggle-UI |
+| `analytics.ts` | Neue Funktion `filterByTimeOfDay(entries, slot)` |
+| `BodyCompositionChart.tsx` | Empfaengt gefilterte Entries |
+| `HeartHealthChart.tsx` | Empfaengt gefilterte Entries |
+| `VisceralFatChart.tsx` | Empfaengt gefilterte Entries |
+| `MetabolismChart.tsx` | Empfaengt gefilterte Entries |
+| `ScaleKPIStrip.tsx` | KPI-Werte basierend auf gefiltertem Zeitfenster |
+| `DailyComparisonCard.tsx` | Bleibt unveraendert (zeigt explizit Morgen vs Abend) |
 
 ## Technische Umsetzung
 
-### Datei: `src/components/smartscale/BodyCompositionChart.tsx`
+### A. Neue Filterfunktion in `analytics.ts`
 
-Kompletter Umbau der Komponente:
+```text
+type TimeSlot = 'morning' | 'evening' | 'all';
 
-1. **Oberer Chart**: Stacked Area (kg) mit drei Flaechen: Fett, Muskel, Knochen
-   - Daten: `fat_kg = weight_kg * fat_percent / 100`, `muscle_mass_kg`, `bone_mass_kg`
-   - Y-Achse: kg
-   - Titel: "Koerpermasse-Aufteilung (kg)"
+filterByTimeOfDay(entries, slot):
+  morning: 04:00 - 11:59
+  evening: 17:00 - 03:59 (naechster Tag)
+  all: keine Filterung
+```
 
-2. **Unterer Chart**: Multi-Line Chart (%) mit vier Linien
-   - Daten: `fat_percent`, `skeletal_muscle_percent`, `body_water_percent`, `protein_percent`
-   - Y-Achse: % (0-70 Bereich)
-   - Referenzbaender als `ReferenceArea` Komponenten
-   - Titel: "Koerperanalyse-Metriken (%)"
-   - Legende mit Metrik-Namen
+### B. Toggle-UI in `WeightPage.tsx`
 
-### Datei: `src/lib/smartscale/analytics.ts`
+Innerhalb des Tabs-Bereichs, oberhalb der Tab-Inhalte:
+- Drei Segmente: Morgens / Abends / Alle
+- Icon: Sun, Moon, Clock
+- Kompakter Style, konsistent mit bestehendem Design
+- State wird an alle Scale-Komponenten als `filteredScaleEntries` weitergereicht
 
-Neue Hilfsfunktion:
+### C. Chart-Anpassung (alle 4 Charts)
 
-- `dailyMassBreakdown(entries)`: Berechnet pro Tag die Fettmasse (weight * fat% / 100), Muskelmasse und Knochenmasse als Tagesdurchschnitte
+Die Charts erhalten bereits gefilterte Entries. Keine interne Aenderung noetig ausser dass `HeartHealthChart` bereits Einzelpunkte zeigt (gut so). Die anderen Charts nutzen `dailyAverages` auf den gefilterten Daten -- das ist korrekt, weil nach Filterung z.B. nur noch Morgen-Messungen uebrig sind.
 
-Keine weiteren Dateien betroffen.
+### D. Punkt-Wolke fuer "Alle"-Modus
+
+Im "Alle"-Modus werden Charts um eine Scatter-Schicht ergaenzt:
+- Kleine transparente Punkte fuer jede Einzelmessung
+- Dickere Linie fuer den Tagesdurchschnitt
+- So wird die Tagesvariation sichtbar
+
+## Ergebnis
+
+- Nutzer waehlt "Morgens" (Default) und sieht konsistente, vergleichbare Trends
+- Nutzer waehlt "Abends" und sieht wie sich Ernaehrung/Hydration auswirkt
+- Nutzer waehlt "Alle" und sieht die volle Streuung mit Einzelpunkten
+- Die DailyComparisonCard zeigt weiterhin den direkten Morgen/Abend-Vergleich
+
