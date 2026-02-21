@@ -13,6 +13,7 @@ import SegmentMuscleChart from '@/components/bodyscan/SegmentMuscleChart';
 import SegmentFatChart from '@/components/bodyscan/SegmentFatChart';
 import MetabolismCard from '@/components/bodyscan/MetabolismCard';
 import ScanTimeline from '@/components/bodyscan/ScanTimeline';
+import AnatomyFigure from '@/components/bodyscan/AnatomyFigure';
 
 export default function BodyScanPage() {
   const { scans, isLoading, importScan } = useBodyScans();
@@ -24,6 +25,7 @@ export default function BodyScanPage() {
   const compositionRef = useRef<HTMLDivElement>(null);
   const fatMuscleRef = useRef<HTMLDivElement>(null);
   const segmentsRef = useRef<HTMLDivElement>(null);
+  const anatomyRef = useRef<HTMLDivElement>(null);
   const metabolismRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
 
@@ -32,6 +34,7 @@ export default function BodyScanPage() {
     { label: 'Zusammensetzung', ref: compositionRef },
     { label: 'Fett & Muskel Trend', ref: fatMuscleRef },
     { label: 'Segment-Analyse', ref: segmentsRef },
+    { label: 'Anatomie', ref: anatomyRef },
     { label: 'Stoffwechsel', ref: metabolismRef },
     { label: 'Scan-Verlauf', ref: timelineRef },
   ];
@@ -131,6 +134,7 @@ export default function BodyScanPage() {
             <SegmentMuscleChart scans={scans} showLabels={showLabels} />
             <SegmentFatChart scans={scans} showLabels={showLabels} />
           </div>
+          <div className="-m-3 p-3" ref={anatomyRef}><AnatomyFigure scans={scans} /></div>
           <div className="-m-3 p-3" ref={metabolismRef}><MetabolismCard scans={scans} /></div>
           <div className="-m-3 p-3" ref={timelineRef}><ScanTimeline scans={scans} /></div>
         </>
