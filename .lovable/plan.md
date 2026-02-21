@@ -1,34 +1,59 @@
 
 
-# Fix: Heute-Linie zeigt falsches Datum an
+# PeriodNavigator erweitern + Body Scan integrieren
 
-## Problem
+## 1. PeriodNavigator: "Jahr" hinzufuegen
 
-Die rote "Heute"-Linie in der Quartals- und Halbjahresansicht ist nach rechts verschoben, weil die Positionsberechnung fehlerhaft ist. Der Prozentsatz wird auf die **gesamte Container-Breite** angewendet (inkl. der 180px/160px Kunden-Spalte), statt nur auf den **Kalenderbereich** rechts davon.
+Die bestehende `PeriodNavigator`-Komponente wird um einen vierten Modus **"Jahr"** erweitert:
 
-Beispiel bei Q1 2026 (21. Feb):
-- Korrekt: Linie bei ~73% des Februar-Bereichs
-- Aktuell: Linie ist um ca. 180px * leftPercent/100 nach rechts verschoben, landet dadurch im Maerz
+| Modus | Label-Beispiel |
+|-------|---------------|
+| Woche | KW 8 · 17.–23. Feb 2026 |
+| Monat | Februar 2026 |
+| Quartal | Q1 2026 (Jan–Maer) |
+| **Jahr** | **2026** |
 
-## Loesung
+Aenderungen in `src/components/weight/PeriodNavigator.tsx`:
+- `PeriodMode` wird um `'year'` erweitert
+- `computeRange`: neuer Case mit `startOfYear` / `endOfYear` / `addYears`
+- `buildLabel`: neuer Case gibt z.B. "2026" zurueck
+- ToggleGroup: viertes Segment "Jahr"
 
-Die `calc()`-Formel in beiden `TodayLine`-Komponenten korrigieren:
+## 2. PeriodNavigator konfigurierbar machen
 
-**Vorher** (falsch):
+Da Body Scan keine woechentlichen Daten hat (Scans sind seltener), soll der Navigator die verfuegbaren Modi als Prop akzeptieren:
+
+```text
+interface Props {
+  onChange: (start: Date, end: Date) => void;
+  modes?: PeriodMode[];           // Default: ['week','month','quarter','year']
+  defaultMode?: PeriodMode;       // Default: 'week'
+}
 ```
-left: calc(180px + leftPercent%)
-```
 
-**Nachher** (korrekt):
-```
-left: calc(180px + (100% - 180px) * leftPercent / 100)
-```
+- Gewicht nutzt weiterhin alle vier Modi (week/month/quarter/year), Default "week"
+- Body Scan nutzt `modes={['month','quarter','year']}` mit Default "month"
 
-So wird der Prozentsatz nur auf den verfuegbaren Kalenderbereich angewendet.
+## 3. Body Scan: Zeitraum-Filter integrieren
 
-## Betroffene Dateien
+Aenderungen in `src/pages/app/training/BodyScanPage.tsx`:
 
-1. **`src/components/planning/QuarterCalendar.tsx`** (Zeile 179): Style-Aenderung in der `TodayLine`-Komponente
-2. **`src/components/planning/HalfYearCalendar.tsx`** (Zeile 181): Gleiche Style-Aenderung mit 160px statt 180px
+- Neuer State: `periodStart` / `periodEnd`
+- `PeriodNavigator` wird unterhalb des Scan-Navigators eingebaut (modes: month/quarter/year)
+- Scans werden nach `scan_date` auf den Zeitraum gefiltert: `filteredScans`
+- Alle Komponenten erhalten `filteredScans` statt `scans`:
+  - `CompositionTrendChart`, `FatMuscleAreaChart`, `SegmentMuscleChart`, `SegmentFatChart` -- Chart-Daten auf Zeitraum begrenzt
+  - `ScanTimeline` -- zeigt nur Scans im Zeitraum
+- `BodyScanKPICards`, `AnatomyFigure`, `MetabolismCard` bleiben beim `selectedScan` (Einzelscan-Detail), aber der `selectedIndex` wird auf die gefilterten Scans umgestellt
+- Der Scan-Navigator (Prev/Next Pfeile) navigiert nur innerhalb der gefilterten Scans
 
-Keine weiteren Aenderungen noetig.
+## 4. Betroffene Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/weight/PeriodNavigator.tsx` | "Jahr" hinzufuegen, `modes`/`defaultMode` Props |
+| `src/pages/app/training/BodyScanPage.tsx` | PeriodNavigator einbauen, Scans filtern |
+| `src/pages/app/training/WeightPage.tsx` | PeriodNavigator-Props anpassen (modes mit 'year') |
+
+Keine neuen Dateien noetig -- die bestehende PeriodNavigator-Komponente wird wiederverwendet.
+
