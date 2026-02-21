@@ -3,52 +3,55 @@ import { Scale, Percent, Dumbbell, Activity, Heart, Shield } from 'lucide-react'
 import type { BodyScan } from '@/lib/bodyscan/types';
 import { latestScan, trendDiff, formatTrend } from '@/lib/bodyscan/analytics';
 
-interface Props { scans: BodyScan[] }
+interface Props {
+  scans: BodyScan[];
+  selectedScan?: BodyScan | null;
+}
 
-export default function BodyScanKPICards({ scans }: Props) {
-  const latest = latestScan(scans);
-  if (!latest) return null;
+export default function BodyScanKPICards({ scans, selectedScan }: Props) {
+  const scan = selectedScan ?? latestScan(scans);
+  if (!scan) return null;
 
   const kpis = [
     {
       label: 'Gewicht',
-      value: latest.weight_kg != null ? `${latest.weight_kg} kg` : '–',
+      value: scan.weight_kg != null ? `${scan.weight_kg} kg` : '–',
       sub: formatTrend(trendDiff(scans, 'weight_kg', true), ' kg vs. Start'),
       icon: Scale,
     },
     {
       label: 'Körperfett',
-      value: latest.fat_percent != null ? `${latest.fat_percent} %` : '–',
+      value: scan.fat_percent != null ? `${scan.fat_percent} %` : '–',
       sub: formatTrend(trendDiff(scans, 'fat_percent'), ' % vs. vorher'),
       icon: Percent,
     },
     {
       label: 'Muskelmasse',
-      value: latest.muscle_mass_kg != null ? `${latest.muscle_mass_kg} kg` : '–',
+      value: scan.muscle_mass_kg != null ? `${scan.muscle_mass_kg} kg` : '–',
       sub: formatTrend(trendDiff(scans, 'muscle_mass_kg'), ' kg vs. vorher'),
       icon: Dumbbell,
     },
     {
       label: 'BMI',
-      value: latest.bmi != null ? `${latest.bmi}` : '–',
-      sub: latest.bmi != null
-        ? latest.bmi < 18.5 ? 'Untergewicht' : latest.bmi < 25 ? 'Normalgewicht' : latest.bmi < 30 ? 'Übergewicht' : 'Adipositas'
+      value: scan.bmi != null ? `${scan.bmi}` : '–',
+      sub: scan.bmi != null
+        ? scan.bmi < 18.5 ? 'Untergewicht' : scan.bmi < 25 ? 'Normalgewicht' : scan.bmi < 30 ? 'Übergewicht' : 'Adipositas'
         : undefined,
       icon: Activity,
     },
     {
       label: 'Metabolisches Alter',
-      value: latest.metabolic_age != null ? `${latest.metabolic_age} J.` : '–',
-      sub: latest.age_years != null && latest.metabolic_age != null
-        ? `Echtes Alter: ${latest.age_years} J.`
+      value: scan.metabolic_age != null ? `${scan.metabolic_age} J.` : '–',
+      sub: scan.age_years != null && scan.metabolic_age != null
+        ? `Echtes Alter: ${scan.age_years} J.`
         : undefined,
       icon: Heart,
     },
     {
       label: 'Viszeralfett',
-      value: latest.visceral_fat != null ? `${latest.visceral_fat}` : '–',
-      sub: latest.visceral_fat != null
-        ? latest.visceral_fat <= 12 ? 'Gesund' : 'Erhöht'
+      value: scan.visceral_fat != null ? `${scan.visceral_fat}` : '–',
+      sub: scan.visceral_fat != null
+        ? scan.visceral_fat <= 12 ? 'Gesund' : 'Erhöht'
         : undefined,
       icon: Shield,
     },

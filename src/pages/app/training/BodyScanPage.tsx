@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toJpeg } from 'html-to-image';
 import { useBodyScans } from '@/hooks/useBodyScans';
-import { Dumbbell, ScanLine, FileDown, Loader2, Scale, Hash } from 'lucide-react';
+import { Dumbbell, ScanLine, FileDown, Loader2, Scale, Hash, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { exportBodyScanPDF } from '@/lib/bodyscan/exportBodyScanPDF';
 import BodyScanCsvUploader from '@/components/bodyscan/BodyScanCsvUploader';
@@ -20,6 +20,17 @@ export default function BodyScanPage() {
   const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+
+  // Keep selectedIndex in sync with scans length (default to latest)
+  useEffect(() => {
+    if (scans.length > 0 && selectedIndex === -1) {
+      setSelectedIndex(scans.length - 1);
+    }
+  }, [scans.length, selectedIndex]);
+
+  const selectedScan = scans[selectedIndex] ?? null;
+  const previousScan = selectedIndex > 0 ? scans[selectedIndex - 1] : null;
 
   const kpiRef = useRef<HTMLDivElement>(null);
   const compositionRef = useRef<HTMLDivElement>(null);
@@ -47,7 +58,7 @@ export default function BodyScanPage() {
     setExporting(true);
     try {
       const isDark = document.documentElement.classList.contains('dark');
-      const bgColor = isDark ? '#141414' : '#fcfcfc';
+      const bgColor = isDark ? '#141414' : '#fcfcfa';
 
       const images: { label: string; dataUrl: string }[] = [];
       for (const section of pdfSections) {
@@ -64,6 +75,11 @@ export default function BodyScanPage() {
     } finally {
       setExporting(false);
     }
+  };
+
+  const formatDate = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-');
+    return `${d}.${m}.${y}`;
   };
 
   return (
@@ -117,6 +133,38 @@ export default function BodyScanPage() {
         </div>
       </div>
 
+      {/* Scan Navigator */}
+      {scans.length > 1 && selectedScan && (
+        <div className="flex items-center justify-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            disabled={selectedIndex <= 0}
+            onClick={() => setSelectedIndex(i => i - 1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="text-center min-w-[200px]">
+            <div className="text-sm font-semibold">
+              {formatDate(selectedScan.scan_date)} — {selectedScan.device}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {selectedIndex + 1} von {scans.length}
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            disabled={selectedIndex >= scans.length - 1}
+            onClick={() => setSelectedIndex(i => i + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="text-muted-foreground text-center py-12">Lade Daten…</div>
       ) : scans.length === 0 ? (
@@ -127,16 +175,16 @@ export default function BodyScanPage() {
         </div>
       ) : (
         <>
-          <div className="-m-3 p-3" ref={kpiRef}><BodyScanKPICards scans={scans} /></div>
+          <div className="-m-3 p-3" ref={kpiRef}><BodyScanKPICards scans={scans} selectedScan={selectedScan} /></div>
           <div className="-m-3 p-3" ref={compositionRef}><CompositionTrendChart scans={scans} showLabels={showLabels} /></div>
           <div className="-m-3 p-3" ref={fatMuscleRef}><FatMuscleAreaChart scans={scans} showLabels={showLabels} /></div>
           <div className="-m-3 p-3 grid grid-cols-1 lg:grid-cols-2 gap-6" ref={segmentsRef}>
             <SegmentMuscleChart scans={scans} showLabels={showLabels} />
             <SegmentFatChart scans={scans} showLabels={showLabels} />
           </div>
-          <div className="-m-3 p-3" ref={anatomyRef}><AnatomyFigure scans={scans} /></div>
-          <div className="-m-3 p-3" ref={metabolismRef}><MetabolismCard scans={scans} /></div>
-          <div className="-m-3 p-3" ref={timelineRef}><ScanTimeline scans={scans} /></div>
+          <div className="-m-3 p-3" ref={anatomyRef}><AnatomyFigure scans={scans} selectedScan={selectedScan} previousScan={previousScan} /></div>
+          <div className="-m-3 p-3" ref={metabolismRef}><MetabolismCard scans={scans} selectedScan={selectedScan} /></div>
+          <div className="-m-3 p-3" ref={timelineRef}><ScanTimeline scans={scans} selectedIndex={selectedIndex} onSelectIndex={setSelectedIndex} /></div>
         </>
       )}
     </div>
