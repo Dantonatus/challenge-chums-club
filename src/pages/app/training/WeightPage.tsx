@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -7,6 +7,7 @@ import { useWeightEntries } from '@/hooks/useWeightEntries';
 import { useForecastSnapshots } from '@/hooks/useForecastSnapshots';
 import { useSmartScaleEntries } from '@/hooks/useSmartScaleEntries';
 import { mergeWeightSources } from '@/lib/weight/unifiedTimeline';
+import { filterByDateRange } from '@/lib/weight/analytics';
 import { filterByTimeOfDay, type TimeSlot } from '@/lib/smartscale/analytics';
 import WeightInput from '@/components/weight/WeightInput';
 import WeightTerrainChart from '@/components/weight/WeightTerrainChart';
@@ -14,6 +15,7 @@ import WeightKPICards from '@/components/weight/WeightKPICards';
 import WeightHeatmapStrip from '@/components/weight/WeightHeatmapStrip';
 import MonthSummaryBar from '@/components/weight/MonthSummaryBar';
 import WeightEntryList from '@/components/weight/WeightEntryList';
+import PeriodNavigator from '@/components/weight/PeriodNavigator';
 import ScaleFileUploader from '@/components/smartscale/ScaleFileUploader';
 import ScaleKPIStrip from '@/components/smartscale/ScaleKPIStrip';
 import BodyCompositionChart from '@/components/smartscale/BodyCompositionChart';
@@ -26,7 +28,7 @@ export default function WeightPage() {
   const { entries, isLoading, upsert, update, remove } = useWeightEntries();
   const { snapshots } = useForecastSnapshots();
   const { entries: scaleEntries, isLoading: scaleLoading, bulkImport } = useSmartScaleEntries();
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [periodRange, setPeriodRange] = useState<{ start: Date; end: Date } | null>(null);
   const [timeSlot, setTimeSlot] = useState<TimeSlot>('morning');
   const navigate = useNavigate();
 
@@ -43,6 +45,15 @@ export default function WeightPage() {
     () => mergeWeightSources(entries, scaleEntries),
     [entries, scaleEntries],
   );
+  const handlePeriodChange = useCallback((start: Date, end: Date) => {
+    setPeriodRange({ start, end });
+  }, []);
+
+  // Filter unified entries by selected period
+  const periodEntries = useMemo(() => {
+    if (!periodRange) return unifiedEntries;
+    return filterByDateRange(unifiedEntries, periodRange.start, periodRange.end);
+  }, [unifiedEntries, periodRange]);
 
   const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
 
@@ -151,16 +162,16 @@ export default function WeightPage() {
             <TabsContent value="overview" className="space-y-4">
               {unifiedEntries.length > 0 && (
                 <>
-                  <WeightKPICards entries={unifiedEntries} />
+                  <PeriodNavigator onChange={handlePeriodChange} />
+                  <WeightKPICards entries={periodEntries} />
                   <WeightEntryList
-                    entries={unifiedEntries}
+                    entries={periodEntries}
                     onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
                     onDelete={(id) => remove.mutate({ id })}
                   />
                   {hasScaleData && <DailyComparisonCard entries={scaleEntries} />}
-                  <MonthSummaryBar entries={unifiedEntries} selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} />
-                  <WeightTerrainChart entries={unifiedEntries} selectedMonth={selectedMonth} snapshots={snapshots} />
-                  <WeightHeatmapStrip entries={unifiedEntries} />
+                  <WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} />
+                  <WeightHeatmapStrip entries={periodEntries} />
                 </>
               )}
             </TabsContent>
