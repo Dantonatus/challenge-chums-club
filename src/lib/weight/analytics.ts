@@ -1,5 +1,12 @@
 import type { WeightEntry } from './types';
 
+/** Filter entries to a date range [start, end] inclusive */
+export function filterByDateRange(entries: WeightEntry[], start: Date, end: Date): WeightEntry[] {
+  const s = start.toISOString().slice(0, 10);
+  const e = end.toISOString().slice(0, 10);
+  return entries.filter(entry => entry.date >= s && entry.date <= e);
+}
+
 /** 7-day simple moving average */
 export function movingAverage(entries: WeightEntry[], window = 7): { date: string; avg: number }[] {
   if (entries.length === 0) return [];
