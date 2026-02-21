@@ -176,7 +176,7 @@ function TodayLine({ quarter, clientColumnWidth }: { quarter: Quarter; clientCol
   return (
     <div 
       className="absolute top-0 bottom-0 w-0.5 bg-primary z-5 pointer-events-none"
-      style={{ left: `calc(${clientColumnWidth}px + ${leftPercent}%)` }}
+      style={{ left: `calc(${clientColumnWidth}px + (100% - ${clientColumnWidth}px) * ${leftPercent} / 100)` }}
     >
       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary animate-pulse" />
     </div>
