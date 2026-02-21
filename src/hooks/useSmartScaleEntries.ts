@@ -44,6 +44,8 @@ export function useSmartScaleEntries() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['smart-scale-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['weight-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['forecast-snapshots'] });
     },
   });
 
@@ -57,6 +59,8 @@ export function useSmartScaleEntries() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['smart-scale-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['weight-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['forecast-snapshots'] });
     },
   });
 
