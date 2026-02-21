@@ -51,7 +51,15 @@ function parseStarfitTime(raw: string): string | null {
 function toNum(val: any): number | null {
   if (val === null || val === undefined || val === '' || val === '-') return null;
   const n = Number(val);
-  return isNaN(n) ? null : n;
+  if (!isNaN(n)) return n;
+  // Strip unit suffixes: "94.65kg" → "94.65", "82bpm" → "82", "2.6L/Min/M²" → "2.6"
+  const str = String(val).trim();
+  const match = str.match(/^([0-9]+(?:\.[0-9]+)?)/);
+  if (match) {
+    const parsed = Number(match[1]);
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
 }
 
 /**
