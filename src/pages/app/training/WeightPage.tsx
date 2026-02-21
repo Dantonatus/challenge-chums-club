@@ -162,7 +162,7 @@ export default function WeightPage() {
             <TabsContent value="overview" className="space-y-4">
               {unifiedEntries.length > 0 && (
                 <>
-                  <PeriodNavigator onChange={handlePeriodChange} />
+                  <PeriodNavigator onChange={handlePeriodChange} modes={['week', 'month', 'quarter', 'year']} />
                   <WeightKPICards entries={periodEntries} />
                   <WeightEntryList
                     entries={periodEntries}
