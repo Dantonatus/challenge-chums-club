@@ -1,63 +1,34 @@
 
 
-# Zeitraum-Navigation im Uebersicht-Tab
+# Fix: Heute-Linie zeigt falsches Datum an
 
-## Ueberblick
+## Problem
 
-Der Uebersicht-Tab zeigt aktuell alle Daten auf einmal. Neu wird ein Zeitraum-Umschalter (Woche / Monat / Quartal) mit Vor-/Zurueck-Navigation eingefuehrt, sodass KPIs, Eintraege, Chart und Heatmap nur den gewaehlten Zeitraum zeigen.
+Die rote "Heute"-Linie in der Quartals- und Halbjahresansicht ist nach rechts verschoben, weil die Positionsberechnung fehlerhaft ist. Der Prozentsatz wird auf die **gesamte Container-Breite** angewendet (inkl. der 180px/160px Kunden-Spalte), statt nur auf den **Kalenderbereich** rechts davon.
 
-## UI-Design
+Beispiel bei Q1 2026 (21. Feb):
+- Korrekt: Linie bei ~73% des Februar-Bereichs
+- Aktuell: Linie ist um ca. 180px * leftPercent/100 nach rechts verschoben, landet dadurch im Maerz
 
-```text
-  [  <  ]   KW 8 · 17.–23. Feb 2026   [  >  ]
-         [ Woche | Monat | Quartal ]
+## Loesung
+
+Die `calc()`-Formel in beiden `TodayLine`-Komponenten korrigieren:
+
+**Vorher** (falsch):
+```
+left: calc(180px + leftPercent%)
 ```
 
-- Obere Zeile: Pfeil-Buttons links/rechts, in der Mitte das aktuelle Zeitfenster-Label
-- Untere Zeile: ToggleGroup mit drei Segmenten (Woche / Monat / Quartal)
-- "Alle"-Option bleibt ueber die bestehende MonthSummaryBar erreichbar (wird weiterhin angezeigt)
+**Nachher** (korrekt):
+```
+left: calc(180px + (100% - 180px) * leftPercent / 100)
+```
 
-## Filterlogik
+So wird der Prozentsatz nur auf den verfuegbaren Kalenderbereich angewendet.
 
-| Modus | Berechnung | Label-Beispiel |
-|-------|-----------|----------------|
-| Woche | ISO-Woche (Mo-So), Offset in ganzen Wochen | KW 8 · 17.–23. Feb 2026 |
-| Monat | 1. bis letzter Tag des Monats, Offset in Monaten | Februar 2026 |
-| Quartal | 3-Monats-Bloecke (Jan-Mär, Apr-Jun, ...), Offset in Quartalen | Q1 2026 (Jan–Mär) |
+## Betroffene Dateien
 
-Standardwert: **Woche** mit aktuellem Datum als Ausgangspunkt. Vor/Zurueck verschiebt den Offset um -1/+1. "Zurueck zum Heute" ist implizit (Offset 0 = aktuelle Periode).
+1. **`src/components/planning/QuarterCalendar.tsx`** (Zeile 179): Style-Aenderung in der `TodayLine`-Komponente
+2. **`src/components/planning/HalfYearCalendar.tsx`** (Zeile 181): Gleiche Style-Aenderung mit 160px statt 180px
 
-## Betroffene Komponenten
-
-### Neue Datei: `src/components/weight/PeriodNavigator.tsx`
-
-Eigenstaendige Komponente mit:
-- State: `mode` ('week' | 'month' | 'quarter'), `offset` (number, 0 = aktuelle Periode)
-- Props: `onChange(startDate, endDate)` Callback
-- Berechnet Start-/Enddatum basierend auf Modus + Offset
-- Rendert ToggleGroup + Pfeil-Navigation + Label
-- Nutzt bestehende `date-fns` Funktionen und `src/lib/date.ts` Hilfsfunktionen
-
-### Aenderung: `src/pages/app/training/WeightPage.tsx`
-
-- Neuer State: `periodStart` / `periodEnd` (Date | null)
-- PeriodNavigator wird oberhalb der Overview-Inhalte eingebaut
-- Alle Komponenten im Overview-Tab erhalten gefilterte Entries:
-  - `WeightKPICards` -- entries gefiltert auf Zeitraum
-  - `WeightEntryList` -- entries gefiltert auf Zeitraum
-  - `WeightTerrainChart` -- entries gefiltert auf Zeitraum (ersetzt `selectedMonth`)
-  - `WeightHeatmapStrip` -- entries gefiltert auf Zeitraum
-  - `MonthSummaryBar` -- wird weiterhin mit allen Entries angezeigt (Quick-Jump)
-  - `DailyComparisonCard` -- unveraendert (nutzt Scale-Daten)
-
-### Aenderung: `src/lib/weight/analytics.ts`
-
-- Neue Hilfsfunktion `filterByDateRange(entries, start, end)`: Filtert Entries auf einen Zeitraum
-
-## Technische Details
-
-- `PeriodNavigator` nutzt `startOfWeek`/`endOfWeek`, `startOfMonth`/`endOfMonth`, `startOfQuarter`/`endOfQuarter` aus date-fns
-- Wochenstart ist Montag (weekStartsOn: 1), konsistent mit `src/lib/date.ts`
-- `selectedMonth` State im WeightPage wird durch das neue `periodStart`/`periodEnd` ersetzt -- die MonthSummaryBar kann optional als Quick-Jump beibehalten werden und setzt dann den PeriodNavigator auf den entsprechenden Monat
-- Pfeil-Buttons deaktiviert wenn keine Daten in der Richtung vorhanden (fruehester/spaetester Eintrag als Grenze)
-
+Keine weiteren Aenderungen noetig.
