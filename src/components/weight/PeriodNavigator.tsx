@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter,
-  addWeeks, addMonths, addQuarters, format, getWeek,
+  startOfYear, endOfYear, addWeeks, addMonths, addQuarters, addYears, format, getWeek,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-export type PeriodMode = 'week' | 'month' | 'quarter';
+export type PeriodMode = 'week' | 'month' | 'quarter' | 'year';
 
 interface Props {
   onChange: (start: Date, end: Date) => void;
+  modes?: PeriodMode[];
+  defaultMode?: PeriodMode;
 }
 
 function computeRange(mode: PeriodMode, offset: number) {
@@ -26,8 +28,12 @@ function computeRange(mode: PeriodMode, offset: number) {
     const base = addMonths(today, offset);
     return { start: startOfMonth(base), end: endOfMonth(base) };
   }
-  const base = addQuarters(today, offset);
-  return { start: startOfQuarter(base), end: endOfQuarter(base) };
+  if (mode === 'quarter') {
+    const base = addQuarters(today, offset);
+    return { start: startOfQuarter(base), end: endOfQuarter(base) };
+  }
+  const base = addYears(today, offset);
+  return { start: startOfYear(base), end: endOfYear(base) };
 }
 
 function buildLabel(mode: PeriodMode, start: Date, end: Date) {
@@ -38,12 +44,19 @@ function buildLabel(mode: PeriodMode, start: Date, end: Date) {
   if (mode === 'month') {
     return format(start, 'MMMM yyyy', { locale: de });
   }
-  const q = Math.ceil((start.getMonth() + 1) / 3);
-  return `Q${q} ${start.getFullYear()} (${format(start, 'MMM', { locale: de })}–${format(end, 'MMM', { locale: de })})`;
+  if (mode === 'quarter') {
+    const q = Math.ceil((start.getMonth() + 1) / 3);
+    return `Q${q} ${start.getFullYear()} (${format(start, 'MMM', { locale: de })}–${format(end, 'MMM', { locale: de })})`;
+  }
+  return `${start.getFullYear()}`;
 }
 
-export default function PeriodNavigator({ onChange }: Props) {
-  const [mode, setMode] = useState<PeriodMode>('week');
+const ALL_MODES: PeriodMode[] = ['week', 'month', 'quarter', 'year'];
+const MODE_LABELS: Record<PeriodMode, string> = { week: 'Woche', month: 'Monat', quarter: 'Quartal', year: 'Jahr' };
+
+export default function PeriodNavigator({ onChange, modes = ALL_MODES, defaultMode }: Props) {
+  const availableModes = modes.length > 0 ? modes : ALL_MODES;
+  const [mode, setMode] = useState<PeriodMode>(defaultMode ?? availableModes[0]);
   const [offset, setOffset] = useState(0);
 
   const { start, end } = computeRange(mode, offset);
@@ -87,15 +100,11 @@ export default function PeriodNavigator({ onChange }: Props) {
         size="sm"
         className="bg-muted rounded-lg p-0.5"
       >
-        <ToggleGroupItem value="week" className="text-xs px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
-          Woche
-        </ToggleGroupItem>
-        <ToggleGroupItem value="month" className="text-xs px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
-          Monat
-        </ToggleGroupItem>
-        <ToggleGroupItem value="quarter" className="text-xs px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
-          Quartal
-        </ToggleGroupItem>
+        {availableModes.map(m => (
+          <ToggleGroupItem key={m} value={m} className="text-xs px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+            {MODE_LABELS[m]}
+          </ToggleGroupItem>
+        ))}
       </ToggleGroup>
     </div>
   );

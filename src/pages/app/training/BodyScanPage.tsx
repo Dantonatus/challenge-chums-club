@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toJpeg } from 'html-to-image';
 import { useBodyScans } from '@/hooks/useBodyScans';
@@ -14,6 +14,7 @@ import SegmentFatChart from '@/components/bodyscan/SegmentFatChart';
 import MetabolismCard from '@/components/bodyscan/MetabolismCard';
 import ScanTimeline from '@/components/bodyscan/ScanTimeline';
 import AnatomyFigure from '@/components/bodyscan/AnatomyFigure';
+import PeriodNavigator from '@/components/weight/PeriodNavigator';
 
 export default function BodyScanPage() {
   const { scans, isLoading, importScan } = useBodyScans();
@@ -21,16 +22,32 @@ export default function BodyScanPage() {
   const [exporting, setExporting] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [periodRange, setPeriodRange] = useState<{ start: Date; end: Date } | null>(null);
 
-  // Keep selectedIndex in sync with scans length (default to latest)
+  const handlePeriodChange = useCallback((start: Date, end: Date) => {
+    setPeriodRange({ start, end });
+  }, []);
+
+  // Filter scans by period
+  const filteredScans = useMemo(() => {
+    if (!periodRange) return scans;
+    return scans.filter(s => {
+      const d = new Date(s.scan_date);
+      return d >= periodRange.start && d <= periodRange.end;
+    });
+  }, [scans, periodRange]);
+
+  // Keep selectedIndex in sync with filteredScans
   useEffect(() => {
-    if (scans.length > 0 && selectedIndex === -1) {
-      setSelectedIndex(scans.length - 1);
+    if (filteredScans.length > 0) {
+      setSelectedIndex(filteredScans.length - 1);
+    } else {
+      setSelectedIndex(-1);
     }
-  }, [scans.length, selectedIndex]);
+  }, [filteredScans.length, periodRange]);
 
-  const selectedScan = scans[selectedIndex] ?? null;
-  const previousScan = selectedIndex > 0 ? scans[selectedIndex - 1] : null;
+  const selectedScan = filteredScans[selectedIndex] ?? null;
+  const previousScan = selectedIndex > 0 ? filteredScans[selectedIndex - 1] : null;
 
   const kpiRef = useRef<HTMLDivElement>(null);
   const compositionRef = useRef<HTMLDivElement>(null);
@@ -133,8 +150,13 @@ export default function BodyScanPage() {
         </div>
       </div>
 
+      {/* Period Navigator */}
+      {scans.length > 0 && (
+        <PeriodNavigator onChange={handlePeriodChange} modes={['month', 'quarter', 'year']} defaultMode="month" />
+      )}
+
       {/* Scan Navigator */}
-      {scans.length > 1 && selectedScan && (
+      {filteredScans.length > 1 && selectedScan && (
         <div className="flex items-center justify-center gap-3">
           <Button
             variant="ghost"
@@ -150,14 +172,14 @@ export default function BodyScanPage() {
               {formatDate(selectedScan.scan_date)} — {selectedScan.device}
             </div>
             <div className="text-xs text-muted-foreground">
-              {selectedIndex + 1} von {scans.length}
+              {selectedIndex + 1} von {filteredScans.length}
             </div>
           </div>
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            disabled={selectedIndex >= scans.length - 1}
+            disabled={selectedIndex >= filteredScans.length - 1}
             onClick={() => setSelectedIndex(i => i + 1)}
           >
             <ChevronRight className="h-4 w-4" />
@@ -175,16 +197,16 @@ export default function BodyScanPage() {
         </div>
       ) : (
         <>
-          <div className="-m-3 p-3" ref={kpiRef}><BodyScanKPICards scans={scans} selectedScan={selectedScan} /></div>
-          <div className="-m-3 p-3" ref={compositionRef}><CompositionTrendChart scans={scans} showLabels={showLabels} /></div>
-          <div className="-m-3 p-3" ref={fatMuscleRef}><FatMuscleAreaChart scans={scans} showLabels={showLabels} /></div>
+          <div className="-m-3 p-3" ref={kpiRef}><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
+          <div className="-m-3 p-3" ref={compositionRef}><CompositionTrendChart scans={filteredScans} showLabels={showLabels} /></div>
+          <div className="-m-3 p-3" ref={fatMuscleRef}><FatMuscleAreaChart scans={filteredScans} showLabels={showLabels} /></div>
           <div className="-m-3 p-3 grid grid-cols-1 lg:grid-cols-2 gap-6" ref={segmentsRef}>
-            <SegmentMuscleChart scans={scans} showLabels={showLabels} />
-            <SegmentFatChart scans={scans} showLabels={showLabels} />
+            <SegmentMuscleChart scans={filteredScans} showLabels={showLabels} />
+            <SegmentFatChart scans={filteredScans} showLabels={showLabels} />
           </div>
-          <div className="-m-3 p-3" ref={anatomyRef}><AnatomyFigure scans={scans} selectedScan={selectedScan} previousScan={previousScan} /></div>
-          <div className="-m-3 p-3" ref={metabolismRef}><MetabolismCard scans={scans} selectedScan={selectedScan} /></div>
-          <div className="-m-3 p-3" ref={timelineRef}><ScanTimeline scans={scans} selectedIndex={selectedIndex} onSelectIndex={setSelectedIndex} /></div>
+          <div className="-m-3 p-3" ref={anatomyRef}><AnatomyFigure scans={filteredScans} selectedScan={selectedScan} previousScan={previousScan} /></div>
+          <div className="-m-3 p-3" ref={metabolismRef}><MetabolismCard scans={filteredScans} selectedScan={selectedScan} /></div>
+          <div className="-m-3 p-3" ref={timelineRef}><ScanTimeline scans={filteredScans} selectedIndex={selectedIndex} onSelectIndex={setSelectedIndex} /></div>
         </>
       )}
     </div>
