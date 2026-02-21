@@ -1422,6 +1422,69 @@ export type Database = {
           },
         ]
       }
+      smart_scale_entries: {
+        Row: {
+          bmi: number | null
+          bmr_kcal: number | null
+          body_water_percent: number | null
+          bone_mass_kg: number | null
+          cardiac_index: number | null
+          created_at: string
+          fat_percent: number | null
+          heart_rate_bpm: number | null
+          id: string
+          measured_at: string
+          metabolic_age: number | null
+          muscle_mass_kg: number | null
+          protein_percent: number | null
+          skeletal_muscle_percent: number | null
+          subcutaneous_fat_percent: number | null
+          user_id: string
+          visceral_fat: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          bmi?: number | null
+          bmr_kcal?: number | null
+          body_water_percent?: number | null
+          bone_mass_kg?: number | null
+          cardiac_index?: number | null
+          created_at?: string
+          fat_percent?: number | null
+          heart_rate_bpm?: number | null
+          id?: string
+          measured_at: string
+          metabolic_age?: number | null
+          muscle_mass_kg?: number | null
+          protein_percent?: number | null
+          skeletal_muscle_percent?: number | null
+          subcutaneous_fat_percent?: number | null
+          user_id: string
+          visceral_fat?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          bmi?: number | null
+          bmr_kcal?: number | null
+          body_water_percent?: number | null
+          bone_mass_kg?: number | null
+          cardiac_index?: number | null
+          created_at?: string
+          fat_percent?: number | null
+          heart_rate_bpm?: number | null
+          id?: string
+          measured_at?: string
+          metabolic_age?: number | null
+          muscle_mass_kg?: number | null
+          protein_percent?: number | null
+          skeletal_muscle_percent?: number | null
+          subcutaneous_fat_percent?: number | null
+          user_id?: string
+          visceral_fat?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       subtasks: {
         Row: {
           created_at: string
