@@ -8,7 +8,8 @@ export function createChartLabel({ color = 'hsl(var(--foreground))', offsetY = -
     const { x, y, value } = props;
     if (value == null || x == null || y == null) return null;
 
-    const text = typeof value === 'number' ? value.toFixed(1) : String(value);
+    const num = Number(value);
+    const text = !isNaN(num) ? num.toFixed(1) : String(value ?? '');
     const width = text.length * 5.5 + 6;
     const height = 13;
     const tx = x;
