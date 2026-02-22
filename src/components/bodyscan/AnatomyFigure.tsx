@@ -83,7 +83,7 @@ function SegmentCard({
       {/* Value */}
       <div className="flex items-baseline gap-1.5 mb-2.5">
         <span className="text-xl font-semibold tracking-tight text-foreground">
-          {value.toFixed(1)}
+          {(value ?? 0).toFixed(1)}
         </span>
         <span className="text-xs text-muted-foreground font-medium">{unit}</span>
       </div>
