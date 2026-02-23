@@ -33,6 +33,8 @@ function fadedColor(color: { r: number; g: number; b: number }, alpha: number): 
 function sanitizeForPDF(text: string): string {
   return text
     .replace(/[\u2013\u2014]/g, '-')   // en-dash, em-dash → hyphen
+    .replace(/\u2192|\u2190|\u21D2/g, '->') // arrows → ->
+    .replace(/\u201E/g, '"')               // German opening quote „ → "
     .replace(/[\u2018\u2019]/g, "'")   // smart single quotes
     .replace(/[\u201C\u201D]/g, '"')   // smart double quotes
     .replace(/[\u2022\u25CF\u25CB]/g, '-') // bullets → hyphen
