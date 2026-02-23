@@ -29,6 +29,19 @@ function fadedColor(color: { r: number; g: number; b: number }, alpha: number): 
   };
 }
 
+/** Sanitize text for PDF-safe WinAnsi encoding (Helvetica) */
+function sanitizeForPDF(text: string): string {
+  return text
+    .replace(/[\u2013\u2014]/g, '-')   // en-dash, em-dash → hyphen
+    .replace(/[\u2018\u2019]/g, "'")   // smart single quotes
+    .replace(/[\u201C\u201D]/g, '"')   // smart double quotes
+    .replace(/[\u2022\u25CF\u25CB]/g, '-') // bullets → hyphen
+    .replace(/\u2026/g, '...')         // ellipsis
+    .replace(/\u00A0/g, ' ')           // non-breaking space
+    .replace(/\u2713|\u2714|\u2611/g, 'x') // checkmarks → x
+    .replace(/[^\x00-\xFF]/g, '');     // strip remaining non-WinAnsi
+}
+
 function decodeEntities(text: string): string {
   return text
     .replace(/&nbsp;/gi, ' ')
@@ -49,7 +62,7 @@ function htmlToPlainLines(html: string): { text: string; bold: boolean; bullet: 
     return html.split('\n').filter(l => l.trim()).map(l => {
       const trimmed = l.trim();
       const isBullet = /^[-\u2013\u2022*]\s/.test(trimmed);
-      const cleaned = decodeEntities(isBullet ? trimmed.replace(/^[-\u2013\u2022*]\s+/, '') : trimmed);
+      const cleaned = sanitizeForPDF(decodeEntities(isBullet ? trimmed.replace(/^[-\u2013\u2022*]\s+/, '') : trimmed));
       return { text: cleaned, bold: false, bullet: isBullet };
     });
   }
@@ -78,7 +91,7 @@ function htmlToPlainLines(html: string): { text: string; bold: boolean; bullet: 
       for (const segment of text.split('\n')) {
         const t = segment.trim();
         if (t) {
-          lines.push({ text: decodeEntities(t), bold: inBold || inHeading, bullet: inLi, indent: inLi ? Math.max(0, listDepth - 1) : 0 });
+          lines.push({ text: sanitizeForPDF(decodeEntities(t)), bold: inBold || inHeading, bullet: inLi, indent: inLi ? Math.max(0, listDepth - 1) : 0 });
         }
       }
     }
@@ -150,7 +163,7 @@ export function exportGanttPDF(
   doc.setFontSize(FONT.title);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 30, 30);
-  doc.text(`${client.name} – ${project.name}`, M, y + 5);
+  doc.text(sanitizeForPDF(`${client.name} – ${project.name}`), M, y + 5);
   doc.setFontSize(FONT.subtitle);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(120, 120, 120);
@@ -252,12 +265,14 @@ export function exportGanttPDF(
     doc.setFillColor(faded.r, faded.g, faded.b);
     doc.roundedRect(barX, y + 2, barW, ROW_H.task - 4, CORNER, CORNER, 'F');
 
-    // Completed checkmark
+    // Completed checkmark (drawn as lines instead of Unicode)
     if (task.is_completed) {
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(5);
-      doc.text('✓', barX + 1.5, y + ROW_H.task / 2 + 0.8);
-      doc.setFontSize(FONT.cell);
+      const cx = barX + 3;
+      const cy = y + ROW_H.task / 2;
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(0.5);
+      doc.line(cx - 1.2, cy, cx - 0.2, cy + 1.2);
+      doc.line(cx - 0.2, cy + 1.2, cx + 1.5, cy - 1);
     }
 
     // Milestones on this task
@@ -292,7 +307,7 @@ export function exportGanttPDF(
     doc.setTextColor(255, 255, 255);
     const labelW2 = 8;
     doc.roundedRect(todayX - labelW2 / 2, topY, labelW2, 3.5, 0.8, 0.8, 'F');
-    doc.text('Heute', todayX, topY + 2.5, { align: 'center' });
+    doc.text('Heute', todayX, topY + 2.5, { align: 'center' }); // "Heute" is WinAnsi-safe
   }
 
   addFooter(doc, client, project);
@@ -312,7 +327,7 @@ export function exportGanttPDF(
     doc.setFontSize(FONT.subtitle);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(120, 120, 120);
-    doc.text(`${client.name} – ${project.name}`, M, y + 10);
+    doc.text(sanitizeForPDF(`${client.name} – ${project.name}`), M, y + 10);
     y += HEADER_GAP;
 
     for (const task of withDesc) {
@@ -354,7 +369,7 @@ export function exportGanttPDF(
       doc.setFontSize(FONT.descTitle);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 30, 30);
-      doc.text(task.title, M + 6, ty);
+      doc.text(sanitizeForPDF(task.title), M + 6, ty);
 
       // Date
       doc.setFontSize(FONT.footer);
@@ -392,5 +407,5 @@ function addFooter(doc: jsPDF, client: Client, project: PlanningProject) {
   doc.setFont('helvetica', 'normal');
   const fy = PAGE.h - M + 2;
   doc.text(`Erstellt am ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: de })}`, M, fy);
-  doc.text(`${client.name} – ${project.name}`, PAGE.w - M, fy, { align: 'right' });
+  doc.text(sanitizeForPDF(`${client.name} – ${project.name}`), PAGE.w - M, fy, { align: 'right' });
 }
