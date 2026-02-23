@@ -1,23 +1,23 @@
 
-## Schriftart im Gantt-PDF auf PDF-Standard umstellen
 
-### Problem
-jsPDF nutzt aktuell die eingebaute **Helvetica** (eine der 14 Standard-PDF-Fonts). Diese unterstützt zwar deutsche Umlaute (ä, ö, ü, ß), hat aber Probleme mit einigen Unicode-Zeichen wie dem Haken "✓", dem Gedankenstrich "–" oder Aufzählungszeichen "•", was zu Zeichenbruechen im PDF fuehrt.
+## PDF-Zeichensanitierung vervollstaendigen
 
-### Loesung
-Die eingebaute Helvetica beibehalten (ist der gaengigste PDF-Font), aber alle problematischen Sonderzeichen durch PDF-sichere Alternativen ersetzen:
+### Gefundene Probleme
 
-- `✓` → normaler Text oder einfacher Strich
-- `–` (Em/En-Dash) → `-` (Bindestrich)
-- `•` (Bullet) → `-`
-- Sonstige Unicode-Zeichen sanitizen
+1. **Pfeile (U+2192 etc.)** werden komplett entfernt statt durch `->` ersetzt
+   - Betroffen: Phase 2 "Beleg -> Position -> Artikel -> Kosten -> Bestand"
+2. **Deutsches oeffnendes Anfuehrungszeichen** `"` (U+201E) wird nicht erkannt
+   - Betroffen: Phase 3 `"Single Source of Truth"` → nur schliessendes `"` bleibt
 
-### Technische Aenderungen
+### Aenderung
 
-**Datei: `src/lib/planning/exportGanttPDF.ts`**
+**Datei: `src/lib/planning/exportGanttPDF.ts`** – Funktion `sanitizeForPDF`
 
-1. Neue Hilfsfunktion `sanitizeForPDF(text)` erstellen, die alle nicht-WinAnsi-Zeichen ersetzt
-2. Alle `doc.text(...)` Aufrufe durch die sanitize-Funktion absichern
-3. Das Haken-Zeichen "✓" (Zeile 259) durch ein gezeichnetes Haekchen oder "x" ersetzen
-4. In `htmlToPlainLines`: Bullet-Zeichen (•, –) auf sichere Zeichen normalisieren
-5. In `decodeEntities`: zusaetzliche Sonderzeichen abfangen
+Zwei neue Ersetzungsregeln vor dem finalen Catch-all einfuegen:
+
+```
+.replace(/\u2192|\u2190|\u21D2/g, '->')  // Pfeile → ->
+.replace(/\u201E/g, '"')                  // dt. unteres Anfuehrungszeichen „ → "
+```
+
+Keine weiteren Dateien betroffen. Reine Textersetzung, kein Layout-Einfluss.
