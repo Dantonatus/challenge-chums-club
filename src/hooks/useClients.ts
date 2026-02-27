@@ -81,6 +81,7 @@ export function useClients() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones'] });
       toast({ title: 'Kunde aktualisiert' });
     },
     onError: (error) => {
