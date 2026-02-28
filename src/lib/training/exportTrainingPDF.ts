@@ -110,7 +110,7 @@ export async function exportTrainingPDF(
 
       // Center horizontally if scaled down
       const xOffset = MARGIN + (CONTENT_W - imgW) / 2;
-      doc.addImage(img.dataUrl, 'JPEG', xOffset, y, imgW, imgH);
+      doc.addImage(img.dataUrl, 'PNG', xOffset, y, imgW, imgH);
       y += imgH + SECTION_GAP;
 
       // Proactive page break: if less than threshold remains, next section goes to new page

@@ -58,9 +58,8 @@ export default function TrainingPage() {
         if (section.ref.current) {
           try {
             const isDark = document.documentElement.classList.contains('dark');
-            const dataUrl = await toJpeg(section.ref.current, {
-              quality: 0.85,
-              pixelRatio: 1.5,
+            const dataUrl = await toPng(section.ref.current, {
+              pixelRatio: 2.5,
               backgroundColor: isDark ? '#141414' : '#fcfcfc',
               
             });
