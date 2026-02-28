@@ -237,8 +237,8 @@ export default function WeightPage() {
               {unifiedEntries.length > 0 && (
                 <>
                   <PeriodNavigator onChange={handlePeriodChange} modes={['week', 'month', 'quarter', 'year', 'all']} />
-                  <div ref={kpiRef} className="-m-3 p-3"><WeightKPICards entries={periodEntries} /></div>
-                  <div ref={entryListRef} className="-m-3 p-3"><WeightEntryList
+                  <div ref={kpiRef} className="-m-5 p-5"><WeightKPICards entries={periodEntries} /></div>
+                  <div ref={entryListRef} className="-m-5 p-5"><WeightEntryList
                     entries={periodEntries}
                     onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
                     onDelete={(id) => remove.mutate({ id })}
