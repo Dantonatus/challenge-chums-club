@@ -216,7 +216,6 @@ export default function WeightPage() {
                     Alle
                   </ToggleGroupItem>
                 </ToggleGroup>
-              )}
             </div>
 
             {/* Tab: Übersicht */}
