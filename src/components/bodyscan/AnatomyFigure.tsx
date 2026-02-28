@@ -1,21 +1,22 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { BodyScan, BodyScanSegments } from '@/lib/bodyscan/types';
 import { latestScan, previousScan } from '@/lib/bodyscan/analytics';
 
 type Mode = 'muscle' | 'fat';
 
-interface SegmentData {
-  key: keyof BodyScanSegments['muscle'];
-  label: string;
-  value: number;
-  intensity: number;
-  diff: number | null;
-  isHighest: boolean;
-}
+/* ─── Apple-Health Color Tokens ─── */
+
+const APPLE = {
+  muscle: 'hsl(215, 60%, 58%)',
+  muscleSoft: 'hsl(215, 50%, 68%)',
+  fat: 'hsl(12, 55%, 58%)',
+  fatSoft: 'hsl(12, 45%, 68%)',
+  good: 'hsl(142, 71%, 45%)',
+  bad: 'hsl(0, 100%, 60%)',
+};
 
 /* ─── Segment Info Card ─── */
 
@@ -28,7 +29,6 @@ function SegmentCard({
   mode,
   delay,
   isHighest,
-  side,
 }: {
   label: string;
   value: number;
@@ -42,77 +42,63 @@ function SegmentCard({
 }) {
   const diffPositive = diff != null && diff > 0;
   const diffNegative = diff != null && diff < 0;
-
-  // For muscle: positive = good (green), negative = bad (red)
-  // For fat: positive = bad (red), negative = good (green)
   const isGood = mode === 'muscle' ? diffPositive : diffNegative;
   const isBad = mode === 'muscle' ? diffNegative : diffPositive;
 
-  const gradientClass =
-    mode === 'muscle'
-      ? 'from-[hsl(210,80%,55%)] to-[hsl(210,90%,70%)]'
-      : 'from-[hsl(0,70%,55%)] to-[hsl(0,80%,68%)]';
+  const barColor = mode === 'muscle' ? APPLE.muscle : APPLE.fat;
 
   return (
     <motion.div
-      initial={{
-        opacity: 0,
-        x: side === 'left' ? -24 : side === 'right' ? 24 : 0,
-        y: side === 'center' ? 16 : 0,
-      }}
-      animate={{ opacity: 1, x: 0, y: 0 }}
-      transition={{
-        type: 'spring',
-        stiffness: 200,
-        damping: 20,
-        delay,
-      }}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 160, damping: 22, delay }}
       className={`
-        relative rounded-2xl border border-border/50 
-        bg-card/60 backdrop-blur-xl p-4
-        shadow-sm dark:shadow-none
-        transition-transform duration-200 hover:scale-[1.02] hover:border-border
-        ${isHighest ? 'ring-1 ring-primary/20' : ''}
+        relative rounded-2xl p-5
+        bg-card/80 backdrop-blur-xl
+        transition-shadow duration-300
+        ${isHighest
+          ? 'shadow-[0_4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_20px_rgba(255,255,255,0.04)]'
+          : 'shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(255,255,255,0.02)]'
+        }
       `}
     >
-      {/* Segment name */}
-      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium mb-1">
+      <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium mb-1.5">
         {label}
       </p>
 
-      {/* Value */}
-      <div className="flex items-baseline gap-1.5 mb-2.5">
-        <span className="text-xl font-semibold tracking-tight text-foreground">
+      <div className="flex items-baseline gap-1.5 mb-3">
+        <span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
           {(value ?? 0).toFixed(1)}
         </span>
         <span className="text-xs text-muted-foreground font-medium">{unit}</span>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1.5 w-full rounded-full bg-muted/60 overflow-hidden mb-2">
+      {/* Ultra-thin progress bar */}
+      <div className="h-[3px] w-full rounded-full bg-muted/40 overflow-hidden mb-2.5">
         <motion.div
-          className={`h-full rounded-full bg-gradient-to-r ${gradientClass}`}
+          className="h-full rounded-full"
+          style={{ backgroundColor: barColor }}
           initial={{ width: 0 }}
           animate={{ width: `${Math.round(intensity * 100)}%` }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay: delay + 0.2 }}
+          transition={{ duration: 0.9, ease: [0.32, 0.72, 0, 1], delay: delay + 0.15 }}
         />
       </div>
 
-      {/* Diff badge */}
+      {/* Diff */}
       {diff != null && (
-        <div className="flex items-center gap-1">
-          {isGood && <TrendingUp className="w-3 h-3 text-emerald-500" />}
-          {isBad && <TrendingDown className="w-3 h-3 text-red-500" />}
-          {!isGood && !isBad && <ArrowRight className="w-3 h-3 text-muted-foreground" />}
-          <span
-            className={`text-[11px] font-medium ${
-              isGood ? 'text-emerald-500' : isBad ? 'text-red-500' : 'text-muted-foreground'
-            }`}
-          >
-            {diff > 0 ? '+' : ''}
-            {diff.toFixed(2)} {unit}
-          </span>
-        </div>
+        <p
+          className={`text-[12px] font-medium tabular-nums ${
+            isGood
+              ? 'text-[hsl(142,71%,45%)]'
+              : isBad
+              ? 'text-[hsl(0,100%,60%)]'
+              : 'text-muted-foreground'
+          }`}
+        >
+          {isGood ? '↑ ' : isBad ? '↓ ' : ''}
+          {diff > 0 ? '+' : ''}
+          {diff.toFixed(2)} {unit}
+        </p>
       )}
     </motion.div>
   );
@@ -151,13 +137,6 @@ const SILHOUETTE_PATHS = {
     'L114,220 C112,210 110,202 108,196 L102,192 Z',
 };
 
-function getGradientColors(mode: Mode) {
-  if (mode === 'muscle') {
-    return { inner: 'hsl(210, 85%, 60%)', outer: 'hsl(210, 70%, 45%)' };
-  }
-  return { inner: 'hsl(0, 75%, 58%)', outer: 'hsl(0, 60%, 45%)' };
-}
-
 function BodySilhouette({
   mode,
   segments,
@@ -169,14 +148,15 @@ function BodySilhouette({
   maxVal: number;
   highestKey: string;
 }) {
-  const colors = getGradientColors(mode);
+  const baseColor = mode === 'muscle' ? APPLE.muscle : APPLE.fat;
+  const softColor = mode === 'muscle' ? APPLE.muscleSoft : APPLE.fatSoft;
 
   const segmentPaths: { key: string; path: string; delay: number }[] = [
     { key: 'trunk', path: SILHOUETTE_PATHS.trunk, delay: 0 },
-    { key: 'armL', path: SILHOUETTE_PATHS.armL, delay: 0.1 },
-    { key: 'armR', path: SILHOUETTE_PATHS.armR, delay: 0.15 },
-    { key: 'legL', path: SILHOUETTE_PATHS.legL, delay: 0.25 },
-    { key: 'legR', path: SILHOUETTE_PATHS.legR, delay: 0.3 },
+    { key: 'armL', path: SILHOUETTE_PATHS.armL, delay: 0.08 },
+    { key: 'armR', path: SILHOUETTE_PATHS.armR, delay: 0.12 },
+    { key: 'legL', path: SILHOUETTE_PATHS.legL, delay: 0.2 },
+    { key: 'legR', path: SILHOUETTE_PATHS.legR, delay: 0.25 },
   ];
 
   return (
@@ -185,53 +165,44 @@ function BodySilhouette({
       className="w-full h-full max-w-[160px] md:max-w-[180px] mx-auto"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.5 }}
     >
       <defs>
         {segmentPaths.map(({ key }) => {
           const intensity = (segments[key] || 0) / maxVal;
-          const opacity = 0.2 + 0.8 * intensity;
+          const opacity = 0.15 + 0.7 * intensity;
           return (
-            <radialGradient key={`grad-${key}-${mode}`} id={`grad-${key}`} cx="50%" cy="50%" r="65%">
-              <stop offset="0%" stopColor={colors.inner} stopOpacity={opacity} />
-              <stop offset="100%" stopColor={colors.outer} stopOpacity={opacity * 0.5} />
+            <radialGradient key={`grad-${key}-${mode}`} id={`grad-${key}`} cx="50%" cy="50%" r="80%">
+              <stop offset="0%" stopColor={softColor} stopOpacity={opacity} />
+              <stop offset="100%" stopColor={baseColor} stopOpacity={opacity * 0.4} />
             </radialGradient>
           );
         })}
-        <filter id="segment-glow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="4" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
       </defs>
 
-      {/* Head */}
+      {/* Head – soft filled */}
       <motion.path
         d={SILHOUETTE_PATHS.head}
-        fill="none"
-        stroke="hsl(var(--muted-foreground))"
-        strokeWidth="1.2"
-        opacity={0.25}
+        fill="hsl(var(--muted-foreground))"
+        fillOpacity={0.08}
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.25 }}
-        transition={{ duration: 0.5 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
       />
-      {/* Neck */}
+      {/* Neck – soft filled */}
       <motion.path
         d={SILHOUETTE_PATHS.neck}
         fill="none"
         stroke="hsl(var(--muted-foreground))"
         strokeWidth="1"
-        opacity={0.2}
+        strokeOpacity={0.08}
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.2 }}
-        transition={{ duration: 0.5 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
       />
 
-      {/* Segments */}
-      <AnimatePresence mode="wait">
+      {/* Segments – no strokes, no glow */}
+      <AnimatePresence>
         {segmentPaths.map(({ key, path, delay }) => {
           const isHighest = key === highestKey;
           return (
@@ -239,21 +210,11 @@ function BodySilhouette({
               key={`${key}-${mode}`}
               d={path}
               fill={`url(#grad-${key})`}
-              stroke={colors.inner}
-              strokeWidth={isHighest ? 1.5 : 0.5}
-              strokeOpacity={isHighest ? 0.6 : 0.15}
-              filter={isHighest ? 'url(#segment-glow)' : undefined}
+              fillOpacity={isHighest ? 1 : 0.85}
               initial={{ opacity: 0 }}
-              animate={{
-                opacity: 1,
-                ...(isHighest ? { strokeOpacity: [0.3, 0.7, 0.3] } : {}),
-              }}
-              transition={{
-                opacity: { duration: 0.5, delay },
-                strokeOpacity: isHighest
-                  ? { duration: 3, repeat: Infinity, ease: 'easeInOut' }
-                  : undefined,
-              }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5, delay, ease: [0.32, 0.72, 0, 1] }}
             />
           );
         })}
@@ -343,39 +304,39 @@ export default function AnatomyFigure({
   );
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-2">
+    <Card className="overflow-hidden border-0 shadow-[0_2px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_20px_rgba(255,255,255,0.03)]">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Körperanalyse</CardTitle>
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-            <button
-              onClick={() => setMode('muscle')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-300 ${
-                mode === 'muscle'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Muskel
-            </button>
-            <button
-              onClick={() => setMode('fat')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-300 ${
-                mode === 'fat'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Fett
-            </button>
+          <CardTitle className="text-base font-semibold tracking-tight">Körperanalyse</CardTitle>
+
+          {/* Apple-style segmented control */}
+          <div className="relative flex items-center bg-muted/60 rounded-xl p-[3px]">
+            {(['muscle', 'fat'] as Mode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className="relative z-10 px-4 py-1.5 text-[13px] font-medium rounded-[10px] transition-colors duration-200"
+                style={{
+                  color: mode === m ? 'var(--foreground)' : 'hsl(var(--muted-foreground))',
+                }}
+              >
+                {m === 'muscle' ? 'Muskel' : 'Fett'}
+                {mode === m && (
+                  <motion.div
+                    layoutId="anatomy-pill"
+                    className="absolute inset-0 bg-background rounded-[10px] shadow-sm -z-10"
+                    transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                  />
+                )}
+              </button>
+            ))}
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="pb-6">
+      <CardContent className="pb-8 px-6 md:px-8">
         {isMobile ? (
-          /* ─── Mobile: Figure + stacked cards ─── */
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-5">
             <div className="w-40 h-auto">
               <BodySilhouette
                 mode={mode}
@@ -395,9 +356,8 @@ export default function AnatomyFigure({
             </div>
           </div>
         ) : (
-          /* ─── Desktop: CSS Grid with figure centered ─── */
           <div
-            className="grid gap-3"
+            className="grid gap-6"
             style={{
               gridTemplateColumns: '1fr auto 1fr',
               gridTemplateRows: 'auto auto auto',
@@ -416,7 +376,7 @@ export default function AnatomyFigure({
             </div>
             <div
               style={{ gridArea: 'figure' }}
-              className="flex items-center justify-center px-2"
+              className="flex items-center justify-center px-4"
             >
               <div className="w-44">
                 <BodySilhouette
@@ -434,7 +394,7 @@ export default function AnatomyFigure({
               {makeCard('legR', 'right', 0.3)}
             </div>
             <div style={{ gridArea: 'trunk' }} className="flex justify-center">
-              <div className="w-full max-w-[200px]">
+              <div className="w-full max-w-[240px]">
                 {makeCard('trunk', 'center', 0.2)}
               </div>
             </div>
