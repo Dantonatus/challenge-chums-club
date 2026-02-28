@@ -90,7 +90,9 @@ export function linearRegression(entries: WeightEntry[]): { date: string; value:
   if (entries.length < 2) return [];
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   const n = sorted.length;
-  const xs = sorted.map((_, i) => i);
+  const t0 = new Date(sorted[0].date).getTime();
+  const MS_PER_DAY = 86_400_000;
+  const xs = sorted.map(e => (new Date(e.date).getTime() - t0) / MS_PER_DAY);
   const ys = sorted.map(e => e.weight_kg);
   const sumX = xs.reduce((s, x) => s + x, 0);
   const sumY = ys.reduce((s, y) => s + y, 0);
