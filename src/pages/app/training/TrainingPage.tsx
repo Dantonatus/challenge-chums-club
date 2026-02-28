@@ -58,10 +58,10 @@ export default function TrainingPage() {
         if (section.ref.current) {
           try {
             const isDark = document.documentElement.classList.contains('dark');
-            const dataUrl = await toPng(section.ref.current, {
-              pixelRatio: 2.5,
+            const dataUrl = await toJpeg(section.ref.current, {
+              pixelRatio: 2,
+              quality: 0.92,
               backgroundColor: isDark ? '#141414' : '#fcfcfc',
-              
             });
             images.push({ label: section.label, dataUrl });
           } catch (err) {

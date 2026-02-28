@@ -106,7 +106,7 @@ export async function exportBodyScanPDF(
       }
 
       const xOffset = MARGIN + (CONTENT_W - imgW) / 2;
-      doc.addImage(img.dataUrl, 'PNG', xOffset, y, imgW, imgH);
+      doc.addImage(img.dataUrl, 'JPEG', xOffset, y, imgW, imgH);
       y += imgH + SECTION_GAP;
 
       if (PAGE_H - y - FOOTER_RESERVE < PAGE_BREAK_THRESHOLD && idx < sectionImages.length - 1) {
