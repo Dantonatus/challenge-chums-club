@@ -174,12 +174,9 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
         })
       : [];
 
-    const firstForecastLabel = fcPoints.length > 0 ? fcPoints[0].label : null;
-
     return {
       chartData: [...realPoints, ...fcPoints],
-      lastRealLabel: lastLabel,
-      forecastStartLabel: firstForecastLabel,
+      lastRealTs: lastTs,
     };
   }, [filtered, ma7, ma30, reg, forecastPoints, activeForecastKey, selectedMonth, filteredSnapshots]);
 
