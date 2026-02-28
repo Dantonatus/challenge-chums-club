@@ -14,43 +14,34 @@ export function mergeWeightSources(
   manualEntries: WeightEntry[],
   scaleEntries: SmartScaleEntry[],
 ): UnifiedWeightEntry[] {
-  // Build scale daily averages
-  const scaleDays = new Map<string, { sum: number; count: number; time: string }>();
+  const result = new Map<string, UnifiedWeightEntry>();
+
+  // Manuelle Eintraege
+  for (const e of manualEntries) {
+    const key = `${e.date}_${e.time ?? '00:00'}`;
+    result.set(key, { ...e, source: 'manual' });
+  }
+
+  // Scale-Eintraege einzeln (ueberschreiben manuelle bei gleicher Zeit)
   for (const e of scaleEntries) {
     if (e.weight_kg === null) continue;
     const date = e.measured_at.slice(0, 10);
-    const existing = scaleDays.get(date);
-    if (existing) {
-      existing.sum += e.weight_kg;
-      existing.count += 1;
-    } else {
-      scaleDays.set(date, { sum: e.weight_kg, count: 1, time: e.measured_at.slice(11, 16) });
-    }
-  }
-
-  const result = new Map<string, UnifiedWeightEntry>();
-
-  // Add manual entries first
-  for (const e of manualEntries) {
-    result.set(e.date, {
-      ...e,
-      source: 'manual',
-    });
-  }
-
-  // Overlay scale entries (overwrite manual on same date)
-  for (const [date, data] of scaleDays) {
-    const avg = Math.round((data.sum / data.count) * 100) / 100;
-    result.set(date, {
-      id: `scale-${date}`,
-      user_id: '',
+    const time = e.measured_at.slice(11, 16);
+    const key = `${date}_${time}`;
+    result.set(key, {
+      id: e.id,
+      user_id: e.user_id,
       date,
-      time: data.time,
-      weight_kg: avg,
-      created_at: '',
+      time,
+      weight_kg: e.weight_kg,
+      created_at: e.created_at,
       source: 'scale',
     });
   }
 
-  return [...result.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return [...result.values()].sort((a, b) =>
+    a.date === b.date
+      ? (a.time ?? '').localeCompare(b.time ?? '')
+      : a.date.localeCompare(b.date)
+  );
 }
