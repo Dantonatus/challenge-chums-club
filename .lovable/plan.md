@@ -1,22 +1,46 @@
 
 
-## Fix: Kunde-Aktualisierung wird nicht in der Kalenderansicht reflektiert
+## Fix: Morgens/Abends-Filter korrigieren
 
 ### Problem
-Wenn ein Kunde bearbeitet und gespeichert wird, invalidiert `updateClient` nur den `['clients']`-Query-Cache. Die Kalenderansicht (Quarter/HalfYear) bezieht ihre Client-Daten jedoch aus dem `['milestones']`-Query (via Supabase-Join `client:clients(*)`). Dieser Cache wird nicht aktualisiert, weshalb die Aenderungen nicht sichtbar werden.
+1. **Falsche Zeitgrenzen**: Aktuell ist "Morgens" = 04:00-11:59 und "Abends" = 17:00-03:59. Werte zwischen 12:00-16:59 werden komplett herausgefiltert.
+2. **Gewuenschte Logik**: Morgens = vor 15:00 (oder wenn keine Uhrzeit vorhanden), Abends = ab 15:00.
+3. **Filter wird nicht ueberall angewendet**: Die Uebersicht-Tab nutzt `unifiedEntries` statt `filteredScaleEntries`, der Zeitfilter wirkt dort nicht.
 
-### Loesung
+### Aenderungen
 
-**Datei: `src/hooks/useClients.ts`** - In der `onSuccess`-Callback von `updateClient` (Zeile 82-85) zusaetzlich den Milestones-Cache invalidieren:
+**Datei 1: `src/lib/smartscale/analytics.ts`** - Funktion `filterByTimeOfDay`
+
+Neue Logik:
+- `morning`: Stunde < 15, ODER wenn keine gueltige Uhrzeit parsbar ist
+- `evening`: Stunde >= 15
+- `all`: keine Filterung
+
+Gleichzeitig `morningVsEvening` anpassen (wird fuer den Tagesvergleich genutzt): Grenze ebenfalls auf 15:00 setzen.
+
+**Datei 2: `src/pages/app/training/WeightPage.tsx`** - Uebersicht-Tab
+
+Den Zeitfilter auch auf die `unifiedEntries` anwenden, damit die Uebersicht (KPIs, Chart, Heatmap) ebenfalls nur Morgens- oder Abends-Werte zeigt. Dazu die `mergeWeightSources`-Funktion mit den bereits gefilterten Scale-Entries aufrufen, oder die unified Entries nachtraeglich filtern.
+
+### Technische Details
 
 ```typescript
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ['clients'] });
-  queryClient.invalidateQueries({ queryKey: ['milestones'] });
-  toast({ title: 'Kunde aktualisiert' });
-},
+// analytics.ts - neue filterByTimeOfDay Logik
+export function filterByTimeOfDay(entries: SmartScaleEntry[], slot: TimeSlot): SmartScaleEntry[] {
+  if (slot === 'all') return entries;
+  return entries.filter(e => {
+    const hourStr = e.measured_at.slice(11, 13);
+    const hour = parseInt(hourStr, 10);
+    // Falls keine Uhrzeit parsbar -> als "morgens" zaehlen
+    if (isNaN(hour)) return slot === 'morning';
+    if (slot === 'morning') return hour < 15;
+    return hour >= 15; // evening
+  });
+}
+
+// morningVsEvening - Grenze ebenfalls 15:00
+morning: hour < 15
+evening: hour >= 15
 ```
 
-Gleiche Aenderung fuer `deleteClient.onSuccess` (Zeile 100-103), da dort bereits `['milestones']` invalidiert wird - das ist bereits korrekt implementiert.
-
-Eine einzelne Zeile in einer Datei.
+Fuer die Uebersicht: `unifiedEntries` durch den Zeitfilter leiten, sodass auch die Weight-Timeline, KPIs und Heatmap den Filter respektieren.
