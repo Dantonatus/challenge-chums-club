@@ -85,6 +85,13 @@ export default function WeightPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
+      // Temporarily expand scroll containers for full capture
+      const scrollDiv = entryListRef.current?.querySelector('.overflow-y-auto') as HTMLElement | null;
+      if (scrollDiv) {
+        scrollDiv.style.maxHeight = 'none';
+        scrollDiv.style.overflow = 'visible';
+      }
+
       const images: { label: string; dataUrl: string }[] = [];
       for (const section of pdfSections) {
         if (section.ref.current) {
@@ -101,6 +108,13 @@ export default function WeightPage() {
           }
         }
       }
+
+      // Restore scroll constraints
+      if (scrollDiv) {
+        scrollDiv.style.maxHeight = '';
+        scrollDiv.style.overflow = '';
+      }
+
       await exportWeightPDF(images);
     } finally {
       setExporting(false);
