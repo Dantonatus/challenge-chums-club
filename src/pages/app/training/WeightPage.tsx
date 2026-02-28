@@ -85,6 +85,13 @@ export default function WeightPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
+      // Temporarily expand scroll containers for full capture
+      const scrollDiv = entryListRef.current?.querySelector('.overflow-y-auto') as HTMLElement | null;
+      if (scrollDiv) {
+        scrollDiv.style.maxHeight = 'none';
+        scrollDiv.style.overflow = 'visible';
+      }
+
       const images: { label: string; dataUrl: string }[] = [];
       for (const section of pdfSections) {
         if (section.ref.current) {
@@ -101,6 +108,13 @@ export default function WeightPage() {
           }
         }
       }
+
+      // Restore scroll constraints
+      if (scrollDiv) {
+        scrollDiv.style.maxHeight = '';
+        scrollDiv.style.overflow = '';
+      }
+
       await exportWeightPDF(images);
     } finally {
       setExporting(false);
@@ -223,15 +237,15 @@ export default function WeightPage() {
               {unifiedEntries.length > 0 && (
                 <>
                   <PeriodNavigator onChange={handlePeriodChange} modes={['week', 'month', 'quarter', 'year', 'all']} />
-                  <div ref={kpiRef} className="-m-3 p-3"><WeightKPICards entries={periodEntries} /></div>
-                  <div ref={entryListRef} className="-m-3 p-3"><WeightEntryList
+                  <div ref={kpiRef} className="-m-5 p-5"><WeightKPICards entries={periodEntries} /></div>
+                  <div ref={entryListRef} className="-m-5 p-5"><WeightEntryList
                     entries={periodEntries}
                     onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
                     onDelete={(id) => remove.mutate({ id })}
                   /></div>
-                  {hasScaleData && <div ref={comparisonRef} className="-m-3 p-3"><DailyComparisonCard entries={filteredScaleEntries} /></div>}
-                  <div ref={terrainRef} className="-m-3 p-3"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
-                  <div ref={heatmapRef} className="-m-3 p-3"><WeightHeatmapStrip entries={periodEntries} /></div>
+                  {hasScaleData && <div ref={comparisonRef} className="-m-5 p-5"><DailyComparisonCard entries={filteredScaleEntries} /></div>}
+                  <div ref={terrainRef} className="-m-5 p-5"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
+                  <div ref={heatmapRef} className="-m-5 p-5"><WeightHeatmapStrip entries={periodEntries} /></div>
                 </>
               )}
             </TabsContent>
