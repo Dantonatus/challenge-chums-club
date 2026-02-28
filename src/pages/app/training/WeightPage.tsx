@@ -196,8 +196,7 @@ export default function WeightPage() {
                 )}
               </TabsList>
 
-              {hasScaleData && (
-                <ToggleGroup
+              <ToggleGroup
                   type="single"
                   value={timeSlot}
                   onValueChange={(v) => { if (v) setTimeSlot(v as TimeSlot); }}
