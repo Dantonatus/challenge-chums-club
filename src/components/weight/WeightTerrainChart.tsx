@@ -180,14 +180,6 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
     };
   }, [filtered, ma7, ma30, reg, forecastPoints, activeForecastKey, selectedMonth, filteredSnapshots]);
 
-  const xInterval = useMemo(() => {
-    const n = chartData.length;
-    if (n < 15) return 0;
-    if (n < 30) return 2;
-    if (n < 60) return 4;
-    return 6;
-  }, [chartData.length]);
-
   // Y domain extends to include confidence bands
   const { domainMin, domainMax } = useMemo(() => {
     const allValues: number[] = [];
