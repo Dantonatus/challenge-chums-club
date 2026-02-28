@@ -1,22 +1,29 @@
 
 
-## Fix: Kunde-Aktualisierung wird nicht in der Kalenderansicht reflektiert
+## Fix: Symmetrische Ausrichtung der Segment-Karten um die Koerperfigur
 
 ### Problem
-Wenn ein Kunde bearbeitet und gespeichert wird, invalidiert `updateClient` nur den `['clients']`-Query-Cache. Die Kalenderansicht (Quarter/HalfYear) bezieht ihre Client-Daten jedoch aus dem `['milestones']`-Query (via Supabase-Join `client:clients(*)`). Dieser Cache wird nicht aktualisiert, weshalb die Aenderungen nicht sichtbar werden.
+Die linken Karten (Linker Arm, Linkes Bein) sitzen am linken Rand ihrer Grid-Zelle, waehrend die rechten Karten naeher an der Figur sind. Das erzeugt ein asymmetrisches Layout, weil die Karten nicht gleichmaessig zur Mitte hin ausgerichtet sind.
+
+### Ursache
+Das Desktop-Grid nutzt `1fr auto 1fr` -- die linken Zellen haben `flex items-center` ohne horizontale Ausrichtung, die Karten landen also links in der Zelle statt rechts (nahe der Figur).
 
 ### Loesung
 
-**Datei: `src/hooks/useClients.ts`** - In der `onSuccess`-Callback von `updateClient` (Zeile 82-85) zusaetzlich den Milestones-Cache invalidieren:
+**Datei: `src/components/bodyscan/AnatomyFigure.tsx`**
 
-```typescript
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ['clients'] });
-  queryClient.invalidateQueries({ queryKey: ['milestones'] });
-  toast({ title: 'Kunde aktualisiert' });
-},
-```
+Aenderungen am Desktop-Grid-Layout (ab Zeile 358):
 
-Gleiche Aenderung fuer `deleteClient.onSuccess` (Zeile 100-103), da dort bereits `['milestones']` invalidiert wird - das ist bereits korrekt implementiert.
+1. **Linke Karten (`armL`, `legL`)**: `justify-end` hinzufuegen, damit die Karten rechtsbuendig zur Figur hin sitzen
+2. **Rechte Karten (`armR`, `legR`)**: `justify-start` hinzufuegen, damit sie linksbuendig zur Figur hin sitzen
+3. **Alle Karten gleiche Breite**: `w-full max-w-[180px]` auf die inneren Card-Container, damit links und rechts gleich breit sind
+4. **Trunk zentriert**: Bleibt wie bisher mit `justify-center`
 
-Eine einzelne Zeile in einer Datei.
+Konkrete Aenderungen:
+- `armL`-Zelle: `flex items-center` wird zu `flex items-center justify-end`
+- `armR`-Zelle: `flex items-center` wird zu `flex items-center justify-start`
+- `legL`-Zelle: `flex items-start` wird zu `flex items-start justify-end`
+- `legR`-Zelle: `flex items-start` wird zu `flex items-start justify-start`
+
+Das ergibt ein symmetrisches Layout: Karten links werden zur Figur hin geschoben, Karten rechts ebenso -- gleichmaessiger Abstand auf beiden Seiten.
+
