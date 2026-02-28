@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toPng } from 'html-to-image';
+import { toJpeg } from 'html-to-image';
 import { useBodyScans } from '@/hooks/useBodyScans';
 import { Dumbbell, ScanLine, FileDown, Loader2, Scale, Hash, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -80,8 +80,9 @@ export default function BodyScanPage() {
       const images: { label: string; dataUrl: string }[] = [];
       for (const section of pdfSections) {
         if (!section.ref.current) continue;
-        const dataUrl = await toPng(section.ref.current, {
-          pixelRatio: 2.5,
+        const dataUrl = await toJpeg(section.ref.current, {
+          pixelRatio: 2,
+          quality: 0.92,
           backgroundColor: bgColor,
         });
         images.push({ label: section.label, dataUrl });
