@@ -33,7 +33,15 @@ export default function WeightPage() {
   const { entries: scaleEntries, isLoading: scaleLoading, bulkImport } = useSmartScaleEntries();
   const [periodRange, setPeriodRange] = useState<{ start: Date; end: Date } | null>(null);
   const [timeSlot, setTimeSlot] = useState<TimeSlot>('morning');
+  const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
+
+  // Capture refs for PDF export
+  const kpiRef = useRef<HTMLDivElement>(null);
+  const entryListRef = useRef<HTMLDivElement>(null);
+  const comparisonRef = useRef<HTMLDivElement>(null);
+  const terrainRef = useRef<HTMLDivElement>(null);
+  const heatmapRef = useRef<HTMLDivElement>(null);
 
   const filteredScaleEntries = useMemo(
     () => filterByTimeOfDay(scaleEntries, timeSlot),
