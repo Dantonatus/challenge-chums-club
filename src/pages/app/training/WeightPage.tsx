@@ -1,6 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock } from 'lucide-react';
+import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Loader2 } from 'lucide-react';
+import { toJpeg } from 'html-to-image';
+import { Button } from '@/components/ui/button';
+import { exportWeightPDF } from '@/lib/weight/exportWeightPDF';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
