@@ -197,16 +197,16 @@ export default function BodyScanPage() {
         </div>
       ) : (
         <>
-          <div className="-m-3 p-3" ref={kpiRef}><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
-          <div className="-m-3 p-3" ref={compositionRef}><CompositionTrendChart scans={filteredScans} showLabels={showLabels} /></div>
-          <div className="-m-3 p-3" ref={fatMuscleRef}><FatMuscleAreaChart scans={filteredScans} showLabels={showLabels} /></div>
-          <div className="-m-3 p-3 grid grid-cols-1 lg:grid-cols-2 gap-6" ref={segmentsRef}>
+          <div className="-m-5 p-5" ref={kpiRef}><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
+          <div className="-m-5 p-5" ref={compositionRef}><CompositionTrendChart scans={filteredScans} showLabels={showLabels} /></div>
+          <div className="-m-5 p-5" ref={fatMuscleRef}><FatMuscleAreaChart scans={filteredScans} showLabels={showLabels} /></div>
+          <div className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6" ref={segmentsRef}>
             <SegmentMuscleChart scans={filteredScans} showLabels={showLabels} />
             <SegmentFatChart scans={filteredScans} showLabels={showLabels} />
           </div>
-          <div className="-m-3 p-3" ref={anatomyRef}><AnatomyFigure scans={filteredScans} selectedScan={selectedScan} previousScan={previousScan} /></div>
-          <div className="-m-3 p-3" ref={metabolismRef}><MetabolismCard scans={filteredScans} selectedScan={selectedScan} /></div>
-          <div className="-m-3 p-3" ref={timelineRef}><ScanTimeline scans={filteredScans} selectedIndex={selectedIndex} onSelectIndex={setSelectedIndex} /></div>
+          <div className="-m-5 p-5" ref={anatomyRef}><AnatomyFigure scans={filteredScans} selectedScan={selectedScan} previousScan={previousScan} /></div>
+          <div className="-m-5 p-5" ref={metabolismRef}><MetabolismCard scans={filteredScans} selectedScan={selectedScan} /></div>
+          <div className="-m-5 p-5" ref={timelineRef}><ScanTimeline scans={filteredScans} selectedIndex={selectedIndex} onSelectIndex={setSelectedIndex} /></div>
         </>
       )}
     </div>
