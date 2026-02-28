@@ -107,7 +107,7 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
   }, [snapshots, showHistory, activeForecastDays]);
 
   // Build chart data: real points + forecast points
-  const { chartData, lastRealLabel, forecastStartLabel } = useMemo(() => {
+  const { chartData, lastRealTs } = useMemo(() => {
     const showForecast = activeForecastKey !== null && !selectedMonth && forecastPoints.length > 0;
 
     const realPoints = filtered.map(e => {
