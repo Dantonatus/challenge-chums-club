@@ -132,22 +132,22 @@ export default function TrainingPage() {
         </div>
       ) : (
         <>
-          <div ref={kpiRef} className="-m-3 p-3"><TrainingKPICards checkins={checkins} /></div>
-          <div ref={heatmapRef} className="-m-3 p-3"><TimeBubbleHeatmap checkins={checkins} /></div>
-          <div ref={recordsRef} className="-m-3 p-3"><PersonalRecords checkins={checkins} /></div>
-          <div ref={gridRow1Ref} className="-m-3 p-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div ref={kpiRef} className="-m-5 p-5"><TrainingKPICards checkins={checkins} /></div>
+          <div ref={heatmapRef} className="-m-5 p-5"><TimeBubbleHeatmap checkins={checkins} /></div>
+          <div ref={recordsRef} className="-m-5 p-5"><PersonalRecords checkins={checkins} /></div>
+          <div ref={gridRow1Ref} className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <FrequencyTrendChart checkins={checkins} />
             <RestDaysChart checkins={checkins} />
           </div>
-          <div ref={gridRow2Ref} className="-m-3 p-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div ref={gridRow2Ref} className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <WeeklyVisitsChart checkins={checkins} />
             <TimeDistributionChart checkins={checkins} />
           </div>
-          <div ref={gridRow3Ref} className="-m-3 p-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div ref={gridRow3Ref} className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <WeekdayHeatmap checkins={checkins} />
             <MonthlyComparisonChart checkins={checkins} />
           </div>
-          <div ref={calendarRef} className="-m-3 p-3"><TrainingCalendar checkins={checkins} /></div>
+          <div ref={calendarRef} className="-m-5 p-5"><TrainingCalendar checkins={checkins} /></div>
         </>
       )}
     </div>
