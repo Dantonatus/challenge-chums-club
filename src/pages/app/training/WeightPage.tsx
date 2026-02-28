@@ -74,6 +74,39 @@ export default function WeightPage() {
 
   const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
 
+  const pdfSections = [
+    { label: 'KPIs', ref: kpiRef },
+    { label: 'Einträge', ref: entryListRef },
+    { label: 'Tagesvergleich', ref: comparisonRef },
+    { label: 'Gewichtsverlauf', ref: terrainRef },
+    { label: 'Heatmap', ref: heatmapRef },
+  ];
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const images: { label: string; dataUrl: string }[] = [];
+      for (const section of pdfSections) {
+        if (section.ref.current) {
+          try {
+            const isDark = document.documentElement.classList.contains('dark');
+            const dataUrl = await toJpeg(section.ref.current, {
+              pixelRatio: 2,
+              quality: 0.92,
+              backgroundColor: isDark ? '#141414' : '#fcfcfc',
+            });
+            images.push({ label: section.label, dataUrl });
+          } catch (err) {
+            console.warn(`Failed to capture ${section.label}:`, err);
+          }
+        }
+      }
+      await exportWeightPDF(images);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleSave = async (data: { date: string; time: string; weight_kg: number }) => {
     await upsert.mutateAsync(data);
   };
