@@ -393,11 +393,21 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
               type="number"
               scale="time"
               domain={['dataMin', 'dataMax']}
-              tickFormatter={(ts: number) => format(new Date(ts), 'dd. MMM', { locale: de })}
+              ticks={xTicks}
+              interval={0}
+              tickFormatter={(ts: number) => {
+                const spanDays = chartData.length > 1
+                  ? (chartData[chartData.length - 1].ts - chartData[0].ts) / 86_400_000
+                  : 0;
+                return spanDays > 365
+                  ? format(new Date(ts), 'MMM yy', { locale: de })
+                  : format(new Date(ts), 'dd. MMM', { locale: de });
+              }}
               tick={{ fontSize: 11 }}
               className="fill-muted-foreground"
               tickLine={false}
               axisLine={false}
+              minTickGap={30}
             />
             <YAxis
               domain={[domainMin, domainMax]}
