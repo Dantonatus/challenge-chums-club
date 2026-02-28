@@ -113,6 +113,7 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
     const realPoints = filtered.map(e => {
       const point: Record<string, any> = {
         date: e.date,
+        ts: parseISO(e.date).getTime(),
         weight: e.weight_kg,
         ma7: ma7.get(e.date) ?? null,
         ma30: ma30.get(e.date) ?? null,
