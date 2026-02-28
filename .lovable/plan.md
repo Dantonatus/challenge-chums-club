@@ -1,22 +1,48 @@
 
 
-## Fix: Kunde-Aktualisierung wird nicht in der Kalenderansicht reflektiert
+## PDF-Export fuer Gewicht-Seite
 
-### Problem
-Wenn ein Kunde bearbeitet und gespeichert wird, invalidiert `updateClient` nur den `['clients']`-Query-Cache. Die Kalenderansicht (Quarter/HalfYear) bezieht ihre Client-Daten jedoch aus dem `['milestones']`-Query (via Supabase-Join `client:clients(*)`). Dieser Cache wird nicht aktualisiert, weshalb die Aenderungen nicht sichtbar werden.
+Dieselbe Architektur wie beim Training Check-in Export wird auf die Gewicht-Seite uebertragen: Screenshot-Capture der sichtbaren Sektionen mit `toJpeg` und Zusammenstellung via `jsPDF`.
 
-### Loesung
+### Neue Datei: `src/lib/weight/exportWeightPDF.ts`
 
-**Datei: `src/hooks/useClients.ts`** - In der `onSuccess`-Callback von `updateClient` (Zeile 82-85) zusaetzlich den Milestones-Cache invalidieren:
+Kopie der Logik aus `exportTrainingPDF.ts`, angepasst fuer den Gewichts-Kontext:
+- Header-Text: "Gewichtsbericht" statt "Trainingsbericht"
+- Dateiname: `gewicht-report-YYYY-MM-DD.pdf`
+- Gleiche Theme-aware Farben, Seitenumbruch-Logik (60mm Schwelle), Footer mit Seitenzahlen
+- Akzeptiert `sectionImages: { label: string; dataUrl: string }[]` -- identische Signatur
 
-```typescript
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ['clients'] });
-  queryClient.invalidateQueries({ queryKey: ['milestones'] });
-  toast({ title: 'Kunde aktualisiert' });
-},
+### Aenderungen in `src/pages/app/training/WeightPage.tsx`
+
+1. **Imports hinzufuegen**: `toJpeg` aus `html-to-image`, `useRef`, `useState` fuer Export-State, `FileDown`, `Loader2` Icons, `Button`, neue `exportWeightPDF` Funktion
+
+2. **Refs fuer alle sichtbaren Sektionen** (nur Uebersicht-Tab, da dieser die Hauptdaten zeigt):
+   - `kpiRef` → WeightKPICards
+   - `entryListRef` → WeightEntryList
+   - `comparisonRef` → DailyComparisonCard (nur wenn Scale-Daten vorhanden)
+   - `terrainRef` → WeightTerrainChart
+   - `heatmapRef` → WeightHeatmapStrip
+
+3. **Export-Handler**: Iteriert ueber alle Refs, erfasst JPEG-Screenshots (pixelRatio 2, quality 0.92, theme-aware Hintergrundfarbe), uebergibt sie an `exportWeightPDF`
+
+4. **PDF-Button im Header**: Neben dem ScaleFileUploader, analog zum Training-Export (nur sichtbar wenn Daten vorhanden)
+
+5. **Capture-Buffer**: Alle erfassten Sektionen erhalten `-m-5 p-5` Wrapper fuer saubere Schatten/Border-Erfassung
+
+### Technische Details
+
+```text
+WeightPage Header
+  [Check-ins] [Body Scan] [Gewicht]    [PDF Export] [Import]
+                                         ^-- NEU
+
+Capture-Refs (Uebersicht-Tab):
+  kpiRef        → WeightKPICards
+  entryListRef  → WeightEntryList  
+  comparisonRef → DailyComparisonCard (optional)
+  terrainRef    → WeightTerrainChart
+  heatmapRef    → WeightHeatmapStrip
 ```
 
-Gleiche Aenderung fuer `deleteClient.onSuccess` (Zeile 100-103), da dort bereits `['milestones']` invalidiert wird - das ist bereits korrekt implementiert.
+Die Export-Funktion ist identisch zur Training-Variante: JPEG 0.92 Qualitaet, pixelRatio 2, intelligente Seitenumbrueche, Theme-aware Hintergrund.
 
-Eine einzelne Zeile in einer Datei.
