@@ -102,7 +102,7 @@ export function linearRegression(entries: WeightEntry[]): { date: string; value:
   const intercept = (sumY - slope * sumX) / n;
   return sorted.map((e, i) => ({
     date: e.date,
-    value: Math.round((slope * i + intercept) * 10) / 10,
+    value: Math.round((slope * xs[i] + intercept) * 10) / 10,
   }));
 }
 
