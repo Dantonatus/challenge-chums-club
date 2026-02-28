@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dumbbell, FileDown, Loader2, ScanLine, Scale } from 'lucide-react';
-import { toJpeg } from 'html-to-image';
+import { toPng } from 'html-to-image';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
 import CsvUploader from '@/components/training/CsvUploader';
 import { Button } from '@/components/ui/button';
@@ -58,9 +58,8 @@ export default function TrainingPage() {
         if (section.ref.current) {
           try {
             const isDark = document.documentElement.classList.contains('dark');
-            const dataUrl = await toJpeg(section.ref.current, {
-              quality: 0.85,
-              pixelRatio: 1.5,
+            const dataUrl = await toPng(section.ref.current, {
+              pixelRatio: 2.5,
               backgroundColor: isDark ? '#141414' : '#fcfcfc',
               
             });
