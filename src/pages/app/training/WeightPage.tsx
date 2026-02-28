@@ -243,9 +243,9 @@ export default function WeightPage() {
                     onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
                     onDelete={(id) => remove.mutate({ id })}
                   /></div>
-                  {hasScaleData && <div ref={comparisonRef} className="-m-3 p-3"><DailyComparisonCard entries={filteredScaleEntries} /></div>}
-                  <div ref={terrainRef} className="-m-3 p-3"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
-                  <div ref={heatmapRef} className="-m-3 p-3"><WeightHeatmapStrip entries={periodEntries} /></div>
+                  {hasScaleData && <div ref={comparisonRef} className="-m-5 p-5"><DailyComparisonCard entries={filteredScaleEntries} /></div>}
+                  <div ref={terrainRef} className="-m-5 p-5"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
+                  <div ref={heatmapRef} className="-m-5 p-5"><WeightHeatmapStrip entries={periodEntries} /></div>
                 </>
               )}
             </TabsContent>
