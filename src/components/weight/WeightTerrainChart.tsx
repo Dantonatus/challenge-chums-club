@@ -149,19 +149,20 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
 
     const fcPoints = showForecast
       ? forecastPoints.map(f => {
-          const point: Record<string, any> = {
-            date: f.date,
-            weight: null,
-            ma7: null,
-            ma30: null,
-            regression: null,
-            forecast: f.value,
-            forecastSimulated: f.simulated,
-            forecastLower: f.lower,
-            forecastUpper: f.upper,
-            label: format(parseISO(f.date), 'dd. MMM', { locale: de }),
-            isForecast: true,
-          };
+           const point: Record<string, any> = {
+             date: f.date,
+             ts: parseISO(f.date).getTime(),
+             weight: null,
+             ma7: null,
+             ma30: null,
+             regression: null,
+             forecast: f.value,
+             forecastSimulated: f.simulated,
+             forecastLower: f.lower,
+             forecastUpper: f.upper,
+             label: format(parseISO(f.date), 'dd. MMM', { locale: de }),
+             isForecast: true,
+           };
           filteredSnapshots.forEach((snap, idx) => {
             const pts = snap.points_json;
             const match = pts.find(p => p.date === f.date);
