@@ -1,6 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock } from 'lucide-react';
+import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Loader2 } from 'lucide-react';
+import { toJpeg } from 'html-to-image';
+import { Button } from '@/components/ui/button';
+import { exportWeightPDF } from '@/lib/weight/exportWeightPDF';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
@@ -30,7 +33,15 @@ export default function WeightPage() {
   const { entries: scaleEntries, isLoading: scaleLoading, bulkImport } = useSmartScaleEntries();
   const [periodRange, setPeriodRange] = useState<{ start: Date; end: Date } | null>(null);
   const [timeSlot, setTimeSlot] = useState<TimeSlot>('morning');
+  const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
+
+  // Capture refs for PDF export
+  const kpiRef = useRef<HTMLDivElement>(null);
+  const entryListRef = useRef<HTMLDivElement>(null);
+  const comparisonRef = useRef<HTMLDivElement>(null);
+  const terrainRef = useRef<HTMLDivElement>(null);
+  const heatmapRef = useRef<HTMLDivElement>(null);
 
   const filteredScaleEntries = useMemo(
     () => filterByTimeOfDay(scaleEntries, timeSlot),
@@ -62,6 +73,39 @@ export default function WeightPage() {
   }, [unifiedEntries, periodRange]);
 
   const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
+
+  const pdfSections = [
+    { label: 'KPIs', ref: kpiRef },
+    { label: 'Einträge', ref: entryListRef },
+    { label: 'Tagesvergleich', ref: comparisonRef },
+    { label: 'Gewichtsverlauf', ref: terrainRef },
+    { label: 'Heatmap', ref: heatmapRef },
+  ];
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const images: { label: string; dataUrl: string }[] = [];
+      for (const section of pdfSections) {
+        if (section.ref.current) {
+          try {
+            const isDark = document.documentElement.classList.contains('dark');
+            const dataUrl = await toJpeg(section.ref.current, {
+              pixelRatio: 2,
+              quality: 0.92,
+              backgroundColor: isDark ? '#141414' : '#fcfcfc',
+            });
+            images.push({ label: section.label, dataUrl });
+          } catch (err) {
+            console.warn(`Failed to capture ${section.label}:`, err);
+          }
+        }
+      }
+      await exportWeightPDF(images);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleSave = async (data: { date: string; time: string; weight_kg: number }) => {
     await upsert.mutateAsync(data);
@@ -95,10 +139,22 @@ export default function WeightPage() {
             </button>
           </div>
         </div>
-        <ScaleFileUploader
-          onImport={(parsed) => bulkImport.mutateAsync(parsed)}
-          isLoading={bulkImport.isPending}
-        />
+        <div className="flex items-center gap-2">
+          {unifiedEntries.length > 0 && (
+            <Button variant="outline" onClick={handleExport} disabled={exporting}>
+              {exporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
+              PDF Export
+            </Button>
+          )}
+          <ScaleFileUploader
+            onImport={(parsed) => bulkImport.mutateAsync(parsed)}
+            isLoading={bulkImport.isPending}
+          />
+        </div>
       </div>
 
       {isLoading || scaleLoading ? (
@@ -169,15 +225,15 @@ export default function WeightPage() {
               {unifiedEntries.length > 0 && (
                 <>
                   <PeriodNavigator onChange={handlePeriodChange} modes={['week', 'month', 'quarter', 'year', 'all']} />
-                  <WeightKPICards entries={periodEntries} />
-                  <WeightEntryList
+                  <div ref={kpiRef} className="-m-3 p-3"><WeightKPICards entries={periodEntries} /></div>
+                  <div ref={entryListRef} className="-m-3 p-3"><WeightEntryList
                     entries={periodEntries}
                     onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
                     onDelete={(id) => remove.mutate({ id })}
-                  />
-                  {hasScaleData && <DailyComparisonCard entries={scaleEntries} />}
-                  <WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} />
-                  <WeightHeatmapStrip entries={periodEntries} />
+                  /></div>
+                  {hasScaleData && <div ref={comparisonRef} className="-m-3 p-3"><DailyComparisonCard entries={scaleEntries} /></div>}
+                  <div ref={terrainRef} className="-m-3 p-3"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
+                  <div ref={heatmapRef} className="-m-3 p-3"><WeightHeatmapStrip entries={periodEntries} /></div>
                 </>
               )}
             </TabsContent>
