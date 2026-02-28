@@ -368,11 +368,11 @@ export default function AnatomyFigure({
               `,
             }}
           >
-            <div style={{ gridArea: 'armL' }} className="flex items-center">
-              {makeCard('armL', 'left', 0.1)}
+            <div style={{ gridArea: 'armL' }} className="flex items-center justify-end">
+              <div className="w-full max-w-[180px]">{makeCard('armL', 'left', 0.1)}</div>
             </div>
-            <div style={{ gridArea: 'armR' }} className="flex items-center">
-              {makeCard('armR', 'right', 0.15)}
+            <div style={{ gridArea: 'armR' }} className="flex items-center justify-start">
+              <div className="w-full max-w-[180px]">{makeCard('armR', 'right', 0.15)}</div>
             </div>
             <div
               style={{ gridArea: 'figure' }}
@@ -387,11 +387,11 @@ export default function AnatomyFigure({
                 />
               </div>
             </div>
-            <div style={{ gridArea: 'legL' }} className="flex items-start">
-              {makeCard('legL', 'left', 0.25)}
+            <div style={{ gridArea: 'legL' }} className="flex items-start justify-end">
+              <div className="w-full max-w-[180px]">{makeCard('legL', 'left', 0.25)}</div>
             </div>
-            <div style={{ gridArea: 'legR' }} className="flex items-start">
-              {makeCard('legR', 'right', 0.3)}
+            <div style={{ gridArea: 'legR' }} className="flex items-start justify-start">
+              <div className="w-full max-w-[180px]">{makeCard('legR', 'right', 0.3)}</div>
             </div>
             <div style={{ gridArea: 'trunk' }} className="flex justify-center">
               <div className="w-full max-w-[240px]">
