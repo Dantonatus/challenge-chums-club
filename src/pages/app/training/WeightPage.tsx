@@ -225,15 +225,15 @@ export default function WeightPage() {
               {unifiedEntries.length > 0 && (
                 <>
                   <PeriodNavigator onChange={handlePeriodChange} modes={['week', 'month', 'quarter', 'year', 'all']} />
-                  <WeightKPICards entries={periodEntries} />
-                  <WeightEntryList
+                  <div ref={kpiRef} className="-m-3 p-3"><WeightKPICards entries={periodEntries} /></div>
+                  <div ref={entryListRef} className="-m-3 p-3"><WeightEntryList
                     entries={periodEntries}
                     onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
                     onDelete={(id) => remove.mutate({ id })}
-                  />
-                  {hasScaleData && <DailyComparisonCard entries={scaleEntries} />}
-                  <WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} />
-                  <WeightHeatmapStrip entries={periodEntries} />
+                  /></div>
+                  {hasScaleData && <div ref={comparisonRef} className="-m-3 p-3"><DailyComparisonCard entries={scaleEntries} /></div>}
+                  <div ref={terrainRef} className="-m-3 p-3"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
+                  <div ref={heatmapRef} className="-m-3 p-3"><WeightHeatmapStrip entries={periodEntries} /></div>
                 </>
               )}
             </TabsContent>
