@@ -126,11 +126,11 @@ export function morningVsEvening(
 ): { morning: number | null; evening: number | null } {
   const dayEntries = entries.filter(e => e.measured_at.startsWith(date));
   const morning = dayEntries
-    .filter(e => { const h = parseInt(e.measured_at.slice(11, 13)); return h < 12; })
+    .filter(e => { const h = parseInt(e.measured_at.slice(11, 13)); return h < 15; })
     .map(e => e[field] as number | null)
     .filter((v): v is number => v !== null);
   const evening = dayEntries
-    .filter(e => { const h = parseInt(e.measured_at.slice(11, 13)); return h >= 12; })
+    .filter(e => { const h = parseInt(e.measured_at.slice(11, 13)); return h >= 15; })
     .map(e => e[field] as number | null)
     .filter((v): v is number => v !== null);
   return {

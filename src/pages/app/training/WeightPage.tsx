@@ -40,10 +40,10 @@ export default function WeightPage() {
   const hasScaleData = scaleEntries.length > 0;
   const hasHRData = scaleEntries.some(e => e.heart_rate_bpm !== null);
 
-  // Unified weight timeline: manual + scale
+  // Unified weight timeline: manual + scale (respects time-of-day filter)
   const unifiedEntries = useMemo(
-    () => mergeWeightSources(entries, scaleEntries),
-    [entries, scaleEntries],
+    () => mergeWeightSources(entries, filteredScaleEntries),
+    [entries, filteredScaleEntries],
   );
   const handlePeriodChange = useCallback((start: Date, end: Date) => {
     setPeriodRange({ start, end });
