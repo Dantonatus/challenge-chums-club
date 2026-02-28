@@ -545,7 +545,7 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
             )}
             {/* Regression */}
             {activeTrends.has('regression') && (
-              <Line type="linear" dataKey="regression" stroke={TREND_CONFIG.regression.color} strokeWidth={1.5} dot={false} connectNulls animationDuration={1500} />
+              <Line type="linear" dataKey="regression" stroke={TREND_CONFIG.regression.color} strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
             )}
 
             {/* Forecast glow line (broad, blurred) */}
