@@ -145,7 +145,7 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
       last.forecastUpper = last.weight;
     }
 
-    const lastLabel = realPoints.length > 0 ? realPoints[realPoints.length - 1].label : null;
+    const lastTs = realPoints.length > 0 ? realPoints[realPoints.length - 1].ts : null;
 
     const fcPoints = showForecast
       ? forecastPoints.map(f => {
