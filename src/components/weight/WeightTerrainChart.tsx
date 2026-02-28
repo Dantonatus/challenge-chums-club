@@ -200,6 +200,28 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
     };
   }, [chartData, filteredSnapshots]);
 
+  // Generate equally-spaced X-axis ticks adaptive to time span
+  const xTicks = useMemo(() => {
+    if (chartData.length < 2) return chartData.map(d => d.ts);
+    const minTs = chartData[0].ts;
+    const maxTs = chartData[chartData.length - 1].ts;
+    const spanDays = (maxTs - minTs) / 86_400_000;
+
+    // Choose tick count based on span
+    let tickCount: number;
+    if (spanDays <= 10) tickCount = Math.min(chartData.length, 5);
+    else if (spanDays <= 35) tickCount = 6;
+    else if (spanDays <= 100) tickCount = 7;
+    else if (spanDays <= 400) tickCount = 8;
+    else tickCount = 9;
+
+    const ticks: number[] = [];
+    for (let i = 0; i < tickCount; i++) {
+      ticks.push(Math.round(minTs + (maxTs - minTs) * (i / (tickCount - 1))));
+    }
+    return ticks;
+  }, [chartData]);
+
   const showForecastVisuals = activeForecastKey !== null && !selectedMonth && forecastPoints.length > 0;
 
   if (chartData.length === 0) return null;
