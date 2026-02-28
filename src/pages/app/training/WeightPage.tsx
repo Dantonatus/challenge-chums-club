@@ -41,10 +41,16 @@ export default function WeightPage() {
   const hasHRData = scaleEntries.some(e => e.heart_rate_bpm !== null);
 
   // Unified weight timeline: manual + scale (respects time-of-day filter)
-  const unifiedEntries = useMemo(
-    () => mergeWeightSources(entries, filteredScaleEntries),
-    [entries, filteredScaleEntries],
-  );
+  const unifiedEntries = useMemo(() => {
+    const merged = mergeWeightSources(entries, scaleEntries);
+    if (timeSlot === 'all') return merged;
+    return merged.filter(e => {
+      const hour = parseInt((e.time ?? '').slice(0, 2), 10);
+      if (isNaN(hour)) return timeSlot === 'morning';
+      if (timeSlot === 'morning') return hour < 15;
+      return hour >= 15;
+    });
+  }, [entries, scaleEntries, timeSlot]);
   const handlePeriodChange = useCallback((start: Date, end: Date) => {
     setPeriodRange({ start, end });
   }, []);
