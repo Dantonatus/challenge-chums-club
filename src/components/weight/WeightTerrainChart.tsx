@@ -107,12 +107,13 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
   }, [snapshots, showHistory, activeForecastDays]);
 
   // Build chart data: real points + forecast points
-  const { chartData, lastRealLabel, forecastStartLabel } = useMemo(() => {
+  const { chartData, lastRealTs } = useMemo(() => {
     const showForecast = activeForecastKey !== null && !selectedMonth && forecastPoints.length > 0;
 
     const realPoints = filtered.map(e => {
       const point: Record<string, any> = {
         date: e.date,
+        ts: parseISO(e.date).getTime(),
         weight: e.weight_kg,
         ma7: ma7.get(e.date) ?? null,
         ma30: ma30.get(e.date) ?? null,
@@ -144,23 +145,24 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
       last.forecastUpper = last.weight;
     }
 
-    const lastLabel = realPoints.length > 0 ? realPoints[realPoints.length - 1].label : null;
+    const lastTs = realPoints.length > 0 ? realPoints[realPoints.length - 1].ts : null;
 
     const fcPoints = showForecast
       ? forecastPoints.map(f => {
-          const point: Record<string, any> = {
-            date: f.date,
-            weight: null,
-            ma7: null,
-            ma30: null,
-            regression: null,
-            forecast: f.value,
-            forecastSimulated: f.simulated,
-            forecastLower: f.lower,
-            forecastUpper: f.upper,
-            label: format(parseISO(f.date), 'dd. MMM', { locale: de }),
-            isForecast: true,
-          };
+           const point: Record<string, any> = {
+             date: f.date,
+             ts: parseISO(f.date).getTime(),
+             weight: null,
+             ma7: null,
+             ma30: null,
+             regression: null,
+             forecast: f.value,
+             forecastSimulated: f.simulated,
+             forecastLower: f.lower,
+             forecastUpper: f.upper,
+             label: format(parseISO(f.date), 'dd. MMM', { locale: de }),
+             isForecast: true,
+           };
           filteredSnapshots.forEach((snap, idx) => {
             const pts = snap.points_json;
             const match = pts.find(p => p.date === f.date);
@@ -172,22 +174,11 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
         })
       : [];
 
-    const firstForecastLabel = fcPoints.length > 0 ? fcPoints[0].label : null;
-
     return {
       chartData: [...realPoints, ...fcPoints],
-      lastRealLabel: lastLabel,
-      forecastStartLabel: firstForecastLabel,
+      lastRealTs: lastTs,
     };
   }, [filtered, ma7, ma30, reg, forecastPoints, activeForecastKey, selectedMonth, filteredSnapshots]);
-
-  const xInterval = useMemo(() => {
-    const n = chartData.length;
-    if (n < 15) return 0;
-    if (n < 30) return 2;
-    if (n < 60) return 4;
-    return 6;
-  }, [chartData.length]);
 
   // Y domain extends to include confidence bands
   const { domainMin, domainMax } = useMemo(() => {
@@ -370,10 +361,10 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
             <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" vertical={false} />
 
             {/* Forecast zone background */}
-            {showForecastVisuals && lastRealLabel && forecastStartLabel && (
+            {showForecastVisuals && lastRealTs && (
               <ReferenceArea
-                x1={lastRealLabel}
-                x2={chartData[chartData.length - 1].label}
+                x1={lastRealTs}
+                x2={chartData[chartData.length - 1].ts}
                 fill="url(#forecastZoneGradient)"
                 fillOpacity={1}
                 strokeOpacity={0}
@@ -381,9 +372,9 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
             )}
 
             {/* "Heute" vertical divider line */}
-            {showForecastVisuals && lastRealLabel && (
+            {showForecastVisuals && lastRealTs && (
               <ReferenceLine
-                x={lastRealLabel}
+                x={lastRealTs}
                 stroke="hsl(var(--foreground))"
                 strokeDasharray="4 4"
                 strokeOpacity={0.5}
@@ -398,10 +389,13 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
             )}
 
             <XAxis
-              dataKey="label"
+              dataKey="ts"
+              type="number"
+              scale="time"
+              domain={['dataMin', 'dataMax']}
+              tickFormatter={(ts: number) => format(new Date(ts), 'dd. MMM', { locale: de })}
               tick={{ fontSize: 11 }}
               className="fill-muted-foreground"
-              interval={xInterval}
               tickLine={false}
               axisLine={false}
             />
