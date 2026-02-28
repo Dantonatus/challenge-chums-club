@@ -139,10 +139,22 @@ export default function WeightPage() {
             </button>
           </div>
         </div>
-        <ScaleFileUploader
-          onImport={(parsed) => bulkImport.mutateAsync(parsed)}
-          isLoading={bulkImport.isPending}
-        />
+        <div className="flex items-center gap-2">
+          {unifiedEntries.length > 0 && (
+            <Button variant="outline" onClick={handleExport} disabled={exporting}>
+              {exporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
+              PDF Export
+            </Button>
+          )}
+          <ScaleFileUploader
+            onImport={(parsed) => bulkImport.mutateAsync(parsed)}
+            isLoading={bulkImport.isPending}
+          />
+        </div>
       </div>
 
       {isLoading || scaleLoading ? (
