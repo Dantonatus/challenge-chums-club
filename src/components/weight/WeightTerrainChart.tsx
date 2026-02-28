@@ -361,10 +361,10 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
             <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" vertical={false} />
 
             {/* Forecast zone background */}
-            {showForecastVisuals && lastRealLabel && forecastStartLabel && (
+            {showForecastVisuals && lastRealTs && (
               <ReferenceArea
-                x1={lastRealLabel}
-                x2={chartData[chartData.length - 1].label}
+                x1={lastRealTs}
+                x2={chartData[chartData.length - 1].ts}
                 fill="url(#forecastZoneGradient)"
                 fillOpacity={1}
                 strokeOpacity={0}
@@ -372,9 +372,9 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
             )}
 
             {/* "Heute" vertical divider line */}
-            {showForecastVisuals && lastRealLabel && (
+            {showForecastVisuals && lastRealTs && (
               <ReferenceLine
-                x={lastRealLabel}
+                x={lastRealTs}
                 stroke="hsl(var(--foreground))"
                 strokeDasharray="4 4"
                 strokeOpacity={0.5}
@@ -389,10 +389,13 @@ export default function WeightTerrainChart({ entries, selectedMonth, snapshots =
             )}
 
             <XAxis
-              dataKey="label"
+              dataKey="ts"
+              type="number"
+              scale="time"
+              domain={['dataMin', 'dataMax']}
+              tickFormatter={(ts: number) => format(new Date(ts), 'dd. MMM', { locale: de })}
               tick={{ fontSize: 11 }}
               className="fill-muted-foreground"
-              interval={xInterval}
               tickLine={false}
               axisLine={false}
             />
