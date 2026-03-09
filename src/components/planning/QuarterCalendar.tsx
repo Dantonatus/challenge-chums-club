@@ -78,6 +78,7 @@ function ClientRow({
           <ClientPeriodBar
             client={client}
             milestones={milestones}
+            projects={projects}
             viewRange={viewRange}
             onMilestoneClick={onMilestoneClick}
             showLabels={showLabels}
