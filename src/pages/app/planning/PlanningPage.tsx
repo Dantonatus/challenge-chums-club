@@ -44,7 +44,18 @@ export default function PlanningPage() {
     viewMode === 'halfyear' ? { halfYear } : { quarter }
   );
   const { clients } = useClients();
+  const { projects: allProjects } = usePlanningProjects();
   const isMobile = useIsMobile();
+
+  // Group projects by client_id
+  const projectsByClient = useMemo(() => {
+    const map: Record<string, PlanningProject[]> = {};
+    for (const p of allProjects) {
+      if (!map[p.client_id]) map[p.client_id] = [];
+      map[p.client_id].push(p);
+    }
+    return map;
+  }, [allProjects]);
 
   const isEmpty = milestones.length === 0 && clients.length === 0;
 
