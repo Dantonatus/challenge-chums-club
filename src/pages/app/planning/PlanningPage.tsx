@@ -110,6 +110,7 @@ export default function PlanningPage() {
                 <HalfYearCalendar
                   halfYear={halfYear}
                   clientData={byClient}
+                  projectsByClient={projectsByClient}
                   onMilestoneClick={setSelectedMilestone}
                   onClientClick={setSelectedClient}
                   showLabels={showLabels}
@@ -118,6 +119,7 @@ export default function PlanningPage() {
                 <QuarterCalendar
                   quarter={quarter}
                   clientData={byClient}
+                  projectsByClient={projectsByClient}
                   onMilestoneClick={setSelectedMilestone}
                   onClientClick={setSelectedClient}
                   showLabels={showLabels}
