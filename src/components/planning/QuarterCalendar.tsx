@@ -89,7 +89,7 @@ function ClientRow({
   );
 }
 
-export function QuarterCalendar({ quarter, clientData, onMilestoneClick, onClientClick, showLabels = false }: QuarterCalendarProps) {
+export function QuarterCalendar({ quarter, clientData, projectsByClient, onMilestoneClick, onClientClick, showLabels = false }: QuarterCalendarProps) {
   const months = getQuarterMonths(quarter);
   const monthDates = months.map(m => new Date(quarter.year, m, 1));
   const viewRange = getQuarterDateRange(quarter);
