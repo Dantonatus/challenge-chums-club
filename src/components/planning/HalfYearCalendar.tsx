@@ -1,4 +1,4 @@
-import { HalfYear, getHalfYearMonths, getHalfYearDateRange, MilestoneWithClient, Client, PlanningProject } from '@/lib/planning/types';
+import { HalfYear, getHalfYearMonths, getHalfYearDateRange, MilestoneWithClient, Client } from '@/lib/planning/types';
 import { ClientBadge } from './ClientBadge';
 import { ClientPeriodBar } from './ClientPeriodBar';
 import { format, isSameMonth } from 'date-fns';
@@ -12,7 +12,6 @@ interface HalfYearCalendarProps {
     client: Client;
     milestones: MilestoneWithClient[];
   }>;
-  projectsByClient?: Record<string, PlanningProject[]>;
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
   onClientClick: (client: Client) => void;
   showLabels?: boolean;
@@ -25,7 +24,6 @@ const ROW_HEIGHT_EXPANDED = 160; // More space for staggered 2-line labels
 interface ClientRowProps {
   client: Client;
   milestones: MilestoneWithClient[];
-  projects?: PlanningProject[];
   rowHeight: number;
   monthDates: Date[];
   viewRange: { start: Date; end: Date };
@@ -37,7 +35,6 @@ interface ClientRowProps {
 function HalfYearClientRow({ 
   client, 
   milestones, 
-  projects,
   rowHeight, 
   monthDates, 
   viewRange, 
@@ -78,7 +75,6 @@ function HalfYearClientRow({
           <ClientPeriodBar
             client={client}
             milestones={milestones}
-            projects={projects}
             viewRange={viewRange}
             onMilestoneClick={onMilestoneClick}
             showLabels={showLabels}
@@ -89,7 +85,7 @@ function HalfYearClientRow({
   );
 }
 
-export function HalfYearCalendar({ halfYear, clientData, projectsByClient, onMilestoneClick, onClientClick, showLabels = false }: HalfYearCalendarProps) {
+export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onClientClick, showLabels = false }: HalfYearCalendarProps) {
   const months = getHalfYearMonths(halfYear);
   const monthDates = months.map(m => new Date(halfYear.year, m, 1));
   const viewRange = getHalfYearDateRange(halfYear);
@@ -108,7 +104,6 @@ export function HalfYearCalendar({ halfYear, clientData, projectsByClient, onMil
           key={client.id}
           client={client}
           milestones={milestones}
-          projects={projectsByClient?.[client.id]}
           rowHeight={rowHeight}
           monthDates={monthDates}
           viewRange={viewRange}

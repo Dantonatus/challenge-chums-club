@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Client, MilestoneWithClient, MILESTONE_TYPE_CONFIG, MilestoneType, LABEL_VISIBLE_TYPES, PlanningProject } from '@/lib/planning/types';
+import { Client, MilestoneWithClient, MILESTONE_TYPE_CONFIG, MilestoneType, LABEL_VISIBLE_TYPES } from '@/lib/planning/types';
 import { differenceInDays, isWithinInterval, format, isBefore, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -16,14 +16,12 @@ import {
   Users, 
   Package, 
   CreditCard, 
-  Circle,
-  CheckCircle2
+  Circle 
 } from 'lucide-react';
 
 interface ClientPeriodBarProps {
   client: Client;
   milestones: MilestoneWithClient[];
-  projects?: PlanningProject[];
   viewRange: { start: Date; end: Date };
   onMilestoneClick: (m: MilestoneWithClient) => void;
   showLabels?: boolean;
@@ -54,86 +52,43 @@ interface EnrichedPosition {
   labelPosition: 'above' | 'below';
 }
 
-interface BarSegment {
-  left: number;
-  width: number;
-  color: string;
-  label: string;
-  isCompleted: boolean;
-  startsBeforeView: boolean;
-  endsAfterView: boolean;
-}
-
-function calcBarPosition(
-  startDate: string | null, 
-  endDate: string | null, 
-  viewRange: { start: Date; end: Date }
-): { left: number; width: number; startsBeforeView: boolean; endsAfterView: boolean } | null {
-  if (!startDate || !endDate) return null;
-  
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const viewStart = viewRange.start;
-  const viewEnd = viewRange.end;
-  const totalDays = differenceInDays(viewEnd, viewStart) + 1;
-  
-  if (isAfter(start, viewEnd) || isBefore(end, viewStart)) return null;
-  
-  const visibleStart = isBefore(start, viewStart) ? viewStart : start;
-  const visibleEnd = isAfter(end, viewEnd) ? viewEnd : end;
-  
-  const leftDays = differenceInDays(visibleStart, viewStart);
-  const widthDays = differenceInDays(visibleEnd, visibleStart) + 1;
-  
-  return {
-    left: (leftDays / totalDays) * 100,
-    width: (widthDays / totalDays) * 100,
-    startsBeforeView: isBefore(start, viewStart),
-    endsAfterView: isAfter(end, viewEnd),
-  };
-}
-
 export function ClientPeriodBar({ 
   client, 
   milestones, 
-  projects,
   viewRange, 
   onMilestoneClick,
   showLabels = false
 }: ClientPeriodBarProps) {
+  const hasDateRange = client.start_date && client.end_date;
   
-  // Build bar segments from projects or fallback to client dates
-  const barSegments = useMemo((): BarSegment[] => {
-    if (projects && projects.length > 0) {
-      return projects
-        .map(p => {
-          const pos = calcBarPosition(p.start_date, p.end_date, viewRange);
-          if (!pos) return null;
-          return {
-            ...pos,
-            color: p.color || client.color,
-            label: p.name,
-            isCompleted: p.status === 'completed',
-          };
-        })
-        .filter(Boolean) as BarSegment[];
+  const barPosition = useMemo(() => {
+    if (!hasDateRange) return null;
+    
+    const clientStart = new Date(client.start_date!);
+    const clientEnd = new Date(client.end_date!);
+    const viewStart = viewRange.start;
+    const viewEnd = viewRange.end;
+    const totalDays = differenceInDays(viewEnd, viewStart) + 1;
+    
+    // Calculate visible portion of client period
+    const visibleStart = isBefore(clientStart, viewStart) ? viewStart : clientStart;
+    const visibleEnd = isAfter(clientEnd, viewEnd) ? viewEnd : clientEnd;
+    
+    // Check if period is visible at all
+    if (isAfter(clientStart, viewEnd) || isBefore(clientEnd, viewStart)) {
+      return null;
     }
     
-    // Fallback: single bar from client dates
-    if (client.start_date && client.end_date) {
-      const pos = calcBarPosition(client.start_date, client.end_date, viewRange);
-      if (pos) {
-        return [{
-          ...pos,
-          color: client.color,
-          label: '',
-          isCompleted: false,
-        }];
-      }
-    }
+    const leftDays = differenceInDays(visibleStart, viewStart);
+    const widthDays = differenceInDays(visibleEnd, visibleStart) + 1;
     
-    return [];
-  }, [projects, client, viewRange]);
+    return {
+      left: (leftDays / totalDays) * 100,
+      width: (widthDays / totalDays) * 100,
+      startsBeforeView: isBefore(clientStart, viewStart),
+      endsAfterView: isAfter(clientEnd, viewEnd),
+    };
+  }, [client.start_date, client.end_date, viewRange, hasDateRange]);
 
   const milestonePositions = useMemo(() => {
     const viewStart = viewRange.start;
@@ -260,8 +215,8 @@ export function ClientPeriodBar({
     );
   };
 
-  // If no segments, show milestones as individual markers
-  if (barSegments.length === 0) {
+  // If no date range, show milestones as individual markers
+  if (!hasDateRange || !barPosition) {
     return (
       <div className="relative h-12 w-full">
         {enrichedPositions.map((mp) => renderMilestoneMarker(mp))}
@@ -269,77 +224,51 @@ export function ClientPeriodBar({
     );
   }
 
-  // Calculate the bounding box of all segments for milestone relative positioning
-  const overallLeft = Math.min(...barSegments.map(s => s.left));
-  const overallRight = Math.max(...barSegments.map(s => s.left + s.width));
-  const overallWidth = overallRight - overallLeft;
-
   return (
     <div className="relative h-12 w-full">
-      {/* Render each project segment */}
-      {barSegments.map((segment, idx) => (
-        <TooltipProvider key={idx}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                className={cn(
-                  "absolute top-1/2 -translate-y-1/2 h-10 rounded-lg border-t-4 transition-all",
-                  segment.startsBeforeView && "rounded-l-none",
-                  segment.endsAfterView && "rounded-r-none",
-                  segment.isCompleted && "opacity-60"
-                )}
-                style={{
-                  left: `${segment.left}%`,
-                  width: `${segment.width}%`,
-                  backgroundColor: `${segment.color}20`,
-                  borderTopColor: segment.color,
-                }}
-              >
-                {/* Fade edges when period extends beyond view */}
-                {segment.startsBeforeView && (
-                  <div 
-                    className="absolute left-0 top-0 bottom-0 w-8 pointer-events-none"
-                    style={{ background: `linear-gradient(to right, ${segment.color}40, transparent)` }}
-                  />
-                )}
-                {segment.endsAfterView && (
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none"
-                    style={{ background: `linear-gradient(to left, ${segment.color}40, transparent)` }}
-                  />
-                )}
+      {/* Period bar */}
+      <div
+        className={cn(
+          "absolute top-1/2 -translate-y-1/2 h-10 rounded-lg border-t-4 transition-all",
+          barPosition.startsBeforeView && "rounded-l-none",
+          barPosition.endsAfterView && "rounded-r-none"
+        )}
+        style={{
+          left: `${barPosition.left}%`,
+          width: `${barPosition.width}%`,
+          backgroundColor: `${client.color}20`,
+          borderTopColor: client.color,
+        }}
+      >
+        {/* Fade edges when period extends beyond view */}
+        {barPosition.startsBeforeView && (
+          <div 
+            className="absolute left-0 top-0 bottom-0 w-8 pointer-events-none"
+            style={{ 
+              background: `linear-gradient(to right, ${client.color}40, transparent)` 
+            }}
+          />
+        )}
+        {barPosition.endsAfterView && (
+          <div 
+            className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none"
+            style={{ 
+              background: `linear-gradient(to left, ${client.color}40, transparent)` 
+            }}
+          />
+        )}
 
-                {/* Project name label inside bar */}
-                {segment.label && segment.width > 8 && (
-                  <div className="absolute inset-0 flex items-center justify-center px-1 overflow-hidden">
-                    <span 
-                      className={cn(
-                        "text-[10px] font-medium truncate flex items-center gap-1",
-                        segment.isCompleted && "line-through"
-                      )}
-                      style={{ color: segment.color }}
-                    >
-                      {segment.isCompleted && <CheckCircle2 className="h-3 w-3 shrink-0" />}
-                      {segment.label}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </TooltipTrigger>
-            {segment.label && (
-              <TooltipContent>
-                <p className="font-medium">{segment.label}</p>
-                {segment.isCompleted && (
-                  <p className="text-xs text-muted-foreground">Abgeschlossen</p>
-                )}
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
-      ))}
-
-      {/* Milestone markers positioned globally across all segments */}
-      {enrichedPositions.map((mp) => renderMilestoneMarker(mp))}
+        {/* Milestone markers on bar */}
+        {enrichedPositions.map((mp) => {
+          // Calculate position relative to bar
+          const relativeLeft = ((mp.left - barPosition.left) / barPosition.width) * 100;
+          
+          // Skip if outside bar bounds
+          if (relativeLeft < 0 || relativeLeft > 100) return null;
+          
+          return renderMilestoneMarker(mp, relativeLeft);
+        })}
+      </div>
     </div>
   );
 }

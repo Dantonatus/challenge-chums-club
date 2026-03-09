@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QuarterHeader } from '@/components/planning/QuarterHeader';
@@ -11,7 +11,6 @@ import { PlanningEmptyState } from '@/components/planning/PlanningEmptyState';
 import { GanttPage } from '@/components/planning/gantt/GanttPage';
 import { useMilestonesByClient } from '@/hooks/useMilestones';
 import { useClients } from '@/hooks/useClients';
-import { usePlanningProjects } from '@/hooks/useGanttTasks';
 import { 
   getCurrentQuarter, 
   getCurrentHalfYear,
@@ -20,7 +19,6 @@ import {
   ViewMode,
   MilestoneWithClient,
   Client,
-  PlanningProject,
   quarterToHalfYear,
   halfYearToQuarter
 } from '@/lib/planning/types';
@@ -44,18 +42,7 @@ export default function PlanningPage() {
     viewMode === 'halfyear' ? { halfYear } : { quarter }
   );
   const { clients } = useClients();
-  const { projects: allProjects } = usePlanningProjects();
   const isMobile = useIsMobile();
-
-  // Group projects by client_id
-  const projectsByClient = useMemo(() => {
-    const map: Record<string, PlanningProject[]> = {};
-    for (const p of allProjects) {
-      if (!map[p.client_id]) map[p.client_id] = [];
-      map[p.client_id].push(p);
-    }
-    return map;
-  }, [allProjects]);
 
   const isEmpty = milestones.length === 0 && clients.length === 0;
 
@@ -110,7 +97,6 @@ export default function PlanningPage() {
                 <HalfYearCalendar
                   halfYear={halfYear}
                   clientData={byClient}
-                  projectsByClient={projectsByClient}
                   onMilestoneClick={setSelectedMilestone}
                   onClientClick={setSelectedClient}
                   showLabels={showLabels}
@@ -119,7 +105,6 @@ export default function PlanningPage() {
                 <QuarterCalendar
                   quarter={quarter}
                   clientData={byClient}
-                  projectsByClient={projectsByClient}
                   onMilestoneClick={setSelectedMilestone}
                   onClientClick={setSelectedClient}
                   showLabels={showLabels}
