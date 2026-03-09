@@ -37,6 +37,7 @@ interface ClientRowProps {
 function ClientRow({ 
   client, 
   milestones, 
+  projects,
   rowHeight, 
   monthDates, 
   viewRange, 
