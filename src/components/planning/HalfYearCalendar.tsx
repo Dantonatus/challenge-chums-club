@@ -108,6 +108,7 @@ export function HalfYearCalendar({ halfYear, clientData, projectsByClient, onMil
           key={client.id}
           client={client}
           milestones={milestones}
+          projects={projectsByClient?.[client.id]}
           rowHeight={rowHeight}
           monthDates={monthDates}
           viewRange={viewRange}

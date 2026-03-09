@@ -108,6 +108,7 @@ export function QuarterCalendar({ quarter, clientData, projectsByClient, onMiles
           key={client.id}
           client={client}
           milestones={milestones}
+          projects={projectsByClient?.[client.id]}
           rowHeight={rowHeight}
           monthDates={monthDates}
           viewRange={viewRange}
