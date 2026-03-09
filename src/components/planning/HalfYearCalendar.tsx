@@ -89,7 +89,7 @@ function HalfYearClientRow({
   );
 }
 
-export function HalfYearCalendar({ halfYear, clientData, onMilestoneClick, onClientClick, showLabels = false }: HalfYearCalendarProps) {
+export function HalfYearCalendar({ halfYear, clientData, projectsByClient, onMilestoneClick, onClientClick, showLabels = false }: HalfYearCalendarProps) {
   const months = getHalfYearMonths(halfYear);
   const monthDates = months.map(m => new Date(halfYear.year, m, 1));
   const viewRange = getHalfYearDateRange(halfYear);
