@@ -25,6 +25,7 @@ const ROW_HEIGHT_EXPANDED = 160; // More space for staggered 2-line labels
 interface ClientRowProps {
   client: Client;
   milestones: MilestoneWithClient[];
+  projects?: PlanningProject[];
   rowHeight: number;
   monthDates: Date[];
   viewRange: { start: Date; end: Date };
