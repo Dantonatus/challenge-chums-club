@@ -11,6 +11,7 @@ import { PlanningEmptyState } from '@/components/planning/PlanningEmptyState';
 import { GanttPage } from '@/components/planning/gantt/GanttPage';
 import { useMilestonesByClient } from '@/hooks/useMilestones';
 import { useClients } from '@/hooks/useClients';
+import { usePlanningProjects } from '@/hooks/useGanttTasks';
 import { 
   getCurrentQuarter, 
   getCurrentHalfYear,
@@ -19,6 +20,7 @@ import {
   ViewMode,
   MilestoneWithClient,
   Client,
+  PlanningProject,
   quarterToHalfYear,
   halfYearToQuarter
 } from '@/lib/planning/types';
