@@ -1,4 +1,4 @@
-import { HalfYear, getHalfYearMonths, getHalfYearDateRange, MilestoneWithClient, Client } from '@/lib/planning/types';
+import { HalfYear, getHalfYearMonths, getHalfYearDateRange, MilestoneWithClient, Client, PlanningProject } from '@/lib/planning/types';
 import { ClientBadge } from './ClientBadge';
 import { ClientPeriodBar } from './ClientPeriodBar';
 import { format, isSameMonth } from 'date-fns';
@@ -12,6 +12,7 @@ interface HalfYearCalendarProps {
     client: Client;
     milestones: MilestoneWithClient[];
   }>;
+  projectsByClient?: Record<string, PlanningProject[]>;
   onMilestoneClick: (milestone: MilestoneWithClient) => void;
   onClientClick: (client: Client) => void;
   showLabels?: boolean;
