@@ -309,6 +309,54 @@ export type Database = {
         }
         Relationships: []
       }
+      favorites: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          image_url: string | null
+          metadata: Json | null
+          note: string | null
+          rating: number | null
+          status: string | null
+          subtitle: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          note?: string | null
+          rating?: number | null
+          status?: string | null
+          subtitle?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          note?: string | null
+          rating?: number | null
+          status?: string | null
+          subtitle?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       feedback_employees: {
         Row: {
           color: string
