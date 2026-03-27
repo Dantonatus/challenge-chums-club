@@ -6,11 +6,11 @@ import {
   MilestoneWithClient, 
   ViewMode, 
   Quarter, 
-  HalfYear,
+  SixMonthWindow,
   getQuarterDateRange,
-  getHalfYearDateRange,
+  getSixMonthDateRange,
   getQuarterLabel,
-  getHalfYearLabel,
+  getSixMonthLabel,
   MILESTONE_TYPE_CONFIG,
   MilestoneType
 } from './types';
@@ -18,7 +18,7 @@ import {
 interface ExportData {
   viewMode: ViewMode;
   quarter?: Quarter;
-  halfYear?: HalfYear;
+  sixMonth?: SixMonthWindow;
   clientData: Array<{
     client: Client;
     milestones: MilestoneWithClient[];
@@ -26,8 +26,8 @@ interface ExportData {
 }
 
 export function exportPlanningPDF(data: ExportData): void {
-  const isHalfYear = data.viewMode === 'halfyear';
-  const isLandscape = isHalfYear;
+  const isSixMonth = data.viewMode === '6month';
+  const isLandscape = isSixMonth;
   
   const doc = new jsPDF({
     orientation: isLandscape ? 'landscape' : 'portrait',
@@ -41,12 +41,12 @@ export function exportPlanningPDF(data: ExportData): void {
   const contentWidth = pageWidth - 2 * margin;
 
   // Get view range and label
-  const viewRange = isHalfYear 
-    ? getHalfYearDateRange(data.halfYear!)
+  const viewRange = isSixMonth 
+    ? getSixMonthDateRange(data.sixMonth!)
     : getQuarterDateRange(data.quarter!);
   
-  const periodLabel = isHalfYear 
-    ? getHalfYearLabel(data.halfYear!)
+  const periodLabel = isSixMonth 
+    ? getSixMonthLabel(data.sixMonth!)
     : getQuarterLabel(data.quarter!);
 
   // Months for columns
