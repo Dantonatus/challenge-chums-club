@@ -1,105 +1,36 @@
 
 
-## Neues Modul: "Favorites" -- persoenliche Sammlung
+## Fix: Kalender verschwindet bei H2 + Rolling 6-Monats-Fenster
 
-Ein neues Modul zum schnellen Erfassen von Lieblingsliedern, Filmen, Serien, Buechern, Pflanzen und mehr. Der Fokus liegt auf **Speed-to-Entry** (Titel tippen, Kategorie waehlen, fertig) mit der Option, spaeter Details zu ergaenzen.
+### Problem 1: Kein Kalender bei H2 2026
 
-### Konzept
+`useMilestonesByClient` gruppiert nur Meilensteine -- Kunden ohne Meilensteine im Zeitraum fehlen in `byClient`. Die `HalfYearCalendar` prueft `if (clientData.length === 0) return null` und zeigt nichts an. Gleichzeitig greift die `PlanningEmptyState` nicht, weil `clients.length > 0`.
 
-**Schnelleingabe** (< 5 Sekunden): Ein Eingabefeld oben auf der Seite -- Titel eingeben, Kategorie-Chip antippen, Enter. Fertig. Aehnlich wie die QuickAdd-Leiste bei Tasks.
+**Fix**: In `PlanningPage.tsx` alle aktiven Kunden in `byClient` einmischen (auch solche ohne Meilensteine im Zeitraum), damit die Zeilen immer sichtbar sind. Alternativ: Wenn `byClient` leer aber `clients` vorhanden, den leeren Kalender mit Kundenzeilen anzeigen.
 
-**Optionale Details** (Sheet/Drawer bei Klick auf Eintrag):
-- Kurznotiz / Warum es dir gefaellt
-- Bewertung (1-5 Sterne oder Herzen)
-- Bild-URL (Cover, Poster)
-- Kuenstler / Autor / Regisseur
-- Genre / Tags
-- Status (z.B. "gelesen", "will ich sehen", "Favorit")
+### Problem 2: Starre H1/H2-Aufteilung ersetzen durch rollierendes 6-Monats-Fenster
 
-**Kategorien** (erweiterbar):
-- 🎵 Musik
-- 🎬 Filme
-- 📺 Serien
-- 📚 Buecher
-- 🌱 Pflanzen
-- 🎮 Spiele
-- 🍽️ Restaurants
-- ✨ Sonstiges
+Statt `HalfYear { year, half: 1|2 }` wird ein neues Modell `SixMonthWindow { year: number; startMonth: number }` eingefuehrt. Der User waehlt per Monats-Picker den Startmonat und sieht dann 6 aufeinanderfolgende Monate (z.B. Maerz 2026 bis August 2026).
 
-**Empfohlene Zusatz-Features:**
-- **Timeline-Ansicht**: Wann wurde was hinzugefuegt -- chronologische Uebersicht
-- **Kategorie-Filter**: Chips oben zum schnellen Filtern nach Typ
-- **Suche**: Volltextsuche ueber alle Eintraege
-- **Statistiken**: Wie viele Eintraege pro Kategorie, letzter Eintrag, aktivster Monat
-- **Sortierung**: Nach Datum, Bewertung, Name
-- **Favoriten-Export**: Teilen als Liste
+### Aenderungen
 
-### Datenbank
-
-Neue Tabelle `favorites`:
-
-```sql
-CREATE TABLE public.favorites (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  category text NOT NULL,           -- 'music', 'movie', 'series', 'book', 'plant', 'game', 'restaurant', 'other'
-  title text NOT NULL,
-  subtitle text,                     -- Kuenstler, Autor, Regisseur etc.
-  rating smallint,                   -- 1-5, optional
-  note text,                         -- persoenliche Notiz
-  image_url text,                    -- Cover/Poster URL
-  status text DEFAULT 'favorite',    -- 'favorite', 'want', 'done'
-  tags text[],                       -- freie Tags
-  metadata jsonb,                    -- erweiterbare Zusatzinfos (Genre, Jahr etc.)
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
--- CRUD-Policies fuer auth.uid() = user_id (analog zu anderen Tabellen)
-```
-
-### Frontend-Dateien
-
-| Datei | Inhalt |
+| Datei | Was |
 |---|---|
-| `src/pages/app/favorites/FavoritesPage.tsx` | Hauptseite mit QuickAdd, Filter-Chips, Eintrags-Grid |
-| `src/components/favorites/QuickAddFavorite.tsx` | Eingabefeld + Kategorie-Chips (1-Zeile-Erfassung) |
-| `src/components/favorites/FavoriteCard.tsx` | Karte pro Eintrag (Titel, Kategorie-Icon, Datum, Rating) |
-| `src/components/favorites/FavoriteDetailSheet.tsx` | Sheet zum Bearbeiten/Erweitern eines Eintrags |
-| `src/components/favorites/CategoryFilter.tsx` | Filter-Chips fuer Kategorien |
-| `src/hooks/useFavorites.ts` | CRUD-Hook (useQuery/useMutation) |
-| `src/lib/favorites/types.ts` | TypeScript-Typen und Kategorie-Definitionen |
+| `src/lib/planning/types.ts` | `ViewMode` aendern: `'halfyear'` wird zu `'6month'`. Neuer Typ `SixMonthWindow { year: number; startMonth: number }`. Neue Hilfsfunktionen (`getSixMonthRange`, `getSixMonthMonths`, Navigation prev/next um 1 Monat). `HalfYear`-Typ und Funktionen entfernen. |
+| `src/hooks/useMilestones.ts` | `halfYear`-Option durch `sixMonth: SixMonthWindow` ersetzen. Datumsfilter auf `getSixMonthRange` umstellen. |
+| `src/pages/app/planning/PlanningPage.tsx` | State `halfYear` → `sixMonth`. Kunden ohne Meilensteine in `byClient` ergaenzen. ViewMode-Handling anpassen. |
+| `src/components/planning/QuarterHeader.tsx` | Navigation: Prev/Next verschiebt Startmonat um 1 Monat. Label zeigt "Mrz – Aug 2026". Monats-Auswahl-Dropdown optional. |
+| `src/components/planning/HalfYearCalendar.tsx` | Umbenennen/Refactoren zu `SixMonthCalendar`. Props von `HalfYear` auf `SixMonthWindow` umstellen. Dynamisch 6 Spalten basierend auf `startMonth`. TodayLine entsprechend anpassen. |
+| `src/components/planning/ViewModeToggle.tsx` | Label "Halbjahr" → "6 Monate", Value `'halfyear'` → `'6month'`. |
 
-### Navigation
+### Navigation-Verhalten
 
-- Neuer Eintrag in `PRIMARY_NAV` im AppLayout: `{ to: "/app/favorites", label: "Favorites", icon: Heart }`
-- Route in `App.tsx`: `<Route path="favorites" element={<FavoritesPage />} />`
+- **Prev/Next**: Verschiebt den Startmonat um 1 Monat (statt starr H1↔H2)
+- **Heute-Button**: Setzt Startmonat auf aktuellen Monat
+- **Label**: Zeigt z.B. "Mrz – Aug 2026"
+- Jahresuebergaenge funktionieren automatisch (z.B. Nov 2026 → Apr 2027)
 
-### UI-Skizze
+### Kunden immer sichtbar
 
-```text
-┌─────────────────────────────────────────────┐
-│  ❤️ Favorites                    🔍 Suche   │
-├─────────────────────────────────────────────┤
-│  [ Titel eingeben... ]  🎵 🎬 📺 📚 🌱 ✨  │  ← QuickAdd
-├─────────────────────────────────────────────┤
-│  Alle | 🎵 Musik | 🎬 Filme | 📺 Serien.. │  ← Filter
-├─────────────────────────────────────────────┤
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
-│  │ 🎵       │  │ 🎬       │  │ 📚       │  │
-│  │ Song XY  │  │ Film AB  │  │ Buch CD  │  │
-│  │ ★★★★☆   │  │ ★★★★★   │  │ vor 2d   │  │
-│  │ vor 3d   │  │ vor 1w   │  │          │  │
-│  └──────────┘  └──────────┘  └──────────┘  │
-│  ...                                        │
-└─────────────────────────────────────────────┘
-```
-
-### Zusammenfassung
-
-- 1 neue DB-Tabelle mit RLS
-- 1 neue Seite + 5 Komponenten + 1 Hook + 1 Types-Datei
-- Navigation + Route ergaenzen
-- Kein Backend/Edge-Function noetig -- rein Client-seitig mit Supabase SDK
+In `PlanningPage` werden alle aktiven Kunden aus `useClients()` mit den gefilterten Meilensteinen gemergt, sodass auch Kunden ohne Meilensteine im Zeitraum als leere Zeilen erscheinen.
 
