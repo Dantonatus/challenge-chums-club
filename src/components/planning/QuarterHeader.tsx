@@ -3,16 +3,16 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Plus, CalendarDays, Download, Tag } from 'lucide-react';
 import { 
   Quarter, 
-  HalfYear,
+  SixMonthWindow,
   ViewMode,
   getQuarterLabel, 
-  getHalfYearLabel,
+  getSixMonthLabel,
   getPreviousQuarter, 
   getNextQuarter, 
-  getPreviousHalfYear,
-  getNextHalfYear,
+  getPreviousSixMonth,
+  getNextSixMonth,
   getCurrentQuarter, 
-  getCurrentHalfYear,
+  getCurrentSixMonth,
   Client,
   MilestoneWithClient
 } from '@/lib/planning/types';
@@ -23,7 +23,6 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import {
   Tooltip,
   TooltipContent,
@@ -34,10 +33,10 @@ import {
 interface QuarterHeaderProps {
   viewMode: ViewMode;
   quarter: Quarter;
-  halfYear: HalfYear;
+  sixMonth: SixMonthWindow;
   onViewModeChange: (mode: ViewMode) => void;
   onQuarterChange: (quarter: Quarter) => void;
-  onHalfYearChange: (halfYear: HalfYear) => void;
+  onSixMonthChange: (sixMonth: SixMonthWindow) => void;
   onAddClick: () => void;
   clientData: Array<{ client: Client; milestones: MilestoneWithClient[] }>;
   showLabels: boolean;
@@ -47,10 +46,10 @@ interface QuarterHeaderProps {
 export function QuarterHeader({ 
   viewMode,
   quarter, 
-  halfYear,
+  sixMonth,
   onViewModeChange,
   onQuarterChange, 
-  onHalfYearChange,
+  onSixMonthChange,
   onAddClick,
   clientData,
   showLabels,
@@ -63,35 +62,43 @@ export function QuarterHeader({
     quarter.year === getCurrentQuarter().year && 
     quarter.quarter === getCurrentQuarter().quarter;
     
-  const isCurrentHalfYear =
-    halfYear.year === getCurrentHalfYear().year &&
-    halfYear.half === getCurrentHalfYear().half;
+  const isCurrentSixMonth =
+    sixMonth.year === getCurrentSixMonth().year &&
+    sixMonth.startMonth === getCurrentSixMonth().startMonth;
 
-  const isCurrentPeriod = viewMode === 'halfyear' ? isCurrentHalfYear : isCurrentQuarter;
+  const isCurrentPeriod = viewMode === '6month' ? isCurrentSixMonth : isCurrentQuarter;
 
   const handlePrevious = () => {
-    if (viewMode === 'halfyear') {
-      onHalfYearChange(getPreviousHalfYear(halfYear));
+    if (viewMode === '6month') {
+      onSixMonthChange(getPreviousSixMonth(sixMonth));
     } else {
       onQuarterChange(getPreviousQuarter(quarter));
     }
   };
 
   const handleNext = () => {
-    if (viewMode === 'halfyear') {
-      onHalfYearChange(getNextHalfYear(halfYear));
+    if (viewMode === '6month') {
+      onSixMonthChange(getNextSixMonth(sixMonth));
     } else {
       onQuarterChange(getNextQuarter(quarter));
     }
   };
 
   const handleToday = () => {
-    if (viewMode === 'halfyear') {
-      onHalfYearChange(getCurrentHalfYear());
+    if (viewMode === '6month') {
+      onSixMonthChange(getCurrentSixMonth());
     } else {
       onQuarterChange(getCurrentQuarter());
     }
   };
+
+  const periodLabel = viewMode === '6month' 
+    ? getSixMonthLabel(sixMonth)
+    : getQuarterLabel(quarter);
+
+  const monthRange = viewMode === '6month'
+    ? '' // Already included in getSixMonthLabel
+    : getQuarterMonthRange(quarter);
 
   const handleExport = async (format: ExportFormat) => {
     await exportPlanningCanvas({
@@ -101,14 +108,6 @@ export function QuarterHeader({
       periodLabel,
     });
   };
-
-  const periodLabel = viewMode === 'halfyear' 
-    ? getHalfYearLabel(halfYear)
-    : getQuarterLabel(quarter);
-
-  const monthRange = viewMode === 'halfyear'
-    ? getHalfYearMonthRange(halfYear)
-    : getQuarterMonthRange(quarter);
 
   return (
     <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -124,7 +123,7 @@ export function QuarterHeader({
 
         <div className="text-center min-w-[140px]">
           <h1 className="text-xl font-bold">{periodLabel}</h1>
-          <p className="text-sm text-muted-foreground">{monthRange}</p>
+          {monthRange && <p className="text-sm text-muted-foreground">{monthRange}</p>}
         </div>
 
         <Button
@@ -202,17 +201,6 @@ function getQuarterMonthRange(quarter: Quarter): string {
   const startMonth = (quarter.quarter - 1) * 3;
   const startDate = new Date(quarter.year, startMonth, 1);
   const endDate = new Date(quarter.year, startMonth + 2, 1);
-  
-  const startName = format(startDate, 'MMM', { locale: de });
-  const endName = format(endDate, 'MMM', { locale: de });
-  
-  return `${startName} – ${endName}`;
-}
-
-function getHalfYearMonthRange(halfYear: HalfYear): string {
-  const startMonth = halfYear.half === 1 ? 0 : 6;
-  const startDate = new Date(halfYear.year, startMonth, 1);
-  const endDate = new Date(halfYear.year, startMonth + 5, 1);
   
   const startName = format(startDate, 'MMM', { locale: de });
   const endName = format(endDate, 'MMM', { locale: de });

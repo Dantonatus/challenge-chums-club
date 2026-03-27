@@ -21,10 +21,10 @@ export function ViewModeToggle({ value, onChange }: ViewModeToggleProps) {
         Quartal
       </ToggleGroupItem>
       <ToggleGroupItem 
-        value="halfyear" 
+        value="6month" 
         className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
       >
-        Halbjahr
+        6 Monate
       </ToggleGroupItem>
     </ToggleGroup>
   );

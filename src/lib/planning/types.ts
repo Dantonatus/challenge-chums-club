@@ -11,7 +11,7 @@ export type MilestoneType =
 
 export type MilestonePriority = 'low' | 'medium' | 'high' | 'critical';
 
-export type ViewMode = 'quarter' | 'halfyear';
+export type ViewMode = 'quarter' | '6month';
 
 export interface Client {
   id: string;
@@ -80,10 +80,10 @@ export interface Quarter {
   quarter: 1 | 2 | 3 | 4;
 }
 
-// Half-year navigation
-export interface HalfYear {
+// Rolling 6-month window
+export interface SixMonthWindow {
   year: number;
-  half: 1 | 2;
+  startMonth: number; // 0-11
 }
 
 export function getQuarterMonths(q: Quarter): [number, number, number] {
@@ -91,18 +91,84 @@ export function getQuarterMonths(q: Quarter): [number, number, number] {
   return [startMonth, startMonth + 1, startMonth + 2];
 }
 
-export function getHalfYearMonths(h: HalfYear): number[] {
-  return h.half === 1 
-    ? [0, 1, 2, 3, 4, 5] 
-    : [6, 7, 8, 9, 10, 11];
+export function getSixMonthMonths(w: SixMonthWindow): number[] {
+  const months: number[] = [];
+  for (let i = 0; i < 6; i++) {
+    months.push((w.startMonth + i) % 12);
+  }
+  return months;
+}
+
+export function getSixMonthDates(w: SixMonthWindow): Date[] {
+  const dates: Date[] = [];
+  let year = w.year;
+  let month = w.startMonth;
+  for (let i = 0; i < 6; i++) {
+    dates.push(new Date(year, month, 1));
+    month++;
+    if (month > 11) {
+      month = 0;
+      year++;
+    }
+  }
+  return dates;
+}
+
+export function getSixMonthDateRange(w: SixMonthWindow): { start: Date; end: Date } {
+  const start = new Date(w.year, w.startMonth, 1);
+  // End: last day of the 6th month
+  let endYear = w.year;
+  let endMonth = w.startMonth + 6;
+  if (endMonth > 11) {
+    endYear += Math.floor(endMonth / 12);
+    endMonth = endMonth % 12;
+  }
+  const end = new Date(endYear, endMonth, 0); // last day of month before endMonth
+  return { start, end };
+}
+
+export function getSixMonthLabel(w: SixMonthWindow): string {
+  const dates = getSixMonthDates(w);
+  const startDate = dates[0];
+  const endDate = dates[5];
+  const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+  
+  const startLabel = months[startDate.getMonth()];
+  const endLabel = months[endDate.getMonth()];
+  
+  if (startDate.getFullYear() === endDate.getFullYear()) {
+    return `${startLabel} – ${endLabel} ${startDate.getFullYear()}`;
+  }
+  return `${startLabel} ${startDate.getFullYear()} – ${endLabel} ${endDate.getFullYear()}`;
+}
+
+export function getCurrentSixMonth(): SixMonthWindow {
+  const now = new Date();
+  return { year: now.getFullYear(), startMonth: now.getMonth() };
+}
+
+export function getPreviousSixMonth(w: SixMonthWindow): SixMonthWindow {
+  let month = w.startMonth - 1;
+  let year = w.year;
+  if (month < 0) {
+    month = 11;
+    year--;
+  }
+  return { year, startMonth: month };
+}
+
+export function getNextSixMonth(w: SixMonthWindow): SixMonthWindow {
+  let month = w.startMonth + 1;
+  let year = w.year;
+  if (month > 11) {
+    month = 0;
+    year++;
+  }
+  return { year, startMonth: month };
 }
 
 export function getQuarterLabel(q: Quarter): string {
   return `Q${q.quarter} ${q.year}`;
-}
-
-export function getHalfYearLabel(h: HalfYear): string {
-  return `H${h.half} ${h.year}`;
 }
 
 export function getQuarterDateRange(q: Quarter): { start: Date; end: Date } {
@@ -112,26 +178,10 @@ export function getQuarterDateRange(q: Quarter): { start: Date; end: Date } {
   return { start, end };
 }
 
-export function getHalfYearDateRange(h: HalfYear): { start: Date; end: Date } {
-  const startMonth = h.half === 1 ? 0 : 6;
-  return {
-    start: new Date(h.year, startMonth, 1),
-    end: new Date(h.year, startMonth + 6, 0)
-  };
-}
-
 export function getCurrentQuarter(): Quarter {
   const now = new Date();
   const quarter = Math.floor(now.getMonth() / 3) + 1;
   return { year: now.getFullYear(), quarter: quarter as 1 | 2 | 3 | 4 };
-}
-
-export function getCurrentHalfYear(): HalfYear {
-  const now = new Date();
-  return { 
-    year: now.getFullYear(), 
-    half: now.getMonth() < 6 ? 1 : 2 
-  };
 }
 
 export function getPreviousQuarter(q: Quarter): Quarter {
@@ -148,32 +198,13 @@ export function getNextQuarter(q: Quarter): Quarter {
   return { year: q.year, quarter: (q.quarter + 1) as 1 | 2 | 3 | 4 };
 }
 
-export function getPreviousHalfYear(h: HalfYear): HalfYear {
-  if (h.half === 1) {
-    return { year: h.year - 1, half: 2 };
-  }
-  return { year: h.year, half: 1 };
+export function quarterToSixMonth(q: Quarter): SixMonthWindow {
+  return { year: q.year, startMonth: (q.quarter - 1) * 3 };
 }
 
-export function getNextHalfYear(h: HalfYear): HalfYear {
-  if (h.half === 2) {
-    return { year: h.year + 1, half: 1 };
-  }
-  return { year: h.year, half: 2 };
-}
-
-export function quarterToHalfYear(q: Quarter): HalfYear {
-  return {
-    year: q.year,
-    half: q.quarter <= 2 ? 1 : 2
-  };
-}
-
-export function halfYearToQuarter(h: HalfYear): Quarter {
-  return {
-    year: h.year,
-    quarter: h.half === 1 ? 1 : 3
-  };
+export function sixMonthToQuarter(w: SixMonthWindow): Quarter {
+  const q = Math.floor(w.startMonth / 3) + 1;
+  return { year: w.year, quarter: q as 1 | 2 | 3 | 4 };
 }
 
 // All milestone types show labels when toggle is enabled
