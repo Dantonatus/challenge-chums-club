@@ -50,7 +50,7 @@ export function exportPlanningPDF(data: ExportData): void {
     : getQuarterLabel(data.quarter!);
 
   // Months for columns
-  const monthCount = isHalfYear ? 6 : 3;
+  const monthCount = isSixMonth ? 6 : 3;
   const months: Date[] = [];
   for (let i = 0; i < monthCount; i++) {
     months.push(new Date(viewRange.start.getFullYear(), viewRange.start.getMonth() + i, 1));
