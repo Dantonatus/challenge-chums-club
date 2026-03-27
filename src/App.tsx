@@ -110,6 +110,8 @@ const App = () => (
               <Route path="training/weight" element={<WeightPage />} />
               {/* Learning */}
               <Route path="learning" element={<LearningPage />} />
+              {/* Favorites */}
+              <Route path="favorites" element={<FavoritesPage />} />
             </Route>
             {/* Top-level protected routes */}
             <Route path="/challenges" element={
