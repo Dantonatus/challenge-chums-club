@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Milestone, MilestoneWithClient, MilestoneFormData, Quarter, HalfYear, getQuarterDateRange, getHalfYearDateRange } from '@/lib/planning/types';
+import { Milestone, MilestoneWithClient, MilestoneFormData, Quarter, SixMonthWindow, getQuarterDateRange, getSixMonthDateRange } from '@/lib/planning/types';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 interface UseMilestonesOptions {
   quarter?: Quarter;
-  halfYear?: HalfYear;
+  sixMonth?: SixMonthWindow;
 }
 
 export function useMilestones(options?: UseMilestonesOptions) {
@@ -14,7 +14,7 @@ export function useMilestones(options?: UseMilestonesOptions) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['milestones', options?.quarter?.year, options?.quarter?.quarter, options?.halfYear?.year, options?.halfYear?.half],
+    queryKey: ['milestones', options?.quarter?.year, options?.quarter?.quarter, options?.sixMonth?.year, options?.sixMonth?.startMonth],
     queryFn: async (): Promise<MilestoneWithClient[]> => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -28,9 +28,8 @@ export function useMilestones(options?: UseMilestonesOptions) {
         .eq('user_id', user.id)
         .order('date', { ascending: true });
 
-      // Filter by quarter or half year if provided
-      if (options?.halfYear) {
-        const { start, end } = getHalfYearDateRange(options.halfYear);
+      if (options?.sixMonth) {
+        const { start, end } = getSixMonthDateRange(options.sixMonth);
         queryBuilder = queryBuilder
           .gte('date', format(start, 'yyyy-MM-dd'))
           .lte('date', format(end, 'yyyy-MM-dd'));
@@ -173,7 +172,7 @@ export function useMilestones(options?: UseMilestonesOptions) {
 }
 
 // Hook to get milestones grouped by client
-export function useMilestonesByClient(options: { quarter?: Quarter; halfYear?: HalfYear }) {
+export function useMilestonesByClient(options: { quarter?: Quarter; sixMonth?: SixMonthWindow }) {
   const { milestones, ...rest } = useMilestones(options);
 
   const byClient = milestones.reduce((acc, milestone) => {

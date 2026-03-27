@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QuarterHeader } from '@/components/planning/QuarterHeader';
 import { QuarterCalendar } from '@/components/planning/QuarterCalendar';
-import { HalfYearCalendar } from '@/components/planning/HalfYearCalendar';
+import { SixMonthCalendar } from '@/components/planning/SixMonthCalendar';
 import { MilestoneQuickAdd } from '@/components/planning/MilestoneQuickAdd';
 import { MilestoneSheet } from '@/components/planning/MilestoneSheet';
 import { ClientEditSheet } from '@/components/planning/ClientEditSheet';
@@ -13,14 +13,14 @@ import { useMilestonesByClient } from '@/hooks/useMilestones';
 import { useClients } from '@/hooks/useClients';
 import { 
   getCurrentQuarter, 
-  getCurrentHalfYear,
+  getCurrentSixMonth,
   Quarter, 
-  HalfYear,
+  SixMonthWindow,
   ViewMode,
   MilestoneWithClient,
   Client,
-  quarterToHalfYear,
-  halfYearToQuarter
+  quarterToSixMonth,
+  sixMonthToQuarter
 } from '@/lib/planning/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -32,25 +32,44 @@ export default function PlanningPage() {
   const setActiveTab = (tab: string) => setSearchParams({ tab }, { replace: true });
   const [viewMode, setViewMode] = useState<ViewMode>('quarter');
   const [quarter, setQuarter] = useState<Quarter>(getCurrentQuarter);
-  const [halfYear, setHalfYear] = useState<HalfYear>(getCurrentHalfYear);
+  const [sixMonth, setSixMonth] = useState<SixMonthWindow>(getCurrentSixMonth);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<MilestoneWithClient | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   
   const { byClient, milestones, isLoading } = useMilestonesByClient(
-    viewMode === 'halfyear' ? { halfYear } : { quarter }
+    viewMode === '6month' ? { sixMonth } : { quarter }
   );
   const { clients } = useClients();
   const isMobile = useIsMobile();
 
+  // Merge all clients into byClient so rows are always visible
+  const mergedClientData = useMemo(() => {
+    const clientMap = new Map<string, { client: Client; milestones: MilestoneWithClient[] }>();
+    
+    // Add clients that have milestones
+    for (const entry of byClient) {
+      clientMap.set(entry.client.id, entry);
+    }
+    
+    // Add clients without milestones in this range
+    for (const client of clients) {
+      if (!clientMap.has(client.id)) {
+        clientMap.set(client.id, { client: client as Client, milestones: [] });
+      }
+    }
+    
+    return Array.from(clientMap.values());
+  }, [byClient, clients]);
+
   const isEmpty = milestones.length === 0 && clients.length === 0;
 
   const handleViewModeChange = (newMode: ViewMode) => {
-    if (newMode === 'halfyear' && viewMode === 'quarter') {
-      setHalfYear(quarterToHalfYear(quarter));
-    } else if (newMode === 'quarter' && viewMode === 'halfyear') {
-      setQuarter(halfYearToQuarter(halfYear));
+    if (newMode === '6month' && viewMode === 'quarter') {
+      setSixMonth(quarterToSixMonth(quarter));
+    } else if (newMode === 'quarter' && viewMode === '6month') {
+      setQuarter(sixMonthToQuarter(sixMonth));
     }
     setViewMode(newMode);
   };
@@ -74,12 +93,12 @@ export default function PlanningPage() {
               <QuarterHeader
                 viewMode={viewMode}
                 quarter={quarter}
-                halfYear={halfYear}
+                sixMonth={sixMonth}
                 onViewModeChange={handleViewModeChange}
                 onQuarterChange={setQuarter}
-                onHalfYearChange={setHalfYear}
+                onSixMonthChange={setSixMonth}
                 onAddClick={() => setShowQuickAdd(true)}
-                clientData={byClient}
+                clientData={mergedClientData}
                 showLabels={showLabels}
                 onShowLabelsChange={setShowLabels}
               />
@@ -93,10 +112,10 @@ export default function PlanningPage() {
                   onMilestoneClick={setSelectedMilestone}
                   onClientClick={setSelectedClient}
                 />
-              ) : viewMode === 'halfyear' ? (
-                <HalfYearCalendar
-                  halfYear={halfYear}
-                  clientData={byClient}
+              ) : viewMode === '6month' ? (
+                <SixMonthCalendar
+                  sixMonth={sixMonth}
+                  clientData={mergedClientData}
                   onMilestoneClick={setSelectedMilestone}
                   onClientClick={setSelectedClient}
                   showLabels={showLabels}
@@ -104,7 +123,7 @@ export default function PlanningPage() {
               ) : (
                 <QuarterCalendar
                   quarter={quarter}
-                  clientData={byClient}
+                  clientData={mergedClientData}
                   onMilestoneClick={setSelectedMilestone}
                   onClientClick={setSelectedClient}
                   showLabels={showLabels}
