@@ -47,6 +47,7 @@ import BodyScanPage from "./pages/app/training/BodyScanPage";
 import WeightPage from "./pages/app/training/WeightPage";
 import LearningPage from "./pages/app/learning/LearningPage";
 import FavoritesPage from "./pages/app/favorites/FavoritesPage";
+import DreamJournalPage from "./pages/app/dreams/DreamJournalPage";
 
 const queryClient = new QueryClient();
 
@@ -112,6 +113,8 @@ const App = () => (
               <Route path="learning" element={<LearningPage />} />
               {/* Favorites */}
               <Route path="favorites" element={<FavoritesPage />} />
+              {/* Dreams */}
+              <Route path="dreams" element={<DreamJournalPage />} />
             </Route>
             {/* Top-level protected routes */}
             <Route path="/challenges" element={
