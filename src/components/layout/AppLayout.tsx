@@ -31,6 +31,7 @@ const PRIMARY_NAV: NavItem[] = [
   { to: "/app/feedback", label: "Feedback", icon: MessageSquare },
   { to: "/app/learning", label: "Learning", icon: BookOpen },
   { to: "/app/favorites", label: "Favorites", icon: Heart },
+  { to: "/app/dreams", label: "Dreams", icon: Moon },
 ];
 
 const SECONDARY_NAV_BASE: NavItem[] = [

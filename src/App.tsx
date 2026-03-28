@@ -113,6 +113,8 @@ const App = () => (
               <Route path="learning" element={<LearningPage />} />
               {/* Favorites */}
               <Route path="favorites" element={<FavoritesPage />} />
+              {/* Dreams */}
+              <Route path="dreams" element={<DreamJournalPage />} />
             </Route>
             {/* Top-level protected routes */}
             <Route path="/challenges" element={

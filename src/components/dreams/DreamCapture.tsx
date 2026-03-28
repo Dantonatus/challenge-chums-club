@@ -61,7 +61,7 @@ export function DreamCapture({ onSave, isPending }: Props) {
     setIsLucid(false); setIsRecurring(false); setEmotions([]); setTags([]); setExpanded(false);
   };
 
-  const moodObj = mood ? (await import('@/lib/dreams/types')).MOODS.find(m => m.value === mood) : null;
+  const moodObj = mood ? MOODS.find(m => m.value === mood) : null;
 
   return (
     <motion.div layout>
