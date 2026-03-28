@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupAuthState } from "@/lib/auth";
-import { ArrowLeft, Home, ListTodo, UtensilsCrossed, CalendarRange, MessageSquare, Dumbbell, MoreHorizontal, ShieldCheck, Users, User, BookOpen, Heart } from "lucide-react";
+import { ArrowLeft, Home, ListTodo, UtensilsCrossed, CalendarRange, MessageSquare, Dumbbell, MoreHorizontal, ShieldCheck, Users, User, BookOpen, Heart, Moon } from "lucide-react";
 import { MatrixDarkModeToggle } from "@/components/ui/MatrixDarkModeToggle";
 import {
   DropdownMenu,
