@@ -309,6 +309,60 @@ export type Database = {
         }
         Relationships: []
       }
+      dream_entries: {
+        Row: {
+          content: string | null
+          created_at: string
+          emotions: string[] | null
+          entry_date: string
+          entry_time: string | null
+          id: string
+          is_lucid: boolean | null
+          is_recurring: boolean | null
+          mood: string | null
+          sleep_quality: number | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+          vividness: number | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          emotions?: string[] | null
+          entry_date?: string
+          entry_time?: string | null
+          id?: string
+          is_lucid?: boolean | null
+          is_recurring?: boolean | null
+          mood?: string | null
+          sleep_quality?: number | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+          vividness?: number | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          emotions?: string[] | null
+          entry_date?: string
+          entry_time?: string | null
+          id?: string
+          is_lucid?: boolean | null
+          is_recurring?: boolean | null
+          mood?: string | null
+          sleep_quality?: number | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          vividness?: number | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           category: string
