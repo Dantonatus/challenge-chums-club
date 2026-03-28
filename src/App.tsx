@@ -47,6 +47,7 @@ import BodyScanPage from "./pages/app/training/BodyScanPage";
 import WeightPage from "./pages/app/training/WeightPage";
 import LearningPage from "./pages/app/learning/LearningPage";
 import FavoritesPage from "./pages/app/favorites/FavoritesPage";
+import DreamJournalPage from "./pages/app/dreams/DreamJournalPage";
 
 const queryClient = new QueryClient();
 
