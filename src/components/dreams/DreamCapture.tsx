@@ -9,6 +9,7 @@ import { MoodSelector } from './MoodSelector';
 import { EmotionChips } from './EmotionChips';
 import { VividnessSlider } from './VividnessSlider';
 import { MoodValue, EmotionValue } from '@/lib/dreams/types';
+import { MOODS } from '@/lib/dreams/types';
 import { Moon, Sparkles, RotateCcw, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
