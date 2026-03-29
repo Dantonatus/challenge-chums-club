@@ -1,151 +1,43 @@
 
 
-## Traumtagebuch — World-Class Dream Journal Module
+## Traumtagebuch: Kalender-Navigation + Datumsauswahl
 
-### Product-Hypothese
+### Konzept
 
-Dreams are ephemeral — users wake up and have ~5 minutes before details fade. The JTBD is: **"Capture a dream in under 30 seconds while still half-asleep, then later explore patterns I'd never notice myself."** This means: zero-friction entry (voice-to-text later, but text-first now), rich tagging post-hoc, and AI-powered pattern recognition that surfaces insights over time.
+Ein kompakter Kalender-Strip in der Seite, der Tage mit Traum-Eintraegen markiert. Klick auf einen Tag filtert die Timeline und setzt das Datum fuer neue/bearbeitete Eintraege. Aehnlich wie der TrainingCalendar, aber kompakter und ins "Nocturnal"-Design integriert.
 
-### Was muss es haben?
+### Aenderungen
 
-**Core (MVP):**
-- **Speed-Capture**: Titel + Freitext, 1-Tap Stimmung (emoji-basiert), Datum/Uhrzeit auto-filled
-- **Klartraum-Toggle**: War es ein luzider Traum? (Boolean)
-- **Schlafqualitaet**: 1-5 Slider (wie gut hast du geschlafen?)
-- **Tags/Themen**: Freitext-Chips (z.B. "Fliegen", "Verfolgung", "Wasser", "Familie")
-- **Emotionen**: Multi-Select aus vordefinierten Emotionen (Angst, Freude, Verwirrung, Trauer, Euphorie, Nostalgie)
-- **Wiederkehrend-Marker**: "Diesen Traum hatte ich schon mal"
-- **Vivdness-Rating**: Wie lebendig war der Traum? (1-5 Skala)
-
-**Insights (automatisch generiert):**
-- **Traum-Frequenz**: Wie oft traegst du ein? Streak-Tracking
-- **Emotions-Heatmap**: Welche Emotionen dominieren ueber Zeit (Monat/Woche)
-- **Tag-Cloud**: Visuell gewichtete Darstellung der haeufigsten Themen
-- **Klartraum-Rate**: Prozentsatz luzider Traeume
-- **Schlafqualitaet-Korrelation**: Besser geschlafen = lebendigere Traeume?
-- **Wiederkehrende Muster**: Automatische Erkennung haeufiger Tags/Emotionskombinationen
-- **Monats-Rueckblick**: Zusammenfassung mit Top-Themen und Stimmungsverlauf
-
-### UI-Konzept: "Nocturnal" Design Language
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  🌙 Traumtagebuch                    📊 Insights    │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  ┌─ Quick Capture ─────────────────────────────┐   │
-│  │  Was hast du getraeumt?                      │   │
-│  │  [ Titel... ]                                │   │
-│  │  [ Beschreibung...              ]            │   │
-│  │                                              │   │
-│  │  Stimmung:  😰 😐 😊 😍 🤯                  │   │
-│  │  Vivid:     ○ ○ ● ○ ○                       │   │
-│  │  Schlaf:    ★★★★☆                            │   │
-│  │  🔮 Luzid   🔁 Wiederkehrend                 │   │
-│  │                                              │   │
-│  │  Tags: [ + Thema hinzufuegen ]               │   │
-│  │  Emotionen: [Angst] [Freude] [Nostalgie] ... │   │
-│  │                                    [Speichern]│   │
-│  └──────────────────────────────────────────────┘   │
-│                                                     │
-│  ── Letzte Traeume ──────────────────────────────   │
-│  ┌────────┐ ┌────────┐ ┌────────┐                  │
-│  │ 🌙     │ │ 🔮     │ │ 🌙     │                  │
-│  │Flug    │ │Ozean   │ │Haus    │                  │
-│  │😍 ████ │ │😰 ██   │ │😊 ███  │                  │
-│  │vor 1d  │ │vor 3d  │ │vor 5d  │                  │
-│  └────────┘ └────────┘ └────────┘                  │
-│                                                     │
-│  ── Insights Strip ──────────────────────────────   │
-│  [ 12 Traeume ] [ 3🔮 Luzid ] [ Top: Fliegen ]    │
-│  [ Ø Schlaf: 3.8★ ] [ 5-Tage Streak 🔥 ]          │
-└─────────────────────────────────────────────────────┘
-```
-
-**Insights-Page (Tab):**
-```text
-┌─────────────────────────────────────────────────────┐
-│  Emotions-Verlauf (Area Chart, gestapelt)           │
-│  ████████████████████████████████████████            │
-│  Angst ░░░ Freude ███ Nostalgie ▓▓▓                │
-├─────────────────────────────────────────────────────┤
-│  Tag-Cloud (interaktiv, groesse = haeufigkeit)      │
-│       Fliegen    Wasser                             │
-│    Familie    Verfolgung   Haus                     │
-│         Arbeit      Tiere                           │
-├─────────────────────────────────────────────────────┤
-│  Klartraum-Rate        Vivdness Trend               │
-│  ┌──────────┐          ┌──────────────┐             │
-│  │  25% 🔮  │          │  ▁▃▅▇▅▃▅▇█  │             │
-│  │ 3/12     │          │  Ø 3.2       │             │
-│  └──────────┘          └──────────────┘             │
-├─────────────────────────────────────────────────────┤
-│  Schlafqualitaet vs. Vivdness (Scatter)             │
-│  ● ●    ●                                           │
-│     ● ●    ●  ●                                     │
-│  → Korrelation: +0.6 (besser Schlaf = vivider)      │
-└─────────────────────────────────────────────────────┘
-```
-
-### Interaktive Features
-
-- **Mood-Morph Animation**: Beim Tippen der Stimmung morpht der Hintergrund-Gradient (framer-motion) — dunkelblau/lila fuer Angst, warm-gold fuer Freude, tuerkis fuer Nostalgie
-- **Vivdness-Slider mit Glow**: Je hoeher die Vivdness, desto staerker leuchtet ein Halo um die Karte
-- **Tag-Cloud mit Physics**: Tags schweben leicht und reagieren auf Hover (scale + glow)
-- **Dream-Streak Fire**: Animierte Flamme bei aktiven Streaks
-- **Card-Flip auf Detail**: Traum-Karten flippen bei Klick (3D-Rotate) zur Detail-Ansicht
-
-### Datenbank
-
-```sql
-CREATE TABLE public.dream_entries (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  title text NOT NULL,
-  content text,                        -- Freitext-Beschreibung
-  entry_date date NOT NULL DEFAULT CURRENT_DATE,
-  entry_time time DEFAULT CURRENT_TIME,
-  mood text,                           -- 'anxious','neutral','happy','excited','mindblown'
-  vividness smallint,                  -- 1-5
-  sleep_quality smallint,              -- 1-5
-  is_lucid boolean DEFAULT false,
-  is_recurring boolean DEFAULT false,
-  emotions text[],                     -- ['fear','joy','nostalgia','confusion',...]
-  tags text[],                         -- freie Tags
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.dream_entries ENABLE ROW LEVEL SECURITY;
--- Standard CRUD policies: auth.uid() = user_id
-```
-
-### Frontend-Dateien
-
-| Datei | Inhalt |
+| Datei | Was |
 |---|---|
-| `src/lib/dreams/types.ts` | Typen, Mood/Emotion-Definitionen, Konstanten |
-| `src/hooks/useDreamEntries.ts` | CRUD-Hook mit TanStack Query |
-| `src/pages/app/dreams/DreamJournalPage.tsx` | Hauptseite mit Tabs (Erfassen / Timeline / Insights) |
-| `src/components/dreams/DreamCapture.tsx` | Quick-Capture-Formular mit Mood-Morph |
-| `src/components/dreams/DreamCard.tsx` | Traum-Karte mit Glow + Flip-Animation |
-| `src/components/dreams/DreamDetailSheet.tsx` | Detail/Edit-Sheet |
-| `src/components/dreams/DreamTimeline.tsx` | Chronologische Liste mit Streak-Anzeige |
-| `src/components/dreams/DreamInsights.tsx` | Analytics-Dashboard (Charts, Tag-Cloud, Korrelationen) |
-| `src/components/dreams/MoodSelector.tsx` | Emoji-basierter Mood-Picker mit Morph-Animation |
-| `src/components/dreams/EmotionChips.tsx` | Multi-Select Emotion-Chips |
-| `src/components/dreams/TagCloud.tsx` | Gewichtete, interaktive Tag-Wolke |
-| `src/components/dreams/VividnessSlider.tsx` | Custom Slider mit Glow-Effekt |
+| `src/components/dreams/DreamCalendar.tsx` | **Neu.** Kompakter Monats-Kalender (shadcn Calendar) im Glassmorphism-Card. Tage mit Eintraegen werden mit einem kleinen Punkt/Glow markiert. Klick auf Tag setzt `selectedDate`. Navigation per Monat. |
+| `src/components/dreams/DreamCapture.tsx` | Props erweitern: `selectedDate?: Date`. Wenn gesetzt, wird `entry_date` auf diesen Tag gesetzt statt `CURRENT_DATE`. Zeigt das gewaehlte Datum als Chip neben dem Titel-Input an. Datepicker-Button zum manuellen Aendern (Popover + Calendar). |
+| `src/pages/app/dreams/DreamJournalPage.tsx` | State `selectedDate: Date \| null` hinzufuegen. `DreamCalendar` zwischen Header und Capture rendern. Timeline nach `selectedDate` filtern (oder alle zeigen wenn null). `selectedDate` an `DreamCapture` weiterreichen. Layout: Kalender links, Capture+Timeline rechts auf Desktop (2-Spalten-Grid ab lg). |
+| `src/components/dreams/DreamDetailSheet.tsx` | Edit-Modus ergaenzen: Button "Bearbeiten" oeffnet inline-Editing fuer Titel, Content, Mood, Tags etc. mit Save-Button. Nutzt `update` Mutation aus dem Hook. |
+| `src/hooks/useDreamEntries.ts` | `update`-Mutation bereits vorhanden -- wird jetzt vom DetailSheet genutzt. |
 
-### Navigation
+### Layout (Desktop)
 
-- Neuer Eintrag in `PRIMARY_NAV`: `{ to: "/app/dreams", label: "Dreams", icon: Moon }`
-- Route: `<Route path="dreams" element={<DreamJournalPage />} />`
+```text
+┌────────────────────────────────────────────────┐
+│  🌙 Traumtagebuch                              │
+├──────────────┬─────────────────────────────────┤
+│  ┌──────────┐│  ┌─ Quick Capture ──────────┐  │
+│  │ Kalender ││  │ [22. Mrz 2026] Was hast..│  │
+│  │ < Mrz  > ││  │ ...                      │  │
+│  │ Mo Di Mi ││  └──────────────────────────┘  │
+│  │  1  2  3 ││                                │
+│  │  4● 5  6 ││  [Traeume] [Insights]          │
+│  │  ...     ││  ┌────┐ ┌────┐ ┌────┐         │
+│  └──────────┘│  │Card│ │Card│ │Card│         │
+│              │  └────┘ └────┘ └────┘         │
+└──────────────┴─────────────────────────────────┘
+```
 
-### Design-Entscheidungen
+### Kalender-Markierungen
 
-- **Farbwelt**: Dunkle Blau-/Lila-Toene als Akzent (naechtliche Atmosphaere), funktioniert in Light + Dark Mode
-- **Typografie**: Titel in `font-serif` (traumhaft, literarisch), Rest system sans
-- **Glassmorphism**: Capture-Card mit `backdrop-blur-xl bg-card/60`
-- **Motion**: Staggered fade-in fuer Timeline, morphende Gradienten beim Mood-Switch
+Tage mit Eintraegen bekommen einen kleinen farbigen Punkt unter der Zahl (via `modifiers` + `modifiersClassNames` der shadcn Calendar). Aktiv selektierter Tag wird hervorgehoben. "Heute" bleibt sichtbar.
 
+### Detail-Sheet Edit
+
+Bestehender Sheet bekommt einen "Bearbeiten"-Toggle. Im Edit-Modus werden Titel, Content, Mood, Vividness, Sleep, Toggles, Emotions und Tags editierbar (gleiche Komponenten wie DreamCapture). Save ruft `update.mutate()` auf.
