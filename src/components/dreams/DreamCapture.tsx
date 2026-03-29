@@ -30,7 +30,7 @@ interface Props {
   selectedDate?: Date | null;
 }
 
-export function DreamCapture({ onSave, isPending }: Props) {
+export function DreamCapture({ onSave, isPending, selectedDate }: Props) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [mood, setMood] = useState<MoodValue | null>(null);
