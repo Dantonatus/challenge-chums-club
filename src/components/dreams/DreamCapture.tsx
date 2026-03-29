@@ -1,4 +1,7 @@
 import { useState, KeyboardEvent } from 'react';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { CalendarIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,9 +30,10 @@ interface Props {
     tags: string[];
   }) => void;
   isPending?: boolean;
+  selectedDate?: Date | null;
 }
 
-export function DreamCapture({ onSave, isPending }: Props) {
+export function DreamCapture({ onSave, isPending, selectedDate }: Props) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [mood, setMood] = useState<MoodValue | null>(null);
@@ -83,6 +87,12 @@ export function DreamCapture({ onSave, isPending }: Props) {
           {/* Minimal capture row */}
           <div className="flex items-center gap-3">
             <Moon className="w-5 h-5 text-primary shrink-0" />
+            {selectedDate && (
+              <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-primary text-xs font-medium">
+                <CalendarIcon className="w-3 h-3" />
+                {format(selectedDate, 'dd. MMM yyyy', { locale: de })}
+              </span>
+            )}
             <Input
               placeholder="Was hast du geträumt?"
               value={title}
