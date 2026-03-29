@@ -27,6 +27,7 @@ interface Props {
     tags: string[];
   }) => void;
   isPending?: boolean;
+  selectedDate?: Date | null;
 }
 
 export function DreamCapture({ onSave, isPending }: Props) {
