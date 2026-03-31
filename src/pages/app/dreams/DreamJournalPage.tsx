@@ -5,9 +5,11 @@ import { DreamTimeline } from '@/components/dreams/DreamTimeline';
 import { DreamInsights } from '@/components/dreams/DreamInsights';
 import { DreamDetailSheet } from '@/components/dreams/DreamDetailSheet';
 import { DreamCalendar } from '@/components/dreams/DreamCalendar';
+import { DreamAllView } from '@/components/dreams/DreamAllView';
+import { DreamExportMenu } from '@/components/dreams/DreamExportMenu';
 import { useDreamEntries } from '@/hooks/useDreamEntries';
 import { DreamEntry } from '@/lib/dreams/types';
-import { Moon, BarChart3 } from 'lucide-react';
+import { Moon, BarChart3, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -46,9 +48,12 @@ export default function DreamJournalPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Moon className="w-6 h-6 text-primary" />
-        <h1 className="text-2xl font-serif font-bold">Traumtagebuch</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Moon className="w-6 h-6 text-primary" />
+          <h1 className="text-2xl font-serif font-bold">Traumtagebuch</h1>
+        </div>
+        <DreamExportMenu entries={entries} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
@@ -70,6 +75,9 @@ export default function DreamJournalPage() {
               <TabsTrigger value="timeline" className="gap-1.5">
                 <Moon className="w-3.5 h-3.5" /> Träume
               </TabsTrigger>
+              <TabsTrigger value="all" className="gap-1.5">
+                <List className="w-3.5 h-3.5" /> Alle ({entries.length})
+              </TabsTrigger>
               <TabsTrigger value="insights" className="gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5" /> Insights
               </TabsTrigger>
@@ -80,6 +88,14 @@ export default function DreamJournalPage() {
                 <div className="text-center py-12 text-muted-foreground">Laden…</div>
               ) : (
                 <DreamTimeline entries={filteredEntries} onSelect={setSelected} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="all">
+              {isLoading ? (
+                <div className="text-center py-12 text-muted-foreground">Laden…</div>
+              ) : (
+                <DreamAllView entries={entries} onSelect={setSelected} />
               )}
             </TabsContent>
 
