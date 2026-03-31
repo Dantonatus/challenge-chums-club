@@ -1,68 +1,59 @@
 
 
-## Traumtagebuch: Export (MD + PDF) + Gesamtansicht
+## Fix: Dream Journal PDF Export — Designer-Qualitaet
 
-### Neue Features
+### Identifizierte Probleme
 
-#### 1. Export-Funktion (Markdown + PDF)
+1. **Unicode-Bruch**: jsPDF mit Helvetica (WinAnsi) kann keine Umlaute (ä, ö, ü), Emojis, Middot (·), Sterne (★☆) rendern — alles wird zu `�`
+2. **Kein visuelles Design**: Keine Hintergrundfarbe, kein Header-Bar, kein Farbkonzept — nur schwarzer Text auf Weiss
+3. **Keine Seitenzahlen/Footer**
+4. **Kein Theme-Support** (Dark/Light wie bei BodyScan- und Weight-PDFs)
+5. **Spacing/Layout** zu eng, keine visuelle Hierarchie
 
-**Neue Datei: `src/lib/dreams/exportDreams.ts`**
-- `exportDreamsMarkdown(entries: DreamEntry[]): string` — Generiert ein sauber strukturiertes Markdown-Dokument:
-  ```
-  # Traumtagebuch
-  Exportiert am 31. Maerz 2026 · 42 Traeume
+### Loesung: Kompletter Rewrite nach dem Premium-Pattern
 
-  ---
+Die bestehenden PDF-Exporte (BodyScan, Weight, Gantt) nutzen bereits ein Premium-Design mit Accent-Headerbar, Theme-Bg, Footer mit Seitenzahlen. Der Dream-Export wird nach diesem Muster neu geschrieben.
 
-  ## 15. Maerz 2026
+### Aenderungen in `src/lib/dreams/exportDreams.ts`
 
-  ### Flug ueber die Stadt 🌙
-  **Stimmung:** 😊 Froehlich · **Lebendigkeit:** ★★★★☆ · **Schlaf:** ★★★☆☆
-  **Luzid:** Ja · **Wiederkehrend:** Nein
-  **Emotionen:** Freude, Euphorie
-  **Tags:** fliegen, stadt
+**Nur die `downloadPDF`-Funktion wird neu geschrieben. Markdown bleibt unveraendert.**
 
-  > Ich flog ueber die Daecher der Stadt und konnte alles sehen...
-
-  ---
-  ```
-- `downloadMarkdown(entries)` — Erstellt Blob + triggert Download als `.md`
-- `downloadPDF(entries)` — Nutzt jsPDF (bereits im Projekt) mit gleichem Content, sauber formatiert auf A4 mit Seitenumbruechen pro Tag, Titel-Header, Mood-Emojis, Metadata-Zeile
-
-**Neue Datei: `src/components/dreams/DreamExportMenu.tsx`**
-- Dropdown-Button (lucide `Download`-Icon) mit zwei Optionen: "Als Markdown" / "Als PDF"
-- Wird in der Page-Header-Zeile neben dem Titel platziert
-- Exportiert immer ALLE Eintraege (nicht gefiltert), mit Hinweis im Tooltip
-
-#### 2. Gesamtansicht aller Traeume
-
-**Neuer Tab "Alle" in den bestehenden Tabs**
-
-| Element | Beschreibung |
+| Problem | Loesung |
 |---|---|
-| Neuer Tab `all` | Dritter Tab neben "Traeume" und "Insights" mit Icon `List` und Label "Alle" |
-| Tabellarische Liste | Kompakte Tabelle (shadcn Table) mit Spalten: Datum, Titel, Stimmung (Emoji), Lebendigkeit (Dots), Luzid (Badge), Tags |
-| Sortierung | Default nach Datum absteigend, Klick auf Spaltenheader zum Umkehren |
-| Klick-Aktion | Zeile klickbar → oeffnet DreamDetailSheet (gleich wie bei Cards) |
-| Alle Eintraege | Zeigt IMMER alle entries (ignoriert Kalender-Filter), damit man die komplette Sammlung ueberblicken kann |
+| Unicode-Bruch (Umlaute, Emojis) | `sanitizeForPDF()` aus Gantt-Pattern: Umlaute bleiben (sind WinAnsi-kompatibel!), Emojis/Sterne/Middots werden durch ASCII-Alternativen ersetzt |
+| Kein Header | Accent-farbiger Header-Bar (volle Breite, 22mm) mit "Traumtagebuch" Titel + Datumsrange rechts |
+| Kein Theme | `getThemeBg()`, `getAccent()`, `getMuted()`, `getWhite()` — identisch zu BodyScan/Weight-PDFs |
+| Kein Footer | Seitenzahlen + Erstellungsdatum auf jeder Seite |
+| Mood-Emojis | Emojis entfernen, nur Text-Label anzeigen (z.B. "Froehlich" statt "😊 Fröhlich") |
+| Vividness/Sleep | Numerisch "3/5" statt kaputte Stern-Symbole |
+| Middot-Separator | Ersetzen durch " | " oder " - " |
+| Fehlende Hierarchie | Datum-Gruppen mit subtiler Linie, Dream-Titel in Bold 12pt, Meta in Muted 9pt, Content in Normal 10pt mit leichtem Indent |
+| Keine Seitenumbrueche pro Gruppe | `checkPage()` vor jeder Datumsgruppe mit genug Reserve |
+| Luzid/Wiederkehrend Tags | Als kompakte Text-Labels in Klammern statt Badges |
 
-**Neue Datei: `src/components/dreams/DreamAllView.tsx`**
-- Nutzt shadcn `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableCell`
-- Responsive: Auf Mobile werden Tags und Lebendigkeit ausgeblendet
-- Glassmorphism-Card als Wrapper (konsistent mit restlichem Design)
-- Count-Badge im Tab-Trigger: "Alle (42)"
+### Visuelles Ergebnis
 
-### Aenderungen an bestehenden Dateien
+```text
+┌──────────────────────────────────────┐
+│ ████ Traumtagebuch    Mrz 2026 ████ │  ← Accent header bar
+│                                      │
+│ ─── 31. Maerz 2026 ─────────────── │  ← Date divider
+│                                      │
+│ Flug ueber die Stadt                │  ← Bold 12pt
+│ Stimmung: Froehlich | Lebendigkeit: │  ← Muted 9pt
+│ 4/5 | Schlaf: 3/5                   │
+│ Luzid | Emotionen: Freude, Euphorie │
+│ Tags: fliegen, stadt                │
+│                                      │
+│   Ich flog ueber die Daecher der    │  ← Content 10pt, indented
+│   Stadt und konnte alles sehen...   │
+│                                      │
+│──────────────────────────────────────│
+│ Erstellt am 31.03.2026  Seite 1/2   │  ← Footer
+└──────────────────────────────────────┘
+```
 
-| Datei | Aenderung |
-|---|---|
-| `DreamJournalPage.tsx` | Export-Button im Header einfuegen; dritten Tab "Alle" mit `DreamAllView` hinzufuegen |
-| `src/lib/dreams/types.ts` | Keine Aenderung noetig |
+### Keine weiteren Dateien betroffen
 
-### Technische Details
-
-- **jsPDF** ist bereits installiert (wird in `exportGanttPDF.ts` etc. verwendet)
-- **Markdown-Export**: Reiner String-Builder, kein externer Dependency noetig
-- **PDF-Layout**: A4 Hochformat, Serifen-Font fuer Titel, Gruppenumbruch pro Datum, Mood-Emojis als Unicode
-- **Sortierung in Gesamtansicht**: Lokaler React-State `sortDir: 'asc' | 'desc'`, Toggle per Klick auf Datum-Header
+Nur `src/lib/dreams/exportDreams.ts` wird geaendert. Die `downloadPDF`-Funktion + neue Helper-Funktionen (`sanitizeForPDF`, `getThemeBg`, etc.).
 
