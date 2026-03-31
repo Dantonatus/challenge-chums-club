@@ -3,10 +3,12 @@ import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 
+// ── Shared helpers ──
+
 function moodLabel(value: string | null) {
   if (!value) return null;
   const m = MOODS.find(m => m.value === value);
-  return m ? `${m.emoji} ${m.label}` : value;
+  return m ? m.label : value;
 }
 
 function emotionLabels(values: string[] | null) {
@@ -98,107 +100,174 @@ export function downloadMarkdown(entries: DreamEntry[]) {
   URL.revokeObjectURL(url);
 }
 
-// ── PDF Export ──
+// ── PDF Export (Premium Pattern) ──
+
+const PAGE_W = 210;
+const PAGE_H = 297;
+const MARGIN = 14;
+const CONTENT_W = PAGE_W - 2 * MARGIN;
+
+function getThemeBg(): [number, number, number] {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark ? [20, 20, 20] : [252, 252, 252];
+}
+
+function getAccent(): [number, number, number] {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark ? [120, 100, 220] : [100, 80, 200];
+}
+
+function getMuted(): [number, number, number] {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark ? [160, 160, 160] : [140, 140, 140];
+}
+
+function getWhite(): [number, number, number] {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark ? [235, 235, 235] : [255, 255, 255];
+}
+
+function getFg(): [number, number, number] {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark ? [235, 235, 235] : [31, 31, 31];
+}
+
+function fillPageBg(doc: jsPDF) {
+  const bg = getThemeBg();
+  doc.setFillColor(...bg);
+  doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
+}
+
+function sanitize(text: string): string {
+  return text
+    .replace(/[😰😐😊😍🤯🌙💤✨🔮👁️‍🗨️🏷️📝]/gu, '')
+    .replace(/★/g, '*')
+    .replace(/☆/g, '-')
+    .replace(/·/g, '|')
+    .replace(/–/g, '-')
+    .replace(/→/g, '->')
+    .replace(/[„"]/g, '"')
+    .replace(/[•●]/g, '-')
+    .trim();
+}
 
 export function downloadPDF(entries: DreamEntry[]) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const marginL = 20;
-  const marginR = 20;
-  const contentW = pageW - marginL - marginR;
-  let y = 25;
+  const accent = getAccent();
+  const muted = getMuted();
+  const white = getWhite();
+  const fg = getFg();
+
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  fillPageBg(doc);
+
+  // Header bar
+  doc.setFillColor(...accent);
+  doc.rect(0, 0, PAGE_W, 22, 'F');
+  doc.setTextColor(...white);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Traumtagebuch', MARGIN, 13);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  const now = format(new Date(), 'dd.MM.yyyy');
+  doc.text(`${entries.length} Eintraege | ${now}`, PAGE_W - MARGIN, 13, { align: 'right' });
+
+  let y = 30;
 
   const checkPage = (needed: number) => {
-    if (y + needed > pageH - 20) {
+    if (y + needed > PAGE_H - 20) {
       doc.addPage();
-      y = 20;
+      fillPageBg(doc);
+      y = MARGIN;
     }
   };
-
-  // Title
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.text('Traumtagebuch', marginL, y);
-  y += 8;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(120);
-  const now = format(new Date(), 'd. MMMM yyyy', { locale: de });
-  doc.text(`Exportiert am ${now} · ${entries.length} Träume`, marginL, y);
-  doc.setTextColor(0);
-  y += 12;
 
   const groups = groupByDate(entries);
 
   for (const g of groups) {
-    checkPage(25);
+    checkPage(30);
 
-    // Date header
-    doc.setDrawColor(200);
-    doc.line(marginL, y, pageW - marginR, y);
-    y += 7;
+    // Date divider line
+    doc.setDrawColor(...muted);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+    y += 6;
 
+    // Date heading
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(formatDate(g.date), marginL, y);
+    doc.setFontSize(13);
+    doc.setTextColor(...fg);
+    doc.text(sanitize(formatDate(g.date)), MARGIN, y);
     y += 8;
 
     for (const d of g.entries) {
-      checkPage(30);
+      checkPage(35);
 
-      // Title
+      // Dream title
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
-      doc.text(d.title, marginL, y);
+      doc.setTextColor(...fg);
+      doc.text(sanitize(d.title), MARGIN, y);
       y += 6;
 
+      // Metadata line 1
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(80);
+      doc.setTextColor(...muted);
 
-      // Metadata line
-      const metaParts: string[] = [];
-      if (d.mood) metaParts.push(`Stimmung: ${moodLabel(d.mood)}`);
-      if (d.vividness != null) metaParts.push(`Lebendigkeit: ${d.vividness}/5`);
-      if (d.sleep_quality != null) metaParts.push(`Schlaf: ${d.sleep_quality}/5`);
-      if (metaParts.length) {
-        doc.text(metaParts.join('  ·  '), marginL, y);
+      const meta1: string[] = [];
+      if (d.mood) meta1.push(`Stimmung: ${moodLabel(d.mood)}`);
+      if (d.vividness != null) meta1.push(`Lebendigkeit: ${d.vividness}/5`);
+      if (d.sleep_quality != null) meta1.push(`Schlaf: ${d.sleep_quality}/5`);
+      if (meta1.length) {
+        doc.text(sanitize(meta1.join('  |  ')), MARGIN, y);
         y += 4.5;
       }
 
+      // Metadata line 2
       const meta2: string[] = [];
       if (d.is_lucid) meta2.push('Luzid');
       if (d.is_recurring) meta2.push('Wiederkehrend');
       const emo = emotionLabels(d.emotions);
       if (emo) meta2.push(`Emotionen: ${emo}`);
       if (meta2.length) {
-        doc.text(meta2.join('  ·  '), marginL, y);
+        doc.text(sanitize(meta2.join('  |  ')), MARGIN, y);
         y += 4.5;
       }
 
+      // Tags
       if (d.tags && d.tags.length) {
-        doc.text(`Tags: ${d.tags.join(', ')}`, marginL, y);
+        doc.text(sanitize(`Tags: ${d.tags.join(', ')}`), MARGIN, y);
         y += 4.5;
       }
 
-      doc.setTextColor(0);
       y += 2;
 
       // Content
       if (d.content) {
         doc.setFontSize(10);
-        const lines = doc.splitTextToSize(d.content, contentW - 5);
+        doc.setTextColor(...fg);
+        const lines = doc.splitTextToSize(sanitize(d.content), CONTENT_W - 6);
         for (const line of lines) {
-          checkPage(6);
-          doc.text(line, marginL + 3, y);
+          checkPage(5);
+          doc.text(line, MARGIN + 3, y);
           y += 4.5;
         }
       }
 
       y += 6;
     }
+  }
+
+  // Footer on all pages
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(...muted);
+    doc.text(`Erstellt am ${format(new Date(), 'dd.MM.yyyy, HH:mm')} Uhr`, MARGIN, PAGE_H - 7);
+    doc.text(`Seite ${i} / ${pageCount}`, PAGE_W - MARGIN, PAGE_H - 7, { align: 'right' });
   }
 
   doc.save(`traumtagebuch_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
