@@ -1,11 +1,26 @@
 import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LabelList } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LabelList, Cell } from 'recharts';
 import type { BodyScan } from '@/lib/bodyscan/types';
-import { latestScan, previousScan } from '@/lib/bodyscan/analytics';
+import { latestScan, previousScan, computeTightDomain } from '@/lib/bodyscan/analytics';
 import { createChartLabel } from './ChartLabel';
 
 interface Props { scans: BodyScan[]; showLabels?: boolean }
+
+function DeltaBarLabel(props: any) {
+  const { x, y, width, value } = props;
+  if (value == null || x == null || y == null) return null;
+  const num = Number(value);
+  if (isNaN(num) || num === 0) return null;
+  const sign = num > 0 ? '+' : '';
+  const text = `${sign}${num.toFixed(1)}`;
+  const fill = num > 0 ? 'hsl(142 71% 45%)' : 'hsl(0 60% 55%)';
+  return (
+    <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill={fill}>
+      {text}
+    </text>
+  );
+}
 
 export default function SegmentMuscleChart({ scans, showLabels }: Props) {
   const latest = latestScan(scans);
@@ -22,21 +37,29 @@ export default function SegmentMuscleChart({ scans, showLabels }: Props) {
     { name: 'Bein R', key: 'legR' as const },
   ];
 
-  const data = segments.map(s => ({
-    segment: s.name,
-    Aktuell: latest.segments_json!.muscle[s.key],
-    ...(prev?.segments_json ? { Vorher: prev.segments_json.muscle[s.key] } : {}),
-  }));
+  const data = segments.map(s => {
+    const cur = latest.segments_json!.muscle[s.key];
+    const prevVal = prev?.segments_json?.muscle[s.key];
+    return {
+      segment: s.name,
+      Aktuell: cur,
+      ...(prevVal != null ? { Vorher: prevVal } : {}),
+      delta: prevVal != null ? Math.round((cur - prevVal) * 100) / 100 : null,
+    };
+  });
+
+  const allVals = data.flatMap(d => [d.Aktuell, d.Vorher].filter((v): v is number => v != null));
+  const domain = computeTightDomain(allVals, 0.2);
 
   return (
     <Card>
       <CardContent className="p-4">
         <h3 className="text-sm font-semibold mb-4">Muskelverteilung (kg)</h3>
-        <ResponsiveContainer width="100%" height={340}>
+        <ResponsiveContainer width="100%" height={380}>
           <BarChart data={data} margin={{ top: 30 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="segment" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+            <YAxis domain={domain} tickCount={6} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
             <Tooltip
               contentStyle={{
                 background: 'hsl(var(--card))',
@@ -48,6 +71,7 @@ export default function SegmentMuscleChart({ scans, showLabels }: Props) {
             <Legend wrapperStyle={{ fontSize: 12 }} />
             <Bar dataKey="Aktuell" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
               {showLabels && <LabelList dataKey="Aktuell" content={labelCurrent} />}
+              {prev?.segments_json && <LabelList dataKey="delta" content={DeltaBarLabel} />}
             </Bar>
             {prev?.segments_json && (
               <Bar dataKey="Vorher" fill="hsl(var(--muted-foreground) / 0.3)" radius={[4, 4, 0, 0]}>

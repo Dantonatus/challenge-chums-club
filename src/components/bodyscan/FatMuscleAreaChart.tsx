@@ -12,15 +12,15 @@ export default function FatMuscleAreaChart({ scans, showLabels }: Props) {
   const labelFat = useMemo(() => createChartLabel({ color: 'hsl(0 60% 55%)', offsetY: -18 }), []);
   const labelMuscle = useMemo(() => createChartLabel({ color: 'hsl(210 70% 55%)', offsetY: 20 }), []);
 
-  const fatDomain = useMemo(() => computeTightDomain(data.map(d => d['Körperfett %'])), [data]);
-  const muscleDomain = useMemo(() => computeTightDomain(data.map(d => d['Muskelmasse kg'])), [data]);
+  const fatDomain = useMemo(() => computeTightDomain(data.map(d => d['Körperfett %']), 0.15), [data]);
+  const muscleDomain = useMemo(() => computeTightDomain(data.map(d => d['Muskelmasse kg']), 0.15), [data]);
 
   if (data.length < 2) return null;
   return (
     <Card>
       <CardContent className="p-4">
         <h3 className="text-sm font-semibold mb-4">Körperfett vs. Muskelmasse – Trend</h3>
-        <ResponsiveContainer width="100%" height={340}>
+        <ResponsiveContainer width="100%" height={400}>
           <AreaChart data={data} margin={{ top: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
@@ -35,10 +35,10 @@ export default function FatMuscleAreaChart({ scans, showLabels }: Props) {
               }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Area yAxisId="left" type="monotone" dataKey="Körperfett %" stroke="hsl(0 60% 55%)" fill="hsl(0 60% 55% / 0.15)" strokeWidth={2}>
+            <Area yAxisId="left" type="monotone" dataKey="Körperfett %" stroke="hsl(0 60% 55%)" fill="hsl(0 60% 55% / 0.2)" strokeWidth={2.5}>
               {showLabels && <LabelList dataKey="Körperfett %" content={labelFat} />}
             </Area>
-            <Area yAxisId="right" type="monotone" dataKey="Muskelmasse kg" stroke="hsl(210 70% 55%)" fill="hsl(210 70% 55% / 0.15)" strokeWidth={2}>
+            <Area yAxisId="right" type="monotone" dataKey="Muskelmasse kg" stroke="hsl(210 70% 55%)" fill="hsl(210 70% 55% / 0.2)" strokeWidth={2.5}>
               {showLabels && <LabelList dataKey="Muskelmasse kg" content={labelMuscle} />}
             </Area>
           </AreaChart>
