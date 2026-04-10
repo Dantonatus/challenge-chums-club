@@ -91,7 +91,7 @@ export default function PeriodNavigator({ onChange, modes = ALL_MODES, defaultMo
 
   return (
     <div className="flex flex-col items-center gap-1.5">
-      {mode !== 'all' && (
+      {mode !== 'all' && mode !== 'last3m' && mode !== 'last6m' && (
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOffset(o => o - 1)}>
             <ChevronLeft className="h-4 w-4" />
