@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-export type PeriodMode = 'week' | 'month' | 'quarter' | 'year' | 'all';
+export type PeriodMode = 'week' | 'month' | 'quarter' | 'year' | 'all' | 'last3m' | 'last6m';
 
 interface Props {
   onChange: (start: Date, end: Date) => void;
