@@ -19,6 +19,7 @@ Required JSON structure:
   "fat_percent": number|null,
   "fat_mass_kg": number|null,
   "muscle_mass_kg": number|null,
+  "skeletal_muscle_mass_kg": number|null,
   "bone_mass_kg": number|null,
   "bmi": number|null,
   "metabolic_age": number|null,
@@ -43,6 +44,7 @@ Rules:
 - Date format: convert "10.04.2026" → "2026-04-10"
 - For fat segments: values should be in % (e.g. "20,7 %" → 20.7)
 - For muscle segments: values should be in kg. Look for the "Segmentanalyse Muskel" page/table with kg values per body part: Rumpf=trunk, Arm R=armR, Arm L=armL, Bein R=legR, Bein L=legL
+- skeletal_muscle_mass_kg: Look for "Skelettmuskulatur" or "Skeletal Muscle Mass" in kg — this is different from total muscle mass
 - Look for "Grundumsatz" or "BMR" value in kcal — this is critical, do not skip it
 - visceral_fat and metabolic_age are integers
 - ECW/TBW ratio is a percentage value

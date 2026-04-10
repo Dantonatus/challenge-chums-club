@@ -74,6 +74,7 @@ export type Database = {
           scan_date: string
           scan_time: string
           segments_json: Json | null
+          skeletal_muscle_mass_kg: number | null
           tbw_kg: number | null
           tbw_percent: number | null
           user_id: string
@@ -100,6 +101,7 @@ export type Database = {
           scan_date: string
           scan_time: string
           segments_json?: Json | null
+          skeletal_muscle_mass_kg?: number | null
           tbw_kg?: number | null
           tbw_percent?: number | null
           user_id: string
@@ -126,6 +128,7 @@ export type Database = {
           scan_date?: string
           scan_time?: string
           segments_json?: Json | null
+          skeletal_muscle_mass_kg?: number | null
           tbw_kg?: number | null
           tbw_percent?: number | null
           user_id?: string

@@ -80,6 +80,7 @@ export function parseBodyScanCsv(text: string): ParsedBodyScan | null {
     fat_percent: (values['details.fat_percent'] as number) ?? null,
     fat_mass_kg: (values['details.fat_mass'] as number) ?? null,
     muscle_mass_kg: (values['details.muscle_mass'] as number) ?? null,
+    skeletal_muscle_mass_kg: null,
     bone_mass_kg: (values['details.bone_mass'] as number) ?? null,
     bmi: (values['details.bmi'] as number) ?? null,
     metabolic_age: (values['details.metabolic_age'] as number) != null ? Math.round(values['details.metabolic_age'] as number) : null,

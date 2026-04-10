@@ -1,0 +1,1 @@
+ALTER TABLE public.body_scans ADD COLUMN skeletal_muscle_mass_kg NUMERIC;

@@ -117,6 +117,7 @@ export function parseBodyScanPdf(text: string): ParsedBodyScan | null {
     fat_percent: fatPercent,
     fat_mass_kg: fatMassKg,
     muscle_mass_kg: muscleMassKg,
+    skeletal_muscle_mass_kg: null,
     bone_mass_kg: boneMassKg,
     bmi,
     metabolic_age: metabolicAge != null ? Math.round(metabolicAge) : null,

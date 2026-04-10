@@ -27,6 +27,7 @@ export interface BodyScan {
   fat_percent: number | null;
   fat_mass_kg: number | null;
   muscle_mass_kg: number | null;
+  skeletal_muscle_mass_kg: number | null;
   bone_mass_kg: number | null;
   bmi: number | null;
   metabolic_age: number | null;
@@ -52,6 +53,7 @@ export interface ParsedBodyScan {
   fat_percent: number | null;
   fat_mass_kg: number | null;
   muscle_mass_kg: number | null;
+  skeletal_muscle_mass_kg: number | null;
   bone_mass_kg: number | null;
   bmi: number | null;
   metabolic_age: number | null;
