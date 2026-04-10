@@ -1,35 +1,23 @@
 
 
-## Logische Achsenverteilung fuer Body Scan Charts
+## Körperkomposition-Chart: Zurück zu kg mit logischer Achsenverteilung
 
-### Problem
-Der Kompositions-Chart hat 3 Serien auf 3 unabhaengigen Y-Achsen mit je eigenem tight domain. Das fuehrt zu **visuellen Fehlinterpretationen**: Linien kreuzen sich oder laufen parallel, obwohl die tatsaechlichen Werte das nicht widerspiegeln. Ein Betrachter liest "Fettmasse steigt ueber Muskelmasse" — was bei 18kg vs 73kg natuerlich Unsinn ist.
+### Konzept
+Statt prozentualer Veränderung zeigt der Chart wieder absolute kg-Werte. Um trotzdem logisch korrekt zu bleiben und keine Misskonzeption zu erzeugen, werden die drei Serien auf **zwei farbcodierte Achsen** aufgeteilt — nach **ähnlichem Wertebereich gruppiert**:
 
-### Loesung: Prozentuale Veraenderung vom Startwert
+- **Linke Achse (primär)**: Gewicht + Muskelmasse — beide im Bereich ~70-96 kg, tight domain
+- **Rechte Achse (rot)**: Fettmasse — im Bereich ~15-20 kg, eigene tight domain
 
-**Kompositions-Chart** — statt absolute kg-Werte auf getrennten Achsen:
-- **Eine gemeinsame Y-Achse** in **% Veraenderung vom ersten Scan**
-- Gewicht +2% = +1.9 kg, Muskelmasse -1% = -0.7 kg, Fettmasse -5% = -0.9 kg
-- Alle drei Kurven starten bei 0% und sind **direkt vergleichbar**
-- Kleine Veraenderungen werden sichtbar, ohne visuelle Fehlkonzepte
-- Tooltip zeigt sowohl den %-Wert als auch den absoluten Wert in kg
-- Achsen-Label: "Veraenderung in %"
-- Chart-Untertitel: "Relativ zum ersten Scan (Datum)"
-
-**Fett vs. Muskel Chart** — hier ist Dual-Axis OK, da:
-- Nur 2 Serien mit klar unterschiedlichen Einheiten (% vs. kg)
-- Achsen-Ticks und Labels **farblich** den Serien zuordnen (rot = Fett %, blau = Muskel kg)
-- Das ist ein etabliertes Muster, keine Misskonzeption
+Das ist logisch korrekt, weil:
+- Gewicht und Muskelmasse teilen denselben Massstab und sind direkt vergleichbar (man sieht z.B. "Muskel steigt, Gewicht bleibt gleich")
+- Fettmasse hat einen klar getrennten, farblich markierten eigenen Massstab
+- Keine Kreuzungen zwischen Serien auf verschiedenen Achsen, da Fettmasse visuell separiert ist
 
 ### Aenderungen
 
 | Datei | Aenderung |
 |---|---|
-| `src/lib/bodyscan/analytics.ts` | Neue Funktion `compositionChangeData()` — berechnet %-Veraenderung relativ zum ersten Scan fuer Gewicht, Muskelmasse, Fettmasse; gibt auch absolute Werte fuer Tooltip mit |
-| `src/components/bodyscan/CompositionTrendChart.tsx` | Umstellen auf eine gemeinsame Y-Achse mit %-Veraenderung, Custom Tooltip mit absolutem + relativem Wert, Untertitel mit Referenzdatum |
-| `src/components/bodyscan/FatMuscleAreaChart.tsx` | Achsen-Ticks und Labels farblich an Serien anpassen (rot links, blau rechts) |
+| `src/components/bodyscan/CompositionTrendChart.tsx` | Zurueck auf `compositionChartData()` mit kg-Werten. Linke Achse fuer Gewicht + Muskelmasse (tight domain), rechte Achse fuer Fettmasse (tight domain, rot gefaerbt). Einfacher Tooltip mit kg-Werten. Untertitel und ReferenceLine entfernen. |
 
-### Ergebnis
-- Komposition: Alle 3 Kurven auf einer Achse, direkt vergleichbar, keine Misskonzeption
-- Fett vs. Muskel: Klare farbliche Zuordnung der Achsen zu den Serien
+Keine Aenderungen an `analytics.ts` noetig — `compositionChartData()` existiert bereits.
 
