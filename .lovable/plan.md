@@ -1,35 +1,31 @@
 
 
-## Body Scan PDF: 1:1 Screenshot-Export wie die App-UI
+## Granularere Y-Achsen fuer Body Scan Charts
 
-### Konzept
-Der PDF-Export soll exakt so aussehen wie die App — ein "True 1:1" HQ-Screenshot-Ansatz. Die Vektor-KPI-Tabelle wird entfernt. Stattdessen werden alle UI-Sektionen (inkl. KPI-Cards) als hochaufloeste PNG-Screenshots in das PDF eingebettet. Beim Export werden die Datenlabels (`showLabels`) temporaer aktiviert, damit die Zahlen elegant in den Charts erscheinen.
+### Problem
+Beide Charts nutzen die Standard-Y-Achse von Recharts, die bei 0 beginnt. Bei Werten wie Gewicht ~92-96 kg oder Muskelmasse ~72-75 kg sehen die Kurven dadurch extrem flach aus — kleine, aber wichtige Aenderungen von 1-3 kg sind kaum sichtbar.
+
+### Loesung
+Die Y-Achsen werden auf den tatsaechlichen Wertebereich der Daten zugeschnitten ("tight domain"), mit etwas Puffer oben und unten. So werden kleine Veraenderungen deutlich sichtbar.
 
 ### Aenderungen
 
-#### 1. `src/pages/app/training/BodyScanPage.tsx`
-- **`kpiRef` wieder hinzufuegen** als Ref auf den KPI-Cards-Container
-- KPI-Cards als erste Sektion in `pdfSections` aufnehmen: `{ label: 'Kennzahlen', ref: kpiRef }`
-- **Temporaer `showLabels = true` setzen** waehrend des Exports, damit alle Charts ihre Datenwerte anzeigen
-- Nach dem Export den urspruenglichen `showLabels`-Zustand wiederherstellen
-- Kurze Wartezeit (`await new Promise(r => setTimeout(r, 300))`) nach dem Setzen von `showLabels`, damit React die Labels rendern kann bevor die Screenshots erstellt werden
+#### 1. `src/lib/bodyscan/analytics.ts`
+Neue Hilfsfunktion `computeTightDomain(values: number[], padding = 0.1)`:
+- Berechnet `min` und `max` aus den Daten
+- Fuegt oben/unten einen Puffer hinzu (z.B. 10% der Spanne, mindestens 1 Einheit)
+- Rundet auf schoene Werte (z.B. `Math.floor(min)` / `Math.ceil(max)`)
 
-#### 2. `src/lib/bodyscan/exportBodyScanPDF.ts`
-- **`drawKPISummary` komplett entfernen** — keine Vektor-Tabelle mehr
-- Die gesamte erste Seite wird vereinfacht: Header-Bar + dann direkt die Screenshot-Sektionen
-- Jede Sektion wird randlos (ohne extra Rahmen) als Bild eingebettet — die UI-Karten haben bereits eigene Borders/Schatten
-- Sektions-Titel und Accent-Underlines **beibehalten** (die sehen gut aus)
-- Layout-Logik: Jede Sektion bekommt so viel Platz wie noetig, automatischer Seitenumbruch
+#### 2. `src/components/bodyscan/CompositionTrendChart.tsx`
+- Aus `data` die Min/Max-Werte fuer alle drei Serien (Gewicht, Muskelmasse, Fettmasse) berechnen
+- `<YAxis domain={[computedMin, computedMax]} />` setzen
+- `tickCount={6}` fuer feinere Achsen-Unterteilung
+
+#### 3. `src/components/bodyscan/FatMuscleAreaChart.tsx`
+- Separate Domains fuer linke Y-Achse (Koerperfett %) und rechte Y-Achse (Muskelmasse kg) berechnen
+- `<YAxis yAxisId="left" domain={[fatMin, fatMax]} />` und `<YAxis yAxisId="right" domain={[muscleMin, muscleMax]} />`
+- `tickCount={6}` auf beiden Achsen
 
 ### Ergebnis
-- Seite 1: Header + KPI-Cards Screenshot + Komposition-Chart (mit Zahlen)
-- Folgeseiten: Restliche Charts, Anatomie, Stoffwechsel, Timeline — alle mit eingebetteten Datenwerten
-- Alles in 3x PNG-Qualitaet, exakt wie in der App
-
-### Dateien
-
-| Datei | Aenderung |
-|---|---|
-| `src/pages/app/training/BodyScanPage.tsx` | kpiRef zurueck, showLabels temporaer aktivieren beim Export |
-| `src/lib/bodyscan/exportBodyScanPDF.ts` | drawKPISummary + Segment-Tabelle entfernen, reiner Screenshot-Ansatz |
+Kurven zeigen deutlich sichtbare Steigungen/Gefaelle bei kleinen Veraenderungen. Die Achsen passen sich automatisch an den jeweiligen Datenbereich an.
 
