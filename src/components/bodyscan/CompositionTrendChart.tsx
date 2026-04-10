@@ -25,13 +25,8 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function CompositionTrendChart({ scans }: Props) {
   const data = useMemo(() => compositionChartData(scans), [scans]);
 
-  const leftDomain = useMemo(() => {
-    const vals = data.flatMap(d => [d.Gewicht, d.Muskelmasse]);
-    return computeTightDomain(vals, 0.3);
-  }, [data]);
-
-  const rightDomain = useMemo(() => {
-    const vals = data.map(d => d.Fettmasse);
+  const domain = useMemo(() => {
+    const vals = data.flatMap(d => [d.Gewicht, d.Muskelmasse, d.Fettmasse]);
     return computeTightDomain(vals, 0.3);
   }, [data]);
 
@@ -46,29 +41,18 @@ export default function CompositionTrendChart({ scans }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
             <YAxis
-              yAxisId="left"
-              domain={leftDomain}
-              tickCount={6}
+              domain={domain}
+              tickCount={8}
               tick={{ fontSize: 11 }}
               stroke="hsl(var(--muted-foreground))"
               tickFormatter={(v: number) => `${v} kg`}
-              label={{ value: 'Gewicht / Muskel (kg)', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
-            />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              domain={rightDomain}
-              tickCount={6}
-              tick={{ fontSize: 11, fill: 'hsl(0 60% 55%)' }}
-              stroke="hsl(0 60% 55%)"
-              tickFormatter={(v: number) => `${v} kg`}
-              label={{ value: 'Fettmasse (kg)', angle: 90, position: 'insideRight', style: { fontSize: 10, fill: 'hsl(0 60% 55%)' } }}
+              label={{ value: 'kg', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Line yAxisId="left" type="monotone" dataKey="Gewicht" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
-            <Line yAxisId="left" type="monotone" dataKey="Muskelmasse" stroke="hsl(210 70% 55%)" strokeWidth={2} dot={{ r: 4 }} />
-            <Line yAxisId="right" type="monotone" dataKey="Fettmasse" stroke="hsl(0 60% 55%)" strokeWidth={2} dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="Gewicht" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="Muskelmasse" stroke="hsl(210 70% 55%)" strokeWidth={2} dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="Fettmasse" stroke="hsl(0 60% 55%)" strokeWidth={2} dot={{ r: 4 }} />
           </LineChart>
         </ResponsiveContainer>
       </CardContent>
