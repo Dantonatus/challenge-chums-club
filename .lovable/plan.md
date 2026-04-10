@@ -1,22 +1,38 @@
 
 
-## Körperkomposition: Eine gemeinsame Y-Achse für korrekte visuelle Ordnung
+## Körperkomposition: Gestapelte Sub-Charts für Granularität + logische Ordnung
 
 ### Problem
-Durch die zwei getrennten Y-Achsen (links: Gewicht/Muskel ~70-95 kg, rechts: Fett ~15-20 kg) kann die Fettmasse-Linie visuell auf gleicher Höhe wie Gewicht oder Muskelmasse erscheinen. Das ist irreführend — logisch muss immer gelten: Fettmasse < Muskelmasse < Gewicht.
+Eine gemeinsame Achse von ~15 bis ~98 kg macht die Kurven zu flach — Veränderungen von 0.5-2 kg sind kaum erkennbar.
 
-### Lösung
-**Eine einzige Y-Achse** für alle drei Serien. Die rechte Achse wird entfernt. Damit bleibt die natürliche Ordnung (Fett unten, Muskel Mitte, Gewicht oben) immer erhalten.
+### Lösung: Zwei vertikal gestapelte Charts mit geteilter X-Achse
 
-Um trotzdem Veränderungen sichtbar zu machen:
-- `computeTightDomain` über alle drei Serien hinweg mit etwas Padding
-- Das ergibt z.B. eine Achse von ~15 bis ~98 kg — die Abstände zwischen den Linien zeigen die echten Proportionen
-- `tickCount={8}` für feinere Unterteilung
+```text
+┌──────────────────────────────────┐
+│  Gewicht + Muskelmasse           │  ← Tight domain z.B. 70-97 kg
+│  ~~~~~~~~~~~  Gewicht            │
+│  ~~~~~~~~~~   Muskelmasse        │
+│                                  │
+├──────────────────────────────────┤
+│  Fettmasse                       │  ← Tight domain z.B. 16-21 kg
+│  ~~~~~~~~~~   Fettmasse          │
+│                                  │
+└──────────────────────────────────┘
+         Datum-Achse (geteilt)
+```
+
+- **Oben**: Gewicht + Muskelmasse auf einer tight domain (~70-97 kg) — kleine Änderungen gut sichtbar, direkt vergleichbar
+- **Unten**: Fettmasse auf eigener tight domain (~16-21 kg) — jedes Gramm zählt
+- Fettmasse ist visuell **unterhalb** der anderen Werte → logisch korrekt
+- Keine Misskonzeption möglich, da keine Linien verschiedener Achsen sich kreuzen
+- X-Achse nur beim unteren Chart anzeigen (oben ausblenden)
+- Beide Charts im selben `<Card>` unter einer gemeinsamen Überschrift
 
 ### Datei
 `src/components/bodyscan/CompositionTrendChart.tsx`:
-- Rechte YAxis entfernen
-- Eine gemeinsame YAxis mit Domain über alle Werte (Gewicht, Muskelmasse, Fettmasse)
-- Alle drei `<Line>` auf dieselbe `yAxisId`
-- Achsen-Label: "kg"
+- Zwei `<ResponsiveContainer>` + `<LineChart>` übereinander (oberer ~200px, unterer ~140px)
+- Oberer Chart: Gewicht + Muskelmasse, tight domain, X-Achse `hide`
+- Unterer Chart: Fettmasse, eigene tight domain, X-Achse sichtbar
+- Gemeinsamer Tooltip-Stil, `tickCount={6}` auf beiden Y-Achsen
+- Synchronisierte Margins für vertikale Ausrichtung
 
