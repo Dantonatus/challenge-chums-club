@@ -49,7 +49,7 @@ export default function BodyScanPage() {
   const selectedScan = filteredScans[selectedIndex] ?? null;
   const previousScan = selectedIndex > 0 ? filteredScans[selectedIndex - 1] : null;
 
-  // kpiRef removed — KPIs are vector-rendered in PDF
+  const kpiRef = useRef<HTMLDivElement>(null);
   const compositionRef = useRef<HTMLDivElement>(null);
   const fatMuscleRef = useRef<HTMLDivElement>(null);
   const segmentsRef = useRef<HTMLDivElement>(null);
@@ -58,6 +58,7 @@ export default function BodyScanPage() {
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const pdfSections = [
+    { label: 'Kennzahlen', ref: kpiRef },
     { label: 'Körperkomposition – Verlauf', ref: compositionRef },
     { label: 'Körperfett vs. Muskelmasse – Trend', ref: fatMuscleRef },
     { label: 'Segment-Analyse', ref: segmentsRef },
@@ -72,7 +73,14 @@ export default function BodyScanPage() {
 
   const handleExport = async () => {
     setExporting(true);
+    const prevLabels = showLabels;
     try {
+      // Temporarily enable labels so charts show data values
+      if (!showLabels) {
+        setShowLabels(true);
+        await new Promise(r => setTimeout(r, 400));
+      }
+
       const isDark = document.documentElement.classList.contains('dark');
       const bgColor = isDark ? '#141414' : '#fcfcfa';
 
@@ -88,6 +96,7 @@ export default function BodyScanPage() {
 
       await exportBodyScanPDF(scans, images);
     } finally {
+      setShowLabels(prevLabels);
       setExporting(false);
     }
   };
@@ -195,7 +204,7 @@ export default function BodyScanPage() {
         </div>
       ) : (
         <>
-          <div className="-m-5 p-5"><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
+          <div className="-m-5 p-5" ref={kpiRef}><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
           <div className="-m-5 p-5" ref={compositionRef}><CompositionTrendChart scans={filteredScans} showLabels={showLabels} /></div>
           <div className="-m-5 p-5" ref={fatMuscleRef}><FatMuscleAreaChart scans={filteredScans} showLabels={showLabels} /></div>
           <div className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6" ref={segmentsRef}>
