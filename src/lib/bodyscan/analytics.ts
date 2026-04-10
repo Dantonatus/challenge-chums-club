@@ -54,3 +54,14 @@ export function fatMuscleChartData(scans: BodyScan[]) {
     'Muskelmasse kg': s.muscle_mass_kg,
   }));
 }
+
+/** Compute a tight [min, max] domain for Y-axis so small changes are visible */
+export function computeTightDomain(values: (number | null | undefined)[], padding = 0.1): [number, number] {
+  const nums = values.filter((v): v is number => v != null && isFinite(v));
+  if (nums.length === 0) return [0, 100];
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  const span = max - min || 1;
+  const pad = Math.max(span * padding, 0.5);
+  return [Math.floor((min - pad) * 10) / 10, Math.ceil((max + pad) * 10) / 10];
+}

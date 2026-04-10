@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LabelList } from 'recharts';
 import type { BodyScan } from '@/lib/bodyscan/types';
-import { fatMuscleChartData } from '@/lib/bodyscan/analytics';
+import { fatMuscleChartData, computeTightDomain } from '@/lib/bodyscan/analytics';
 import { createChartLabel } from './ChartLabel';
 
 interface Props { scans: BodyScan[]; showLabels?: boolean }
@@ -11,6 +11,10 @@ export default function FatMuscleAreaChart({ scans, showLabels }: Props) {
   const data = fatMuscleChartData(scans);
   const labelFat = useMemo(() => createChartLabel({ color: 'hsl(0 60% 55%)', offsetY: -18 }), []);
   const labelMuscle = useMemo(() => createChartLabel({ color: 'hsl(210 70% 55%)', offsetY: 20 }), []);
+
+  const fatDomain = useMemo(() => computeTightDomain(data.map(d => d['Körperfett %'])), [data]);
+  const muscleDomain = useMemo(() => computeTightDomain(data.map(d => d['Muskelmasse kg'])), [data]);
+
   if (data.length < 2) return null;
   return (
     <Card>
@@ -20,8 +24,8 @@ export default function FatMuscleAreaChart({ scans, showLabels }: Props) {
           <AreaChart data={data} margin={{ top: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+            <YAxis yAxisId="left" domain={fatDomain} tickCount={6} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+            <YAxis yAxisId="right" orientation="right" domain={muscleDomain} tickCount={6} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
             <Tooltip
               contentStyle={{
                 background: 'hsl(var(--card))',
