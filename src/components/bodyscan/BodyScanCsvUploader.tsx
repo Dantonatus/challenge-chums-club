@@ -59,6 +59,7 @@ async function parsePdfViaVision(images: string[]): Promise<ParsedBodyScan | nul
     fat_percent: scan.fat_percent ?? null,
     fat_mass_kg: scan.fat_mass_kg ?? null,
     muscle_mass_kg: scan.muscle_mass_kg ?? null,
+    skeletal_muscle_mass_kg: scan.skeletal_muscle_mass_kg ?? null,
     bone_mass_kg: scan.bone_mass_kg ?? null,
     bmi: scan.bmi ?? null,
     metabolic_age: scan.metabolic_age != null ? Math.round(scan.metabolic_age) : null,
