@@ -1,65 +1,35 @@
 
 
-## Body Scan PDF Export: High-Quality Redesign
+## Body Scan PDF: 1:1 Screenshot-Export wie die App-UI
 
-### Aktuelle Probleme
-1. **Reine Screenshots** — Diagramme werden als JPEG-Bilder eingefuegt, Text ist nicht selektierbar, bei Zoom pixelig
-2. **Keine Sektions-Titel** — Screenshots werden ohne Beschriftung aneinandergereiht, Kontext fehlt
-3. **Keine Zahlen-Zusammenfassung** — Man muss die Werte aus kleinen Chart-Screenshots ablesen
-4. **JPEG-Artefakte** — Linien und Text in Charts werden durch JPEG-Kompression unscharf
+### Konzept
+Der PDF-Export soll exakt so aussehen wie die App — ein "True 1:1" HQ-Screenshot-Ansatz. Die Vektor-KPI-Tabelle wird entfernt. Stattdessen werden alle UI-Sektionen (inkl. KPI-Cards) als hochaufloeste PNG-Screenshots in das PDF eingebettet. Beim Export werden die Datenlabels (`showLabels`) temporaer aktiviert, damit die Zahlen elegant in den Charts erscheinen.
 
-### Verbesserungen
+### Aenderungen
 
-#### 1. Vektor-gerenderte KPI-Zusammenfassung (erste Seite)
-Statt nur den KPI-Cards-Screenshot: Eine saubere, vektor-basierte Tabelle direkt nach dem Header mit allen aktuellen Werten + Trend. Aehnlich dem TANITA-Originalbericht — kompakt, klar lesbar, druckbar.
+#### 1. `src/pages/app/training/BodyScanPage.tsx`
+- **`kpiRef` wieder hinzufuegen** als Ref auf den KPI-Cards-Container
+- KPI-Cards als erste Sektion in `pdfSections` aufnehmen: `{ label: 'Kennzahlen', ref: kpiRef }`
+- **Temporaer `showLabels = true` setzen** waehrend des Exports, damit alle Charts ihre Datenwerte anzeigen
+- Nach dem Export den urspruenglichen `showLabels`-Zustand wiederherstellen
+- Kurze Wartezeit (`await new Promise(r => setTimeout(r, 300))`) nach dem Setzen von `showLabels`, damit React die Labels rendern kann bevor die Screenshots erstellt werden
 
-```text
-┌─────────────────────────────────────────────────┐
-│  Body Scan Bericht          12. Mai 2015 – ...  │  ← Header (wie bisher)
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  Aktueller Scan: 10.04.2026                     │
-│                                                 │
-│  ┌──────────────┬──────────┬────────────────┐   │
-│  │ Kennzahl     │ Wert     │ Veraenderung   │   │
-│  ├──────────────┼──────────┼────────────────┤   │
-│  │ Gewicht      │ 95.9 kg  │ +3.7 vs Start  │   │
-│  │ Koerperfett  │ 18.9 %   │ -1.9 vs vorher │   │
-│  │ Fettmasse    │ 18.1 kg  │ -1.4 vs vorher │   │
-│  │ ...          │ ...      │ ...            │   │
-│  └──────────────┴──────────┴────────────────┘   │
-│                                                 │
-│  Segment-Uebersicht                             │
-│  ┌──────────┬──────────┬──────────┐             │
-│  │ Segment  │ Muskel   │ Fett %   │             │
-│  ├──────────┼──────────┼──────────┤             │
-│  │ Rumpf    │ 40.3 kg  │ 20.8 %   │             │
-│  │ ...      │ ...      │ ...      │             │
-│  └──────────┴──────────┴──────────┘             │
-│                                                 │
-└─────────────────────────────────────────────────┘
-```
+#### 2. `src/lib/bodyscan/exportBodyScanPDF.ts`
+- **`drawKPISummary` komplett entfernen** — keine Vektor-Tabelle mehr
+- Die gesamte erste Seite wird vereinfacht: Header-Bar + dann direkt die Screenshot-Sektionen
+- Jede Sektion wird randlos (ohne extra Rahmen) als Bild eingebettet — die UI-Karten haben bereits eigene Borders/Schatten
+- Sektions-Titel und Accent-Underlines **beibehalten** (die sehen gut aus)
+- Layout-Logik: Jede Sektion bekommt so viel Platz wie noetig, automatischer Seitenumbruch
 
-#### 2. PNG statt JPEG fuer Chart-Screenshots
-PNG ist verlustfrei — Linien, Text und Gitterlinien in den Charts bleiben scharf. Dateigroesse steigt leicht, aber Qualitaet deutlich besser.
-
-#### 3. Hoehere Aufloesung (3x statt 2x)
-`pixelRatio: 3` fuer Retina-scharfe Darstellung auch beim Zoomen.
-
-#### 4. Sektions-Titel ueber jedem Chart-Screenshot
-Vektor-Text (z.B. "Koerperkomposition – Verlauf") als Ueberschrift ueber jedem eingebetteten Bild. Gibt Orientierung und wirkt professioneller.
-
-#### 5. Subtile Rahmen um Chart-Bilder
-Dünner, abgerundeter Rahmen (1pt, hellgrau) um jedes eingebettete Bild — visuell sauberer als "Screenshots auf weissem Hintergrund".
+### Ergebnis
+- Seite 1: Header + KPI-Cards Screenshot + Komposition-Chart (mit Zahlen)
+- Folgeseiten: Restliche Charts, Anatomie, Stoffwechsel, Timeline — alle mit eingebetteten Datenwerten
+- Alles in 3x PNG-Qualitaet, exakt wie in der App
 
 ### Dateien
 
 | Datei | Aenderung |
 |---|---|
-| `src/lib/bodyscan/exportBodyScanPDF.ts` | Komplett ueberarbeitet: Vektor-KPI-Tabelle, Sektions-Titel, PNG-Format, 3x Aufloesung, Rahmen |
-| `src/pages/app/training/BodyScanPage.tsx` | `toJpeg` → `toPng`, `pixelRatio: 3`, Sektions-Labels an Export-Funktion weitergeben |
-
-### Keine Aenderungen an
-- Bestehende Charts/UI-Komponenten
-- Andere PDF-Exporte (Training, Weight)
+| `src/pages/app/training/BodyScanPage.tsx` | kpiRef zurueck, showLabels temporaer aktivieren beim Export |
+| `src/lib/bodyscan/exportBodyScanPDF.ts` | drawKPISummary + Segment-Tabelle entfernen, reiner Screenshot-Ansatz |
 
