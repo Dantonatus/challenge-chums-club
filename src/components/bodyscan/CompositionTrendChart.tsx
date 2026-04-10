@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, LabelList } from 'recharts';
 import type { BodyScan } from '@/lib/bodyscan/types';
-import { compositionChartData } from '@/lib/bodyscan/analytics';
+import { compositionChartData, computeTightDomain } from '@/lib/bodyscan/analytics';
 import { createChartLabel } from './ChartLabel';
 
 interface Props { scans: BodyScan[]; showLabels?: boolean }
@@ -12,6 +12,12 @@ export default function CompositionTrendChart({ scans, showLabels }: Props) {
   const labelGewicht = useMemo(() => createChartLabel({ color: 'hsl(var(--primary))', offsetY: -14 }), []);
   const labelMuskel = useMemo(() => createChartLabel({ color: 'hsl(210 70% 55%)', offsetY: -26 }), []);
   const labelFett = useMemo(() => createChartLabel({ color: 'hsl(0 60% 55%)', offsetY: -38 }), []);
+
+  const domain = useMemo(() => {
+    const allValues = data.flatMap(d => [d.Gewicht, d.Muskelmasse, d.Fettmasse]);
+    return computeTightDomain(allValues);
+  }, [data]);
+
   if (data.length < 2) return null;
 
   return (
@@ -22,7 +28,7 @@ export default function CompositionTrendChart({ scans, showLabels }: Props) {
           <LineChart data={data} margin={{ top: 45 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+            <YAxis domain={domain} tickCount={6} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
             <Tooltip
               contentStyle={{
                 background: 'hsl(var(--card))',
