@@ -36,13 +36,31 @@ export function formatTrend(val: number | null, unit = ''): string | undefined {
   return `${sign}${val}${unit}`;
 }
 
-/** Chart data: composition over time */
+/** Chart data: composition over time (absolute) */
 export function compositionChartData(scans: BodyScan[]) {
   return scans.map(s => ({
     date: s.scan_date,
     Gewicht: s.weight_kg,
     Muskelmasse: s.muscle_mass_kg,
     Fettmasse: s.fat_mass_kg,
+  }));
+}
+
+/** Chart data: composition as % change from first scan */
+export function compositionChangeData(scans: BodyScan[]) {
+  if (scans.length === 0) return [];
+  const base = scans[0];
+  const bw = base.weight_kg;
+  const bm = base.muscle_mass_kg;
+  const bf = base.fat_mass_kg;
+  return scans.map(s => ({
+    date: s.scan_date,
+    'Gewicht %': bw ? Math.round(((s.weight_kg ?? bw) - bw) / bw * 10000) / 100 : 0,
+    'Muskelmasse %': bm ? Math.round(((s.muscle_mass_kg ?? bm) - bm) / bm * 10000) / 100 : 0,
+    'Fettmasse %': bf ? Math.round(((s.fat_mass_kg ?? bf) - bf) / bf * 10000) / 100 : 0,
+    absGewicht: s.weight_kg,
+    absMuskel: s.muscle_mass_kg,
+    absFett: s.fat_mass_kg,
   }));
 }
 

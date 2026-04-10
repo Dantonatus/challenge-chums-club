@@ -24,8 +24,8 @@ export default function FatMuscleAreaChart({ scans, showLabels }: Props) {
           <AreaChart data={data} margin={{ top: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis yAxisId="left" domain={fatDomain} tickCount={6} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis yAxisId="right" orientation="right" domain={muscleDomain} tickCount={6} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+            <YAxis yAxisId="left" domain={fatDomain} tickCount={6} tick={{ fontSize: 11 }} stroke="hsl(0 60% 55%)" label={{ value: 'Körperfett %', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(0 60% 55%)' } }} />
+            <YAxis yAxisId="right" orientation="right" domain={muscleDomain} tickCount={6} tick={{ fontSize: 11 }} stroke="hsl(210 70% 55%)" label={{ value: 'Muskelmasse kg', angle: 90, position: 'insideRight', style: { fontSize: 10, fill: 'hsl(210 70% 55%)' } }} />
             <Tooltip
               contentStyle={{
                 background: 'hsl(var(--card))',
