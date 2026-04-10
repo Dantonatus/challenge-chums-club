@@ -41,11 +41,13 @@ Required JSON structure:
 Rules:
 - Convert German decimal commas to dots (e.g. "95,9" → 95.9)
 - Date format: convert "10.04.2026" → "2026-04-10"
-- For segments: fat values should be in % (e.g. "20,7 %" → 20.7), muscle values in kg
+- For fat segments: values should be in % (e.g. "20,7 %" → 20.7)
+- For muscle segments: values should be in kg. Look for the "Segmentanalyse Muskel" page/table with kg values per body part: Rumpf=trunk, Arm R=armR, Arm L=armL, Bein R=legR, Bein L=legL
+- Look for "Grundumsatz" or "BMR" value in kcal — this is critical, do not skip it
 - visceral_fat and metabolic_age are integers
+- ECW/TBW ratio is a percentage value
 - If a value is not visible or not present, use null
-- Detect device model from the header (e.g. "MC-780" → "TANITA MC-780")
-- ECW/TBW ratio is a percentage value`;
+- Detect device model from the header (e.g. "MC-780" → "TANITA MC-780")`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -69,9 +71,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build content array with all page images
     const content: any[] = [
-      { type: "text", text: "Extract all body composition data from these TANITA report pages:" },
+      { type: "text", text: "Extract all body composition data from these TANITA report pages. Pay special attention to muscle segment values (in kg) and BMR (Grundumsatz in kcal):" },
     ];
 
     for (const imageDataUrl of images) {
@@ -88,7 +89,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content },
@@ -99,7 +100,7 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("AI API error:", errText);
+      console.error("AI API error:", response.status, errText);
       return new Response(JSON.stringify({ error: errText || "AI processing failed" }), {
         status: response.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -109,9 +110,7 @@ Deno.serve(async (req) => {
     const result = await response.json();
     const messageContent = result.choices?.[0]?.message?.content;
     const rawContent = Array.isArray(messageContent)
-      ? messageContent
-          .map((part: { text?: string }) => part?.text ?? "")
-          .join("\n")
+      ? messageContent.map((part: { text?: string }) => part?.text ?? "").join("\n")
       : messageContent || "";
 
     // Extract JSON from response (may be wrapped in markdown code block)

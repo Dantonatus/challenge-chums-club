@@ -32,7 +32,7 @@ export function useBodyScans() {
       };
 
       const { error, data } = await (supabase.from('body_scans' as any) as any)
-        .upsert(row, { onConflict: 'user_id,scan_date,scan_time', ignoreDuplicates: true })
+        .upsert(row, { onConflict: 'user_id,scan_date,scan_time', ignoreDuplicates: false })
         .select();
       if (error) throw error;
       return data?.length || 0;
