@@ -1,59 +1,48 @@
 
 
-## Fix: Dream Journal PDF Export — Designer-Qualitaet
+## Body Scan: TANITA PDF-Import integrieren
 
-### Identifizierte Probleme
+Aktuell werden nur CSV-Dateien unterstuetzt. Die hochgeladene Datei ist ein TANITA MC-780 PDF-Report mit denselben Daten. Ziel: PDF-Import nahtlos neben dem bestehenden CSV-Import ermoeglichen.
 
-1. **Unicode-Bruch**: jsPDF mit Helvetica (WinAnsi) kann keine Umlaute (ä, ö, ü), Emojis, Middot (·), Sterne (★☆) rendern — alles wird zu `�`
-2. **Kein visuelles Design**: Keine Hintergrundfarbe, kein Header-Bar, kein Farbkonzept — nur schwarzer Text auf Weiss
-3. **Keine Seitenzahlen/Footer**
-4. **Kein Theme-Support** (Dark/Light wie bei BodyScan- und Weight-PDFs)
-5. **Spacing/Layout** zu eng, keine visuelle Hierarchie
+### Ansatz
 
-### Loesung: Kompletter Rewrite nach dem Premium-Pattern
+Die PDF wird client-seitig mit `pdfjs-dist` (Mozilla PDF.js) geparst. Der extrahierte Text wird mit Regex-Patterns auf die bekannten TANITA-Felder gemappt.
 
-Die bestehenden PDF-Exporte (BodyScan, Weight, Gantt) nutzen bereits ein Premium-Design mit Accent-Headerbar, Theme-Bg, Footer mit Seitenzahlen. Der Dream-Export wird nach diesem Muster neu geschrieben.
+### Neue Datei: `src/lib/bodyscan/pdfParser.ts`
 
-### Aenderungen in `src/lib/dreams/exportDreams.ts`
+Parst den extrahierten Text aus einer TANITA MC-780 PDF und gibt ein `ParsedBodyScan`-Objekt zurueck. Felder werden per Regex extrahiert:
 
-**Nur die `downloadPDF`-Funktion wird neu geschrieben. Markdown bleibt unveraendert.**
-
-| Problem | Loesung |
+| PDF-Text | Zielfeld |
 |---|---|
-| Unicode-Bruch (Umlaute, Emojis) | `sanitizeForPDF()` aus Gantt-Pattern: Umlaute bleiben (sind WinAnsi-kompatibel!), Emojis/Sterne/Middots werden durch ASCII-Alternativen ersetzt |
-| Kein Header | Accent-farbiger Header-Bar (volle Breite, 22mm) mit "Traumtagebuch" Titel + Datumsrange rechts |
-| Kein Theme | `getThemeBg()`, `getAccent()`, `getMuted()`, `getWhite()` — identisch zu BodyScan/Weight-PDFs |
-| Kein Footer | Seitenzahlen + Erstellungsdatum auf jeder Seite |
-| Mood-Emojis | Emojis entfernen, nur Text-Label anzeigen (z.B. "Froehlich" statt "😊 Fröhlich") |
-| Vividness/Sleep | Numerisch "3/5" statt kaputte Stern-Symbole |
-| Middot-Separator | Ersetzen durch " | " oder " - " |
-| Fehlende Hierarchie | Datum-Gruppen mit subtiler Linie, Dream-Titel in Bold 12pt, Meta in Muted 9pt, Content in Normal 10pt mit leichtem Indent |
-| Keine Seitenumbrueche pro Gruppe | `checkPage()` vor jeder Datumsgruppe mit genug Reserve |
-| Luzid/Wiederkehrend Tags | Als kompakte Text-Labels in Klammern statt Badges |
+| `Gewicht 95,9 kg` | `weight_kg` |
+| `Fettanteil 18,9 %` | `fat_percent` |
+| `Fettmasse 18,1 kg` | `fat_mass_kg` |
+| `Muskelmasse 74,0 kg` | `muscle_mass_kg` |
+| `Level Viszeralfett 6` | `visceral_fat` |
+| `BMI 27,1` | `bmi` |
+| `Stoffwechselalter 27` | `metabolic_age` |
+| `Datum 10.04.2026 20:30:06` | `scan_date`, `scan_time` |
+| `Knochen 3,8kg` | `bone_mass_kg` |
+| `Wasser 55,3 kg` / `57,7 %` | `tbw_kg`, `tbw_percent` |
+| `ECW 21,2 kg` / `ICW 34,1 kg` | `ecw_kg`, `icw_kg` |
+| `ECW/TBW 38,3 %` | `ecw_tbw_ratio` |
+| Segmentanalyse Fett/Muskel | `segments_json` |
+| Modell MC-780 | `device` |
 
-### Visuelles Ergebnis
+Deutsche Dezimalkommas (`95,9`) werden zu Punkt konvertiert.
 
-```text
-┌──────────────────────────────────────┐
-│ ████ Traumtagebuch    Mrz 2026 ████ │  ← Accent header bar
-│                                      │
-│ ─── 31. Maerz 2026 ─────────────── │  ← Date divider
-│                                      │
-│ Flug ueber die Stadt                │  ← Bold 12pt
-│ Stimmung: Froehlich | Lebendigkeit: │  ← Muted 9pt
-│ 4/5 | Schlaf: 3/5                   │
-│ Luzid | Emotionen: Freude, Euphorie │
-│ Tags: fliegen, stadt                │
-│                                      │
-│   Ich flog ueber die Daecher der    │  ← Content 10pt, indented
-│   Stadt und konnte alles sehen...   │
-│                                      │
-│──────────────────────────────────────│
-│ Erstellt am 31.03.2026  Seite 1/2   │  ← Footer
-└──────────────────────────────────────┘
-```
+### Aenderung: `src/components/bodyscan/BodyScanCsvUploader.tsx`
 
-### Keine weiteren Dateien betroffen
+- `accept` erweitern auf `.csv,.pdf`
+- Button-Label aendern zu "Importieren" (statt "CSV importieren")
+- Bei `.pdf`-Dateien: `pdfjs-dist` nutzen um Text zu extrahieren, dann `parseBodyScanPdf()` aufrufen
+- Bei `.csv`-Dateien: weiterhin `parseBodyScanCsv()` nutzen
 
-Nur `src/lib/dreams/exportDreams.ts` wird geaendert. Die `downloadPDF`-Funktion + neue Helper-Funktionen (`sanitizeForPDF`, `getThemeBg`, etc.).
+### Dependency
+
+- `pdfjs-dist` installieren (Mozilla PDF.js, ca. 400KB, client-side PDF text extraction)
+
+### Kein DB-Schema-Aenderung noetig
+
+Die PDF enthaelt exakt die gleichen Felder wie die CSV. Alles wird auf das bestehende `ParsedBodyScan`-Interface gemappt.
 
