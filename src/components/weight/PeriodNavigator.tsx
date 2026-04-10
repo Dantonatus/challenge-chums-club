@@ -32,6 +32,12 @@ function computeRange(mode: PeriodMode, offset: number) {
     const base = addQuarters(today, offset);
     return { start: startOfQuarter(base), end: endOfQuarter(base) };
   }
+  if (mode === 'last3m') {
+    return { start: addMonths(today, -3), end: today };
+  }
+  if (mode === 'last6m') {
+    return { start: addMonths(today, -6), end: today };
+  }
   if (mode === 'all') {
     return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31) };
   }
@@ -51,11 +57,17 @@ function buildLabel(mode: PeriodMode, start: Date, end: Date) {
     const q = Math.ceil((start.getMonth() + 1) / 3);
     return `Q${q} ${start.getFullYear()} (${format(start, 'MMM', { locale: de })}–${format(end, 'MMM', { locale: de })})`;
   }
+  if (mode === 'last3m') {
+    return `Letzte 3 Monate (${format(start, 'MMM', { locale: de })}–${format(end, 'MMM yyyy', { locale: de })})`;
+  }
+  if (mode === 'last6m') {
+    return `Letzte 6 Monate (${format(start, 'MMM', { locale: de })}–${format(end, 'MMM yyyy', { locale: de })})`;
+  }
   return `${start.getFullYear()}`;
 }
 
-const ALL_MODES: PeriodMode[] = ['week', 'month', 'quarter', 'year', 'all'];
-const MODE_LABELS: Record<PeriodMode, string> = { week: 'Woche', month: 'Monat', quarter: 'Quartal', year: 'Jahr', all: 'Alle' };
+const ALL_MODES: PeriodMode[] = ['week', 'month', 'quarter', 'year', 'all', 'last3m', 'last6m'];
+const MODE_LABELS: Record<PeriodMode, string> = { week: 'Woche', month: 'Monat', quarter: 'Quartal', year: 'Jahr', all: 'Alle', last3m: '3M', last6m: '6M' };
 
 export default function PeriodNavigator({ onChange, modes = ALL_MODES, defaultMode }: Props) {
   const availableModes = modes.length > 0 ? modes : ALL_MODES;
