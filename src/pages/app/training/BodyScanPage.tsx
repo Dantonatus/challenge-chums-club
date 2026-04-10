@@ -49,7 +49,7 @@ export default function BodyScanPage() {
   const selectedScan = filteredScans[selectedIndex] ?? null;
   const previousScan = selectedIndex > 0 ? filteredScans[selectedIndex - 1] : null;
 
-  const kpiRef = useRef<HTMLDivElement>(null);
+  // kpiRef removed — KPIs are vector-rendered in PDF
   const compositionRef = useRef<HTMLDivElement>(null);
   const fatMuscleRef = useRef<HTMLDivElement>(null);
   const segmentsRef = useRef<HTMLDivElement>(null);
