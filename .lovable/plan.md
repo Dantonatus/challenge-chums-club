@@ -1,56 +1,51 @@
 
 
-## Body Scan Page: Analyse & Behebung
+## Body Scan KPIs: Alle Analyseergebnis-Werte anzeigen
 
-### Gefundene Probleme
+### Ziel
+Alle Werte aus dem TANITA-Bericht (Bild) sollen als KPI-Karten oben auf der Body Scan Page erscheinen — aber nur wenn der jeweilige Wert im ausgewaehlten Scan vorhanden ist.
 
-**1. April-10-Scan: Muskel-Segmente alle 0**
-Der manuell eingefuegte Datensatz hat `segments_json.muscle` mit allen Werten auf `0` gesetzt. Die korrekte Segmentanalyse Muskel ist in der PDF als Grafik vorhanden, wurde aber nicht extrahiert. Im PDF-Text gibt es keine "Segmentanalyse Muskel"-Tabelle (nur Fett-Segmente sind als Text vorhanden).
+### Fehlende Werte im Vergleich (Bild vs. aktuelle KPIs)
 
-Die Anatomie-Figur zeigt deshalb "0.0 kg" fuer alle Muskelsegmente mit grossen negativen Differenzen.
+| Wert | Aktuell in KPIs? | In DB? |
+|---|---|---|
+| Gewicht | Ja | Ja |
+| Fettanteil | Ja | Ja |
+| **Fettmasse** | Nein | Ja (`fat_mass_kg`) |
+| **Fettfreie Masse** | Nein | Berechenbar (`weight - fat_mass`) |
+| Muskelmasse | Ja | Ja |
+| **Skelett-Muskelmasse** | Nein | **Nein** — neue Spalte noetig |
+| Viszeralfett | Ja | Ja |
+| BMI | Ja | Ja |
+| Stoffwechselalter | Ja | Ja |
+| **BMR (Grundumsatz)** | Nein (nur in MetabolismCard) | Ja (`bmr_kcal`) |
 
-**2. April-10-Scan: `bmr_kcal` fehlt (NULL)**
-Der Grundumsatz (BMR) wurde nicht extrahiert. Im PDF ist er als Grafik/Zahl vorhanden, aber nicht im parsed Text. Der Stoffwechsel-Bereich zeigt "–" fuer BMR.
+### Aenderungen
 
-**3. Edge Function funktioniert, aber Ergebnisqualitaet unklar**
-Die Vision-basierte Edge Function ist korrekt konfiguriert. Ob sie bei zukuenftigen Uploads die Muskel-Segmente korrekt extrahiert, haengt vom AI-Modell ab.
+#### 1. DB Migration: Neue Spalte `skeletal_muscle_mass_kg`
+```sql
+ALTER TABLE body_scans ADD COLUMN skeletal_muscle_mass_kg NUMERIC;
+```
+Update des April-10-Eintrags mit dem Wert `45.7`.
 
-### Plan
+#### 2. Types erweitern
+`src/lib/bodyscan/types.ts`: `skeletal_muscle_mass_kg: number | null` in `BodyScan` und `ParsedBodyScan` hinzufuegen.
 
-#### Schritt 1: Korrektur der April-10-Daten via SQL Migration
+#### 3. KPI Cards erweitern (`src/components/bodyscan/BodyScanKPICards.tsx`)
+Alle Werte als KPI-Karten definieren, aber mit `.filter()` nur diejenigen rendern, bei denen `value !== '–'`. Neue KPIs:
+- **Fettmasse** (`fat_mass_kg`, Icon: Percent)
+- **Fettfreie Masse** (berechnet: `weight_kg - fat_mass_kg`, Icon: Dumbbell)
+- **Skelett-Muskelmasse** (`skeletal_muscle_mass_kg`, Icon: Dumbbell)
+- **BMR** (`bmr_kcal`, Icon: Flame)
 
-Die fehlenden Muskel-Segment-Werte muessen aus der PDF abgeleitet werden. Basierend auf dem Gesamtgewicht (95.9 kg), der Muskelmasse (74.0 kg) und den Verhaeltnissen der vorherigen Scans:
-- Vorheriger Scan (22.03): trunk=38.9, armL=4.3, armR=4.3, legL=11.6, legR=11.6 (Summe ~70.7)
-- Aktueller Scan hat 74.0 kg Muskelmasse total
+Grid wird responsiv: `grid-cols-2 md:grid-cols-3 lg:grid-cols-5` (statt 6), da die Anzahl dynamisch variiert.
 
-Hochrechnung proportional (74.0/70.7 * vorige Werte):
-- trunk: ~40.7, armL: ~4.5, armR: ~4.5, legL: ~12.1, legR: ~12.1
+#### 4. Edge Function Prompt erweitern
+`skeletal_muscle_mass_kg` zum erwarteten JSON-Schema in `parse-bodyscan-pdf` hinzufuegen, damit zukuenftige Imports den Wert automatisch extrahieren.
 
-Zusaetzlich wird die "Muskulaere Analyse" aus der PDF (Gesamtmuskulatur: 6.2) ignoriert, da sie ein Bewertungs-Score ist, kein Segment-kg-Wert.
+#### 5. Import-Hook anpassen
+`useBodyScans.ts`: Neues Feld im Row-Mapping beruecksichtigen.
 
-SQL Migration: Update `segments_json.muscle` und setze `bmr_kcal` (Schaetzung basierend auf vorherigen Scans: ~2200 kcal bei 74 kg Muskelmasse).
-
-**Allerdings**: Ohne die exakten Werte aus dem PDF wuerde ich nur schaetzen. Besser: Die PDF nochmals durch die Edge Function schicken, die jetzt korrekt konfiguriert ist.
-
-#### Schritt 2: Edge Function Prompt verbessern
-
-Den System-Prompt der Edge Function anpassen, um explizit nach der "Segmentanalyse Muskel" Seite zu suchen und die Muskelwerte in kg pro Segment zu extrahieren. Auch BMR expliziter anfragen.
-
-#### Schritt 3: Daten korrigieren
-
-Die PDF nochmals importieren (oder die korrigierten Werte direkt via SQL einfuegen). Da der vorherige Import ein `upsert` mit `ignoreDuplicates: true` nutzt, muss der bestehende Datensatz zuerst aktualisiert oder geloescht werden, damit ein erneuter Import greift.
-
-**Option**: `ignoreDuplicates` auf `false` aendern bzw. den Upsert so konfigurieren, dass bestehende Eintraege aktualisiert werden. Aktuell werden Duplikate ignoriert — ein erneuter Import wuerde also nichts aendern.
-
-#### Schritt 4: Upsert-Logik fixen
-
-In `useBodyScans.ts`: `ignoreDuplicates: true` zu `ignoreDuplicates: false` aendern, damit ein erneuter Import dieselben Daten aktualisiert statt ignoriert.
-
-### Zusammenfassung der Aenderungen
-
-| Datei | Aenderung |
-|---|---|
-| SQL Migration | Update der April-10-Daten: muscle segments + bmr_kcal |
-| `supabase/functions/parse-bodyscan-pdf/index.ts` | Prompt verbessern: explizit nach Muskel-Segmenten und BMR fragen |
-| `src/hooks/useBodyScans.ts` | `ignoreDuplicates: false` setzen, damit Re-Imports aktualisieren |
+### Keine Idealwerte
+Idealwerte werden bewusst nicht angezeigt (wie gewuenscht).
 
