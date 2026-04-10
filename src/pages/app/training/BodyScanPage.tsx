@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toJpeg } from 'html-to-image';
+import { toPng } from 'html-to-image';
 import { useBodyScans } from '@/hooks/useBodyScans';
 import { Dumbbell, ScanLine, FileDown, Loader2, Scale, Hash, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -49,7 +49,7 @@ export default function BodyScanPage() {
   const selectedScan = filteredScans[selectedIndex] ?? null;
   const previousScan = selectedIndex > 0 ? filteredScans[selectedIndex - 1] : null;
 
-  const kpiRef = useRef<HTMLDivElement>(null);
+  // kpiRef removed — KPIs are vector-rendered in PDF
   const compositionRef = useRef<HTMLDivElement>(null);
   const fatMuscleRef = useRef<HTMLDivElement>(null);
   const segmentsRef = useRef<HTMLDivElement>(null);
@@ -58,11 +58,10 @@ export default function BodyScanPage() {
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const pdfSections = [
-    { label: 'KPIs', ref: kpiRef },
-    { label: 'Zusammensetzung', ref: compositionRef },
-    { label: 'Fett & Muskel Trend', ref: fatMuscleRef },
+    { label: 'Körperkomposition – Verlauf', ref: compositionRef },
+    { label: 'Körperfett vs. Muskelmasse – Trend', ref: fatMuscleRef },
     { label: 'Segment-Analyse', ref: segmentsRef },
-    { label: 'Anatomie', ref: anatomyRef },
+    { label: 'Anatomie-Übersicht', ref: anatomyRef },
     { label: 'Stoffwechsel', ref: metabolismRef },
     { label: 'Scan-Verlauf', ref: timelineRef },
   ];
@@ -80,9 +79,8 @@ export default function BodyScanPage() {
       const images: { label: string; dataUrl: string }[] = [];
       for (const section of pdfSections) {
         if (!section.ref.current) continue;
-        const dataUrl = await toJpeg(section.ref.current, {
-          pixelRatio: 2,
-          quality: 0.92,
+        const dataUrl = await toPng(section.ref.current, {
+          pixelRatio: 3,
           backgroundColor: bgColor,
         });
         images.push({ label: section.label, dataUrl });
@@ -197,7 +195,7 @@ export default function BodyScanPage() {
         </div>
       ) : (
         <>
-          <div className="-m-5 p-5" ref={kpiRef}><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
+          <div className="-m-5 p-5"><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
           <div className="-m-5 p-5" ref={compositionRef}><CompositionTrendChart scans={filteredScans} showLabels={showLabels} /></div>
           <div className="-m-5 p-5" ref={fatMuscleRef}><FatMuscleAreaChart scans={filteredScans} showLabels={showLabels} /></div>
           <div className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6" ref={segmentsRef}>
