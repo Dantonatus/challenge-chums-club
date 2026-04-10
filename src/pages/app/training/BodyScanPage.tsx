@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toJpeg } from 'html-to-image';
+import { toPng } from 'html-to-image';
 import { useBodyScans } from '@/hooks/useBodyScans';
 import { Dumbbell, ScanLine, FileDown, Loader2, Scale, Hash, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
