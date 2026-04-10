@@ -94,7 +94,7 @@ export default function BodyScanPage() {
         images.push({ label: section.label, dataUrl });
       }
 
-      await exportBodyScanPDF(scans, images);
+      await exportBodyScanPDF(filteredScans, images);
     } finally {
       setShowLabels(prevLabels);
       setExporting(false);
