@@ -195,7 +195,7 @@ export default function BodyScanPage() {
         </div>
       ) : (
         <>
-          <div className="-m-5 p-5" ref={kpiRef}><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
+          <div className="-m-5 p-5"><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
           <div className="-m-5 p-5" ref={compositionRef}><CompositionTrendChart scans={filteredScans} showLabels={showLabels} /></div>
           <div className="-m-5 p-5" ref={fatMuscleRef}><FatMuscleAreaChart scans={filteredScans} showLabels={showLabels} /></div>
           <div className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6" ref={segmentsRef}>
