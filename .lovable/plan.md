@@ -1,23 +1,22 @@
 
 
-## Körperkomposition-Chart: Zurück zu kg mit logischer Achsenverteilung
+## Körperkomposition: Eine gemeinsame Y-Achse für korrekte visuelle Ordnung
 
-### Konzept
-Statt prozentualer Veränderung zeigt der Chart wieder absolute kg-Werte. Um trotzdem logisch korrekt zu bleiben und keine Misskonzeption zu erzeugen, werden die drei Serien auf **zwei farbcodierte Achsen** aufgeteilt — nach **ähnlichem Wertebereich gruppiert**:
+### Problem
+Durch die zwei getrennten Y-Achsen (links: Gewicht/Muskel ~70-95 kg, rechts: Fett ~15-20 kg) kann die Fettmasse-Linie visuell auf gleicher Höhe wie Gewicht oder Muskelmasse erscheinen. Das ist irreführend — logisch muss immer gelten: Fettmasse < Muskelmasse < Gewicht.
 
-- **Linke Achse (primär)**: Gewicht + Muskelmasse — beide im Bereich ~70-96 kg, tight domain
-- **Rechte Achse (rot)**: Fettmasse — im Bereich ~15-20 kg, eigene tight domain
+### Lösung
+**Eine einzige Y-Achse** für alle drei Serien. Die rechte Achse wird entfernt. Damit bleibt die natürliche Ordnung (Fett unten, Muskel Mitte, Gewicht oben) immer erhalten.
 
-Das ist logisch korrekt, weil:
-- Gewicht und Muskelmasse teilen denselben Massstab und sind direkt vergleichbar (man sieht z.B. "Muskel steigt, Gewicht bleibt gleich")
-- Fettmasse hat einen klar getrennten, farblich markierten eigenen Massstab
-- Keine Kreuzungen zwischen Serien auf verschiedenen Achsen, da Fettmasse visuell separiert ist
+Um trotzdem Veränderungen sichtbar zu machen:
+- `computeTightDomain` über alle drei Serien hinweg mit etwas Padding
+- Das ergibt z.B. eine Achse von ~15 bis ~98 kg — die Abstände zwischen den Linien zeigen die echten Proportionen
+- `tickCount={8}` für feinere Unterteilung
 
-### Aenderungen
-
-| Datei | Aenderung |
-|---|---|
-| `src/components/bodyscan/CompositionTrendChart.tsx` | Zurueck auf `compositionChartData()` mit kg-Werten. Linke Achse fuer Gewicht + Muskelmasse (tight domain), rechte Achse fuer Fettmasse (tight domain, rot gefaerbt). Einfacher Tooltip mit kg-Werten. Untertitel und ReferenceLine entfernen. |
-
-Keine Aenderungen an `analytics.ts` noetig — `compositionChartData()` existiert bereits.
+### Datei
+`src/components/bodyscan/CompositionTrendChart.tsx`:
+- Rechte YAxis entfernen
+- Eine gemeinsame YAxis mit Domain über alle Werte (Gewicht, Muskelmasse, Fettmasse)
+- Alle drei `<Line>` auf dieselbe `yAxisId`
+- Achsen-Label: "kg"
 
