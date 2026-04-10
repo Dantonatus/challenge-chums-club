@@ -1,51 +1,65 @@
 
 
-## Body Scan KPIs: Alle Analyseergebnis-Werte anzeigen
+## Body Scan PDF Export: High-Quality Redesign
 
-### Ziel
-Alle Werte aus dem TANITA-Bericht (Bild) sollen als KPI-Karten oben auf der Body Scan Page erscheinen — aber nur wenn der jeweilige Wert im ausgewaehlten Scan vorhanden ist.
+### Aktuelle Probleme
+1. **Reine Screenshots** — Diagramme werden als JPEG-Bilder eingefuegt, Text ist nicht selektierbar, bei Zoom pixelig
+2. **Keine Sektions-Titel** — Screenshots werden ohne Beschriftung aneinandergereiht, Kontext fehlt
+3. **Keine Zahlen-Zusammenfassung** — Man muss die Werte aus kleinen Chart-Screenshots ablesen
+4. **JPEG-Artefakte** — Linien und Text in Charts werden durch JPEG-Kompression unscharf
 
-### Fehlende Werte im Vergleich (Bild vs. aktuelle KPIs)
+### Verbesserungen
 
-| Wert | Aktuell in KPIs? | In DB? |
-|---|---|---|
-| Gewicht | Ja | Ja |
-| Fettanteil | Ja | Ja |
-| **Fettmasse** | Nein | Ja (`fat_mass_kg`) |
-| **Fettfreie Masse** | Nein | Berechenbar (`weight - fat_mass`) |
-| Muskelmasse | Ja | Ja |
-| **Skelett-Muskelmasse** | Nein | **Nein** — neue Spalte noetig |
-| Viszeralfett | Ja | Ja |
-| BMI | Ja | Ja |
-| Stoffwechselalter | Ja | Ja |
-| **BMR (Grundumsatz)** | Nein (nur in MetabolismCard) | Ja (`bmr_kcal`) |
+#### 1. Vektor-gerenderte KPI-Zusammenfassung (erste Seite)
+Statt nur den KPI-Cards-Screenshot: Eine saubere, vektor-basierte Tabelle direkt nach dem Header mit allen aktuellen Werten + Trend. Aehnlich dem TANITA-Originalbericht — kompakt, klar lesbar, druckbar.
 
-### Aenderungen
-
-#### 1. DB Migration: Neue Spalte `skeletal_muscle_mass_kg`
-```sql
-ALTER TABLE body_scans ADD COLUMN skeletal_muscle_mass_kg NUMERIC;
+```text
+┌─────────────────────────────────────────────────┐
+│  Body Scan Bericht          12. Mai 2015 – ...  │  ← Header (wie bisher)
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  Aktueller Scan: 10.04.2026                     │
+│                                                 │
+│  ┌──────────────┬──────────┬────────────────┐   │
+│  │ Kennzahl     │ Wert     │ Veraenderung   │   │
+│  ├──────────────┼──────────┼────────────────┤   │
+│  │ Gewicht      │ 95.9 kg  │ +3.7 vs Start  │   │
+│  │ Koerperfett  │ 18.9 %   │ -1.9 vs vorher │   │
+│  │ Fettmasse    │ 18.1 kg  │ -1.4 vs vorher │   │
+│  │ ...          │ ...      │ ...            │   │
+│  └──────────────┴──────────┴────────────────┘   │
+│                                                 │
+│  Segment-Uebersicht                             │
+│  ┌──────────┬──────────┬──────────┐             │
+│  │ Segment  │ Muskel   │ Fett %   │             │
+│  ├──────────┼──────────┼──────────┤             │
+│  │ Rumpf    │ 40.3 kg  │ 20.8 %   │             │
+│  │ ...      │ ...      │ ...      │             │
+│  └──────────┴──────────┴──────────┘             │
+│                                                 │
+└─────────────────────────────────────────────────┘
 ```
-Update des April-10-Eintrags mit dem Wert `45.7`.
 
-#### 2. Types erweitern
-`src/lib/bodyscan/types.ts`: `skeletal_muscle_mass_kg: number | null` in `BodyScan` und `ParsedBodyScan` hinzufuegen.
+#### 2. PNG statt JPEG fuer Chart-Screenshots
+PNG ist verlustfrei — Linien, Text und Gitterlinien in den Charts bleiben scharf. Dateigroesse steigt leicht, aber Qualitaet deutlich besser.
 
-#### 3. KPI Cards erweitern (`src/components/bodyscan/BodyScanKPICards.tsx`)
-Alle Werte als KPI-Karten definieren, aber mit `.filter()` nur diejenigen rendern, bei denen `value !== '–'`. Neue KPIs:
-- **Fettmasse** (`fat_mass_kg`, Icon: Percent)
-- **Fettfreie Masse** (berechnet: `weight_kg - fat_mass_kg`, Icon: Dumbbell)
-- **Skelett-Muskelmasse** (`skeletal_muscle_mass_kg`, Icon: Dumbbell)
-- **BMR** (`bmr_kcal`, Icon: Flame)
+#### 3. Hoehere Aufloesung (3x statt 2x)
+`pixelRatio: 3` fuer Retina-scharfe Darstellung auch beim Zoomen.
 
-Grid wird responsiv: `grid-cols-2 md:grid-cols-3 lg:grid-cols-5` (statt 6), da die Anzahl dynamisch variiert.
+#### 4. Sektions-Titel ueber jedem Chart-Screenshot
+Vektor-Text (z.B. "Koerperkomposition – Verlauf") als Ueberschrift ueber jedem eingebetteten Bild. Gibt Orientierung und wirkt professioneller.
 
-#### 4. Edge Function Prompt erweitern
-`skeletal_muscle_mass_kg` zum erwarteten JSON-Schema in `parse-bodyscan-pdf` hinzufuegen, damit zukuenftige Imports den Wert automatisch extrahieren.
+#### 5. Subtile Rahmen um Chart-Bilder
+Dünner, abgerundeter Rahmen (1pt, hellgrau) um jedes eingebettete Bild — visuell sauberer als "Screenshots auf weissem Hintergrund".
 
-#### 5. Import-Hook anpassen
-`useBodyScans.ts`: Neues Feld im Row-Mapping beruecksichtigen.
+### Dateien
 
-### Keine Idealwerte
-Idealwerte werden bewusst nicht angezeigt (wie gewuenscht).
+| Datei | Aenderung |
+|---|---|
+| `src/lib/bodyscan/exportBodyScanPDF.ts` | Komplett ueberarbeitet: Vektor-KPI-Tabelle, Sektions-Titel, PNG-Format, 3x Aufloesung, Rahmen |
+| `src/pages/app/training/BodyScanPage.tsx` | `toJpeg` → `toPng`, `pixelRatio: 3`, Sektions-Labels an Export-Funktion weitergeben |
+
+### Keine Aenderungen an
+- Bestehende Charts/UI-Komponenten
+- Andere PDF-Exporte (Training, Weight)
 
