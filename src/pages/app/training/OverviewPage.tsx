@@ -169,27 +169,37 @@ export default function TrainingOverviewPage() {
                 <EmptyInsightState title="Keine Waage-Daten" description="Kein Gewichtseintrag im gewählten Zeitraum." />
               )}
             </ChartFrame>
-            <ChartFrame title="Muskelmasse" caption="Δ im Zeitraum" eyebrow="Körper">
+            <ChartFrame title="Muskelmasse" caption="aktuell · Δ im Zeitraum" eyebrow="Körper">
               {hasScanTrend ? (
                 <MetricHero
                   label=""
-                  value={(scanMuscleDelta >= 0 ? '+' : '') + scanMuscleDelta.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  value={Number(latestScan!.muscle_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   unit="kg"
                   tone="muscle"
-                  hint={`Aktuell ${Number(latestScan!.muscle_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`}
+                  delta={{
+                    value: scanMuscleDelta,
+                    suffix: ' kg',
+                    digits: 1,
+                    positiveWhen: 'up',
+                  }}
                 />
               ) : (
                 <EmptyInsightState title="Zu wenige Scans" description="Mindestens zwei TANITA-Scans im Zeitraum für einen Trend." />
               )}
             </ChartFrame>
-            <ChartFrame title="Fettmasse" caption="Δ im Zeitraum" eyebrow="Körper">
+            <ChartFrame title="Fettmasse" caption="aktuell · Δ im Zeitraum" eyebrow="Körper">
               {hasScanTrend ? (
                 <MetricHero
                   label=""
-                  value={(scanFatDelta >= 0 ? '+' : '') + scanFatDelta.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  value={Number(latestScan!.fat_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   unit="kg"
                   tone="fat"
-                  hint={`Aktuell ${Number(latestScan!.fat_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`}
+                  delta={{
+                    value: scanFatDelta,
+                    suffix: ' kg',
+                    digits: 1,
+                    positiveWhen: 'down',
+                  }}
                 />
               ) : (
                 <EmptyInsightState title="Zu wenige Scans" description="Mindestens zwei TANITA-Scans im Zeitraum für einen Trend." />
