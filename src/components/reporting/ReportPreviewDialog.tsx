@@ -82,18 +82,23 @@ export function ReportPreviewDialog({ open, onOpenChange, model }: ReportPreview
             <FileText className="h-5 w-5" />
             {model.title}
           </DialogTitle>
-          <DialogDescription className="flex flex-wrap items-center gap-2 pt-1">
-            <Badge variant="outline">{model.period.label}</Badge>
-            {model.period.comparisonLabel && (
-              <Badge variant="secondary">{model.period.comparisonLabel}</Badge>
-            )}
-            {model.updatedAt && (
-              <span className="text-xs text-muted-foreground">
-                Datenstand: {model.updatedAt.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </span>
-            )}
+          <DialogDescription>
+            Vorschau des Reports vor dem Download. Executive Summary ist immer enthalten; weitere Sektionen kannst du an- oder abwählen.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex flex-wrap items-center gap-2 pb-1">
+          <Badge variant="outline">{model.period.label}</Badge>
+          {model.period.comparisonLabel && (
+            <Badge variant="secondary">{model.period.comparisonLabel}</Badge>
+          )}
+          {model.updatedAt && (
+            <span className="text-xs text-muted-foreground">
+              Datenstand: {model.updatedAt.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+          )}
+        </div>
+
 
         {model.emptyReason ? (
           <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
