@@ -111,13 +111,6 @@ export function RoutineMap({ checkins }: Props) {
 
   const [hover, setHover] = useState<HoverCell | null>(null);
 
-  // Legend reference values
-  const legendValues = useMemo(() => {
-    if (maxCount <= 1) return [1];
-    if (maxCount <= 3) return [1, maxCount];
-    if (maxCount <= 6) return [1, Math.ceil(maxCount / 2), maxCount];
-    return [1, Math.ceil(maxCount / 3), Math.ceil((maxCount * 2) / 3), maxCount];
-  }, [maxCount]);
 
   const nonZero = cells.filter(c => c.count > 0);
 
