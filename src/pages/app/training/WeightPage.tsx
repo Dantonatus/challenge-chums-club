@@ -69,56 +69,24 @@ export default function WeightPage() {
   const latestDate = entries.length ? parseLocalDate(entries[entries.length - 1].date) : null;
 
 
-  const pdfSections = [
-    { label: 'KPIs', ref: kpiRef },
-    { label: 'Einträge', ref: entryListRef },
-    { label: 'Tagesvergleich', ref: comparisonRef },
-    { label: 'Gewichtsverlauf', ref: terrainRef },
-    { label: 'Heatmap', ref: heatmapRef },
-  ];
-
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      // Temporarily expand scroll containers for full capture
-      const scrollDiv = entryListRef.current?.querySelector('.overflow-y-auto') as HTMLElement | null;
-      if (scrollDiv) {
-        scrollDiv.style.maxHeight = 'none';
-        scrollDiv.style.overflow = 'visible';
-      }
-
-      const images: { label: string; dataUrl: string }[] = [];
-      for (const section of pdfSections) {
-        if (section.ref.current) {
-          try {
-            const isDark = document.documentElement.classList.contains('dark');
-            const dataUrl = await toJpeg(section.ref.current, {
-              pixelRatio: 2,
-              quality: 0.92,
-              backgroundColor: isDark ? '#141414' : '#fcfcfc',
-            });
-            images.push({ label: section.label, dataUrl });
-          } catch (err) {
-            console.warn(`Failed to capture ${section.label}:`, err);
-          }
-        }
-      }
-
-      // Restore scroll constraints
-      if (scrollDiv) {
-        scrollDiv.style.maxHeight = '';
-        scrollDiv.style.overflow = '';
-      }
-
-      await exportWeightPDF(images);
-    } finally {
-      setExporting(false);
-    }
-  };
+  const reportModel = useMemo(
+    () => reportOpen
+      ? buildWeightReportModel({
+          entries: periodEntries,
+          allEntries: unifiedEntries,
+          hasScaleContext: hasScaleData,
+          goal,
+          period,
+          updatedAt: latestDate,
+        })
+      : null,
+    [reportOpen, periodEntries, unifiedEntries, hasScaleData, goal, period, latestDate],
+  );
 
   const handleSave = async (data: { date: string; time: string; weight_kg: number }) => {
     await upsert.mutateAsync(data);
   };
+
 
   return (
     <PerformanceReportingShell
