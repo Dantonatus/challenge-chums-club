@@ -66,7 +66,14 @@ export default function WeightPage() {
   );
 
   const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
-  const latestDate = entries.length ? parseLocalDate(entries[entries.length - 1].date) : null;
+  // latestDate = jüngster Datenpunkt über alle Quellen (manuelle Einträge + Smart Scale),
+  // damit der Shell auch bei reinen Smart-Scale-Nutzern ein „Aktualisiert am" zeigt.
+  const latestDate = useMemo(() => {
+    const candidates: number[] = [];
+    if (entries.length) candidates.push(parseLocalDate(entries[entries.length - 1].date).getTime());
+    if (scaleEntries.length) candidates.push(new Date(scaleEntries[scaleEntries.length - 1].measured_at).getTime());
+    return candidates.length ? new Date(Math.max(...candidates)) : null;
+  }, [entries, scaleEntries]);
 
 
   const reportModel = useMemo(
@@ -103,7 +110,7 @@ export default function WeightPage() {
             <Target className="mr-1.5 h-3.5 w-3.5" />
             Ziel
           </Button>
-          {unifiedEntries.length > 0 && (
+          {periodEntries.length > 0 && (
             <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
               <FileDown className="mr-1.5 h-3.5 w-3.5" />
               Report

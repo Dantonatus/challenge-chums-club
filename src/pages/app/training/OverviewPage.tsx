@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FileDown, Target } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
 import { ExecutiveBrief } from '@/components/health/ExecutiveBrief';
@@ -106,16 +106,10 @@ export default function TrainingOverviewPage() {
         { label: 'Messungen', count: periodWeights.length + periodSmart.length },
       ]}
       actions={
-        <>
-          <Button variant="outline" size="sm" onClick={() => setGoalOpen(true)}>
-            <Target className="mr-1.5 h-3.5 w-3.5" />
-            Ziel
-          </Button>
-          <Button variant="outline" size="sm" disabled>
-            <FileDown className="mr-1.5 h-3.5 w-3.5" />
-            Report exportieren
-          </Button>
-        </>
+        <Button variant="outline" size="sm" onClick={() => setGoalOpen(true)}>
+          <Target className="mr-1.5 h-3.5 w-3.5" />
+          Ziel
+        </Button>
       }
     >
       {isLoading ? (
@@ -175,34 +169,36 @@ export default function TrainingOverviewPage() {
                 <EmptyInsightState title="Keine Waage-Daten" description="Kein Gewichtseintrag im gewählten Zeitraum." />
               )}
             </ChartFrame>
-            <ChartFrame title="Muskelmasse" caption="Δ im Zeitraum" eyebrow="Körper">
+            <ChartFrame title="Muskelmasse" caption="aktuell · Δ im Zeitraum" eyebrow="Körper">
               {hasScanTrend ? (
                 <MetricHero
                   label=""
-                  value={(scanMuscleDelta >= 0 ? '+' : '') + scanMuscleDelta.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  value={Number(latestScan!.muscle_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   unit="kg"
                   tone="muscle"
                   delta={{
-                    value: Number(latestScan!.muscle_mass_kg ?? 0),
-                    suffix: ' kg akt.',
-                    positiveWhen: 'either',
+                    value: scanMuscleDelta,
+                    suffix: ' kg',
+                    digits: 1,
+                    positiveWhen: 'up',
                   }}
                 />
               ) : (
                 <EmptyInsightState title="Zu wenige Scans" description="Mindestens zwei TANITA-Scans im Zeitraum für einen Trend." />
               )}
             </ChartFrame>
-            <ChartFrame title="Fettmasse" caption="Δ im Zeitraum" eyebrow="Körper">
+            <ChartFrame title="Fettmasse" caption="aktuell · Δ im Zeitraum" eyebrow="Körper">
               {hasScanTrend ? (
                 <MetricHero
                   label=""
-                  value={(scanFatDelta >= 0 ? '+' : '') + scanFatDelta.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  value={Number(latestScan!.fat_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   unit="kg"
                   tone="fat"
                   delta={{
-                    value: Number(latestScan!.fat_mass_kg ?? 0),
-                    suffix: ' kg akt.',
-                    positiveWhen: 'either',
+                    value: scanFatDelta,
+                    suffix: ' kg',
+                    digits: 1,
+                    positiveWhen: 'down',
                   }}
                 />
               ) : (
