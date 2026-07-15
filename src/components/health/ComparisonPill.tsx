@@ -42,11 +42,11 @@ export function ComparisonPill({
         tone === 'positive' && 'bg-health-positive/10 text-health-positive',
         tone === 'watch' && 'bg-health-warning/10 text-health-warning',
         tone === 'neutral' && 'bg-health-ink-muted/10 text-health-ink-muted',
-        tone === 'muted' && 'text-health-ink-subtle',
         className,
       )}
       aria-label={label}
     >
+
       <Arrow tone={tone} value={value} />
       {sign}
       {formatted}
