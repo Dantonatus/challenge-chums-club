@@ -106,16 +106,10 @@ export default function TrainingOverviewPage() {
         { label: 'Messungen', count: periodWeights.length + periodSmart.length },
       ]}
       actions={
-        <>
-          <Button variant="outline" size="sm" onClick={() => setGoalOpen(true)}>
-            <Target className="mr-1.5 h-3.5 w-3.5" />
-            Ziel
-          </Button>
-          <Button variant="outline" size="sm" disabled>
-            <FileDown className="mr-1.5 h-3.5 w-3.5" />
-            Report exportieren
-          </Button>
-        </>
+        <Button variant="outline" size="sm" onClick={() => setGoalOpen(true)}>
+          <Target className="mr-1.5 h-3.5 w-3.5" />
+          Ziel
+        </Button>
       }
     >
       {isLoading ? (
