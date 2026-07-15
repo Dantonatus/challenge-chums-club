@@ -1,6 +1,5 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Loader2 } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Loader2, Target } from 'lucide-react';
 import { toJpeg } from 'html-to-image';
 import { Button } from '@/components/ui/button';
 import { exportWeightPDF } from '@/lib/weight/exportWeightPDF';
@@ -9,16 +8,14 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
 import { useForecastSnapshots } from '@/hooks/useForecastSnapshots';
 import { useSmartScaleEntries } from '@/hooks/useSmartScaleEntries';
+import { useHealthGoal } from '@/hooks/useHealthGoal';
 import { mergeWeightSources } from '@/lib/weight/unifiedTimeline';
-import { filterByDateRange } from '@/lib/weight/analytics';
 import { filterByTimeOfDay, type TimeSlot } from '@/lib/smartscale/analytics';
 import WeightInput from '@/components/weight/WeightInput';
 import WeightTerrainChart from '@/components/weight/WeightTerrainChart';
 import WeightKPICards from '@/components/weight/WeightKPICards';
 import WeightHeatmapStrip from '@/components/weight/WeightHeatmapStrip';
-import MonthSummaryBar from '@/components/weight/MonthSummaryBar';
 import WeightEntryList from '@/components/weight/WeightEntryList';
-import PeriodNavigator from '@/components/weight/PeriodNavigator';
 import ScaleFileUploader from '@/components/smartscale/ScaleFileUploader';
 import ScaleKPIStrip from '@/components/smartscale/ScaleKPIStrip';
 import BodyCompositionChart from '@/components/smartscale/BodyCompositionChart';
@@ -26,6 +23,12 @@ import HeartHealthChart from '@/components/smartscale/HeartHealthChart';
 import VisceralFatChart from '@/components/smartscale/VisceralFatChart';
 import MetabolismChart from '@/components/smartscale/MetabolismChart';
 import DailyComparisonCard from '@/components/smartscale/DailyComparisonCard';
+import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
+import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
+import { EmptyInsightState } from '@/components/health/EmptyInsightState';
+import { useReporting } from '@/contexts/ReportingContext';
+import { filterByPeriod, parseLocalDate } from '@/lib/health/periods';
+
 
 export default function WeightPage() {
   const { entries, isLoading, upsert, update, remove } = useWeightEntries();
