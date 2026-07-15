@@ -215,6 +215,7 @@ export default function WeightPage() {
       )}
 
       <GoalEditorSheet open={goalOpen} onOpenChange={setGoalOpen} goal={goal} />
+      <ReportPreviewDialog open={reportOpen} onOpenChange={setReportOpen} model={reportModel} />
     </PerformanceReportingShell>
   );
 }
