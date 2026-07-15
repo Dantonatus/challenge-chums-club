@@ -82,7 +82,7 @@ export function buildWeightReportModel(params: {
       hint: `Einzelwert: ${numDe(last.weight_kg)} kg (${fmtDateDe(last.date)})`,
     },
     {
-      label: 'Δ im Zeitraum',
+      label: 'Änderung im Zeitraum',
       value: signed(deltaPeriod, 'kg'),
       deltaTone: deltaPeriod < 0 ? 'down' : deltaPeriod > 0 ? 'up' : 'neutral',
     },
@@ -168,7 +168,7 @@ export function buildWeightReportModel(params: {
         : (Math.abs(deltaPeriod) < 0.5 ? 'neutral' : 'primary'),
       headline: targetKg != null
         ? `Aktuell ${numDe(smoothed)} kg - Zielabstand ${signed(gapToGoal!, 'kg')}.`
-        : `Aktuell ${numDe(smoothed)} kg (geglättet) - Δ ${signed(deltaPeriod, 'kg')} im Zeitraum.`,
+        : `Aktuell ${numDe(smoothed)} kg (geglättet) - ${signed(deltaPeriod, 'kg')} im Zeitraum.`,
       change: `Startwert (7-Tage Ø) ${numDe(startSmoothed)} kg → aktuell ${numDe(smoothed)} kg (${signed(deltaPeriod, 'kg')}). Streuung der letzten 14 Tage: ${numDe(swing, 2)} kg.`,
       goalStatus: targetKg != null
         ? `Ziel: ${numDe(targetKg)} kg. Aktuelle Pace: ${pacePerWeek != null ? signed(pacePerWeek, 'kg/W') : '–'}${etaLabel ? ` (${etaLabel})` : ''}.`
@@ -202,7 +202,7 @@ export function buildWeightReportModel(params: {
           { label: 'Höchster Wert', value: extremes.max ? `${numDe(extremes.max.weight)} kg (${fmtDateDe(extremes.max.date)})` : '–' },
           { label: 'Niedrigster Wert', value: extremes.min ? `${numDe(extremes.min.weight)} kg (${fmtDateDe(extremes.min.date)})` : '–' },
           { label: 'Streuung (14 Tage)', value: `${numDe(swing, 2)} kg` },
-          { label: 'Wochen-Δ (letzte 7 Tage)', value: wChange != null ? signed(wChange, 'kg') : '–' },
+          { label: 'Wochenänderung (letzte 7 Tage)', value: wChange != null ? signed(wChange, 'kg') : '–' },
         ],
       },
     ],

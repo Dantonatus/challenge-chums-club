@@ -131,10 +131,10 @@ export function buildBodyScanReportModel(params: {
         id: 'bridge',
         title: 'Composition Bridge',
         eyebrow: baselineLabel,
-        summary: `Zerlegung der Gewichtsveränderung in Δ Fettmasse und Δ fettfreie Masse (Gewicht - Fettmasse). Muskelmasse ist Teilmenge der fettfreien Masse und wird nicht doppelt gezählt.`,
+        summary: `Zerlegung der Gewichtsveränderung in Änderung Fettmasse und Änderung fettfreie Masse (Gewicht - Fettmasse). Muskelmasse ist Teilmenge der fettfreien Masse und wird nicht doppelt gezählt.`,
         chart: waterfall,
         bullets: bridge?.muscleHint != null ? [
-          { label: 'Hinweis Δ Muskelmasse', value: signed(bridge.muscleHint, 'kg') + ' (deskriptiv)' },
+          { label: 'Hinweis Änderung Muskelmasse', value: signed(bridge.muscleHint, 'kg') + ' (deskriptiv)' },
         ] : undefined,
         footnote: 'Vorsicht bei BIA-Messungen: Tageszeit, Hydration und Ernährung können Werte in der Größenordnung ±0,5 kg beeinflussen.',
       }] : []),
@@ -151,7 +151,7 @@ export function buildBodyScanReportModel(params: {
         eyebrow: 'Segment-Analyse',
         summary: 'Links/rechts-Vergleich für Arme und Beine im aktuellen Scan. Prozentuale Asymmetrie = |Differenz| / Maximum.',
         table: {
-          columns: ['Segment', 'Links', 'Rechts', 'Δ', 'Asymmetrie'],
+          columns: ['Segment', 'Links', 'Rechts', 'd.', 'Asymmetrie'],
           align: ['left', 'right', 'right', 'right', 'right'] as Array<'left' | 'right'>,
           rows: symmetryTableRows,
         },
@@ -162,14 +162,14 @@ export function buildBodyScanReportModel(params: {
         title: 'Alle Deltas im Detail',
         eyebrow: baselineLabel,
         table: {
-          columns: ['Kennzahl', 'Baseline', 'Aktuell', 'Δ absolut', 'Δ %'],
+          columns: ['Kennzahl', 'Baseline', 'Aktuell', 'Änd. absolut', 'Änd. %'],
           align: ['left', 'right', 'right', 'right', 'right'] as Array<'left' | 'right'>,
           rows: deltaTableRows,
         },
       }] : []),
     ],
     methodology: [
-      'ΔGewicht = ΔFettmasse + Δfettfreie Masse (nicht überlappende Zerlegung).',
+      'Änderung Gewicht = Fettmasse-Anteil + fettfreie Masse-Anteil Masse (nicht überlappende Zerlegung).',
       'Fettfreie Masse = Gewicht − Fettmasse. Muskelmasse ist Teilmenge davon und wird nur als Kontext angezeigt.',
       'Vergleichs-Confidence berücksichtigt Gerätewechsel, Uhrzeit-Abweichung und Datenvollständigkeit.',
     ],
