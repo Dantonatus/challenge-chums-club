@@ -104,37 +104,72 @@ function SegmentCard({
   );
 }
 
-/* ─── SVG Silhouette ─── */
+/* ─── SVG Silhouette – Anatomically refined, single flowing body ─── */
 
-const SILHOUETTE_PATHS = {
-  head: 'M100,10 C112,10 122,20 122,32 C122,44 112,54 100,54 C88,54 78,44 78,32 C78,20 88,10 100,10 Z',
-  neck: 'M92,54 C92,58 90,62 90,66 L110,66 C110,62 108,58 108,54',
+/**
+ * ViewBox 0 0 200 440. One continuous outline. Segment overlays clip to the body.
+ * Proportions follow ~7.5 head canon for a modern, athletic figure.
+ */
+const BODY_OUTLINE =
+  // Head
+  'M100 18 C112 18 122 28 122 41 C122 51 116 59 108 63 ' +
+  // Neck to shoulders
+  'L108 71 C108 74 111 76 115 78 ' +
+  // Right shoulder → arm outer
+  'C128 80 142 84 152 92 C160 99 166 110 170 124 ' +
+  'L176 156 C178 172 178 188 176 202 C174 214 170 224 166 232 ' +
+  'C164 236 160 236 158 232 C156 226 155 218 154 210 ' +
+  'L150 186 C148 174 145 164 141 154 ' +
+  // Right torso taper to waist
+  'L138 148 C140 162 141 176 141 190 L142 214 ' +
+  // Right hip
+  'C142 222 143 230 145 240 ' +
+  // Right leg outer
+  'L152 292 C154 316 154 340 152 364 L149 396 ' +
+  'C148 410 147 420 146 426 C145 431 141 432 138 429 ' +
+  'C135 425 133 418 132 410 L128 378 ' +
+  'C126 358 124 338 122 318 L118 280 ' +
+  // Right inner thigh up to crotch
+  'C117 268 115 258 112 250 L108 244 ' +
+  // Crotch
+  'C105 242 102 241 100 241 C98 241 95 242 92 244 ' +
+  // Left inner thigh down
+  'L88 250 C85 258 83 268 82 280 L78 318 ' +
+  'C76 338 74 358 72 378 L68 410 C67 418 65 425 62 429 ' +
+  'C59 432 55 431 54 426 C53 420 52 410 51 396 L48 364 ' +
+  'C46 340 46 316 48 292 L55 240 ' +
+  // Left hip
+  'C57 230 58 222 58 214 L59 190 C59 176 60 162 62 148 ' +
+  // Left torso to waist
+  'L59 154 C55 164 52 174 50 186 L46 210 ' +
+  'C45 218 44 226 42 232 C40 236 36 236 34 232 ' +
+  'C30 224 26 214 24 202 C22 188 22 172 24 156 ' +
+  'L30 124 C34 110 40 99 48 92 C58 84 72 80 85 78 ' +
+  'C89 76 92 74 92 71 L92 63 ' +
+  // Left face back to head start
+  'C84 59 78 51 78 41 C78 28 88 18 100 18 Z';
+
+/** Anatomical zone overlays – each clipped to BODY_OUTLINE via clipPath */
+const ZONE_PATHS = {
+  // Chest + abs block
   trunk:
-    'M68,72 C65,70 62,68 60,72 L56,78 C54,82 56,84 60,84 L60,84 L68,72 Z ' +
-    'M132,72 C135,70 138,68 140,72 L144,78 C146,82 144,84 140,84 L140,84 L132,72 Z ' +
-    'M72,66 C68,68 64,72 62,78 L60,84 C58,92 60,96 62,100 L64,130 C62,148 62,166 66,180 ' +
-    'C68,186 72,190 78,192 L122,192 C128,190 132,186 134,180 C138,166 138,148 136,130 ' +
-    'L138,100 C140,96 142,92 140,84 L138,78 C136,72 132,68 128,66 Z',
-  armL:
-    'M62,78 C56,76 48,78 42,84 L32,100 C26,112 22,128 20,144 ' +
-    'L18,168 C16,180 16,192 18,200 C18,206 20,210 24,212 ' +
-    'C28,214 30,210 30,204 L32,188 C33,176 35,164 38,148 ' +
-    'L46,124 C50,114 54,104 58,96 L60,84 Z',
-  armR:
-    'M138,78 C144,76 152,78 158,84 L168,100 C174,112 178,128 180,144 ' +
-    'L182,168 C184,180 184,192 182,200 C182,206 180,210 176,212 ' +
-    'C172,214 170,210 170,204 L168,188 C167,176 165,164 162,148 ' +
-    'L154,124 C150,114 146,104 142,96 L140,84 Z',
-  legL:
-    'M78,192 C74,194 72,198 72,204 L68,240 C66,264 64,288 62,312 ' +
-    'L58,348 C56,364 56,376 58,384 C60,390 64,392 68,388 ' +
-    'C70,384 70,374 72,360 L76,324 C78,300 80,276 82,252 ' +
-    'L86,220 C88,210 90,202 92,196 L98,192 Z',
-  legR:
-    'M122,192 C126,194 128,198 128,204 L132,240 C134,264 136,288 138,312 ' +
-    'L142,348 C144,364 144,376 142,384 C140,390 136,392 132,388 ' +
-    'C130,384 130,374 128,360 L124,324 C122,300 120,276 118,252 ' +
-    'L114,220 C112,210 110,202 108,196 L102,192 Z',
+    'M64 82 C60 96 58 112 58 130 L58 168 C58 190 62 208 68 224 ' +
+    'C78 232 92 236 100 236 C108 236 122 232 132 224 ' +
+    'C138 208 142 190 142 168 L142 130 C142 112 140 96 136 82 Z',
+  // Left arm (viewer's left = anatomical right)
+  armL: 'M22 92 L48 82 L58 130 L52 190 L42 232 L26 232 L18 200 L18 150 Z',
+  armR: 'M178 92 L152 82 L142 130 L148 190 L158 232 L174 232 L182 200 L182 150 Z',
+  legL: 'M52 240 L92 240 L88 300 L82 380 L70 432 L52 432 L46 380 L48 320 Z',
+  legR: 'M148 240 L108 240 L112 300 L118 380 L130 432 L148 432 L154 380 L152 320 Z',
+};
+
+/** Anchor points on body for connector lines from cards */
+export const BODY_ANCHORS = {
+  armL: { x: 32, y: 150 },
+  armR: { x: 168, y: 150 },
+  trunk: { x: 100, y: 160 },
+  legL: { x: 72, y: 320 },
+  legR: { x: 128, y: 320 },
 };
 
 function BodySilhouette({
@@ -151,74 +186,178 @@ function BodySilhouette({
   const baseColor = mode === 'muscle' ? APPLE.muscle : APPLE.fat;
   const softColor = mode === 'muscle' ? APPLE.muscleSoft : APPLE.fatSoft;
 
-  const segmentPaths: { key: string; path: string; delay: number }[] = [
-    { key: 'trunk', path: SILHOUETTE_PATHS.trunk, delay: 0 },
-    { key: 'armL', path: SILHOUETTE_PATHS.armL, delay: 0.08 },
-    { key: 'armR', path: SILHOUETTE_PATHS.armR, delay: 0.12 },
-    { key: 'legL', path: SILHOUETTE_PATHS.legL, delay: 0.2 },
-    { key: 'legR', path: SILHOUETTE_PATHS.legR, delay: 0.25 },
-  ];
+  const zoneKeys = ['trunk', 'armL', 'armR', 'legL', 'legR'] as const;
+
+  // Symmetry deltas
+  const armAsym = Math.abs((segments.armL || 0) - (segments.armR || 0));
+  const legAsym = Math.abs((segments.legL || 0) - (segments.legR || 0));
+  const armMean = ((segments.armL || 0) + (segments.armR || 0)) / 2 || 1;
+  const legMean = ((segments.legL || 0) + (segments.legR || 0)) / 2 || 1;
+  const armAsymPct = (armAsym / armMean) * 100;
+  const legAsymPct = (legAsym / legMean) * 100;
 
   return (
     <motion.svg
-      viewBox="0 0 200 400"
-      className="w-full h-full max-w-[160px] md:max-w-[180px] mx-auto"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      viewBox="0 0 200 460"
+      className="w-full h-full mx-auto drop-shadow-[0_10px_30px_rgba(0,0,0,0.08)] dark:drop-shadow-[0_10px_30px_rgba(0,0,0,0.4)]"
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
     >
       <defs>
-        {segmentPaths.map(({ key }) => {
+        {/* Body base fill – subtle vertical gradient for depth */}
+        <linearGradient id="body-base" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity="0.12" />
+        </linearGradient>
+
+        {/* Body inner shading (creates volume) */}
+        <linearGradient id="body-volume" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity="0.04" />
+          <stop offset="50%" stopColor="hsl(var(--foreground))" stopOpacity="0" />
+          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity="0.04" />
+        </linearGradient>
+
+
+        {/* Per-zone heat gradients */}
+        {zoneKeys.map((key) => {
           const intensity = (segments[key] || 0) / maxVal;
-          const opacity = 0.15 + 0.7 * intensity;
+          const opacity = 0.25 + 0.65 * intensity;
           return (
-            <radialGradient key={`grad-${key}-${mode}`} id={`grad-${key}`} cx="50%" cy="50%" r="80%">
+            <radialGradient
+              key={`grad-${key}-${mode}`}
+              id={`zone-${key}`}
+              cx="50%"
+              cy="50%"
+              r="70%"
+            >
               <stop offset="0%" stopColor={softColor} stopOpacity={opacity} />
-              <stop offset="100%" stopColor={baseColor} stopOpacity={opacity * 0.4} />
+              <stop offset="60%" stopColor={baseColor} stopOpacity={opacity * 0.8} />
+              <stop offset="100%" stopColor={baseColor} stopOpacity={opacity * 0.15} />
             </radialGradient>
           );
         })}
+
+        {/* Glow filter for highest segment */}
+        <filter id="zone-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        {/* Clip path so zone overlays never bleed outside body */}
+        <clipPath id="body-clip">
+          <path d={BODY_OUTLINE} />
+        </clipPath>
       </defs>
 
-      {/* Head – soft filled */}
-      <motion.path
-        d={SILHOUETTE_PATHS.head}
-        fill="hsl(var(--muted-foreground))"
-        fillOpacity={0.08}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      />
-      {/* Neck – soft filled */}
-      <motion.path
-        d={SILHOUETTE_PATHS.neck}
+      {/* 1. Body silhouette base fill */}
+      <path d={BODY_OUTLINE} fill="url(#body-base)" />
+
+      {/* 2. Zone heat overlays (clipped to body) */}
+      <g clipPath="url(#body-clip)">
+        <AnimatePresence mode="wait">
+          {zoneKeys.map((key, i) => {
+            const isHighest = key === highestKey;
+            return (
+              <motion.path
+                key={`${key}-${mode}`}
+                d={ZONE_PATHS[key]}
+                fill={`url(#zone-${key})`}
+                filter={isHighest ? 'url(#zone-glow)' : undefined}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: 0.55,
+                  delay: i * 0.06,
+                  ease: [0.32, 0.72, 0, 1],
+                }}
+              />
+            );
+          })}
+        </AnimatePresence>
+
+        {/* Volume shading on top */}
+        <path d={BODY_OUTLINE} fill="url(#body-volume)" pointerEvents="none" />
+      </g>
+
+      {/* 3. Outline stroke – crisp anatomical line */}
+      <path
+        d={BODY_OUTLINE}
         fill="none"
-        stroke="hsl(var(--muted-foreground))"
-        strokeWidth="1"
-        strokeOpacity={0.08}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
+        stroke="hsl(var(--foreground))"
+        strokeOpacity="0.28"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
       />
 
-      {/* Segments – no strokes, no glow */}
-      <AnimatePresence>
-        {segmentPaths.map(({ key, path, delay }) => {
-          const isHighest = key === highestKey;
-          return (
-            <motion.path
-              key={`${key}-${mode}`}
-              d={path}
-              fill={`url(#grad-${key})`}
-              fillOpacity={isHighest ? 1 : 0.85}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5, delay, ease: [0.32, 0.72, 0, 1] }}
-            />
-          );
-        })}
-      </AnimatePresence>
+      {/* 4. Center line – subtle spine cue */}
+      <line
+        x1="100"
+        y1="78"
+        x2="100"
+        y2="240"
+        stroke="hsl(var(--foreground))"
+        strokeOpacity="0.08"
+        strokeWidth="0.8"
+        strokeDasharray="2 3"
+      />
+
+      {/* 5. Symmetry indicator arcs */}
+      {armAsymPct > 5 && (
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.6 }}
+          transition={{ delay: 0.6 }}
+        >
+          <text
+            x="100"
+            y="120"
+            textAnchor="middle"
+            fontSize="7"
+            fill="hsl(var(--muted-foreground))"
+            className="font-medium tracking-wide"
+          >
+            Δ {armAsymPct.toFixed(0)}% Arme
+          </text>
+        </motion.g>
+      )}
+      {legAsymPct > 5 && (
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.6 }}
+          transition={{ delay: 0.7 }}
+        >
+          <text
+            x="100"
+            y="340"
+            textAnchor="middle"
+            fontSize="7"
+            fill="hsl(var(--muted-foreground))"
+            className="font-medium tracking-wide"
+          >
+            Δ {legAsymPct.toFixed(0)}% Beine
+          </text>
+        </motion.g>
+      )}
+
+      {/* 6. Pulse ring on highest zone anchor */}
+      {highestKey && BODY_ANCHORS[highestKey as keyof typeof BODY_ANCHORS] && (
+        <motion.circle
+          cx={BODY_ANCHORS[highestKey as keyof typeof BODY_ANCHORS].x}
+          cy={BODY_ANCHORS[highestKey as keyof typeof BODY_ANCHORS].y}
+          r="6"
+          fill="none"
+          stroke={baseColor}
+          strokeWidth="1.5"
+          initial={{ opacity: 0.8, scale: 1 }}
+          animate={{ opacity: 0, scale: 2.6 }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+        />
+      )}
     </motion.svg>
   );
 }
@@ -337,7 +476,7 @@ export default function AnatomyFigure({
       <CardContent className="pb-8 px-6 md:px-8">
         {isMobile ? (
           <div className="flex flex-col items-center gap-5">
-            <div className="w-40 h-auto">
+            <div className="w-56 h-auto py-2">
               <BodySilhouette
                 mode={mode}
                 segments={values}
@@ -378,7 +517,7 @@ export default function AnatomyFigure({
               style={{ gridArea: 'figure' }}
               className="flex items-center justify-center px-4"
             >
-              <div className="w-44">
+              <div className="w-64 md:w-72">
                 <BodySilhouette
                   mode={mode}
                   segments={values}
