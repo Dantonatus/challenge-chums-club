@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import { useBodyScans } from '@/hooks/useBodyScans';
-import { Dumbbell, ScanLine, FileDown, Loader2, Scale, Hash, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useHealthGoal } from '@/hooks/useHealthGoal';
+import { ScanLine, FileDown, Loader2, Hash, ChevronLeft, ChevronRight, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { exportBodyScanPDF } from '@/lib/bodyscan/exportBodyScanPDF';
 import BodyScanCsvUploader from '@/components/bodyscan/BodyScanCsvUploader';
@@ -14,7 +14,12 @@ import SegmentFatChart from '@/components/bodyscan/SegmentFatChart';
 import MetabolismCard from '@/components/bodyscan/MetabolismCard';
 import ScanTimeline from '@/components/bodyscan/ScanTimeline';
 import AnatomyFigure from '@/components/bodyscan/AnatomyFigure';
-import PeriodNavigator from '@/components/weight/PeriodNavigator';
+import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
+import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
+import { EmptyInsightState } from '@/components/health/EmptyInsightState';
+import { useReporting } from '@/contexts/ReportingContext';
+import { filterByPeriod, parseLocalDate } from '@/lib/health/periods';
+
 
 export default function BodyScanPage() {
   const { scans, isLoading, importScan } = useBodyScans();
