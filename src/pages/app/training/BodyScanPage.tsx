@@ -31,7 +31,7 @@ export default function BodyScanPage() {
   const { scans, isLoading, importScan } = useBodyScans();
   const { goal } = useHealthGoal();
   const { period } = useReporting();
-  const [exporting, setExporting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
 
   const filteredScans = useMemo(
