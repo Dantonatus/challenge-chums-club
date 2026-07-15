@@ -359,7 +359,6 @@ export function RoutineMap({ checkins }: Props) {
                     }
                     onBlur={() => setHover(null)}
                     opacity={dimmed ? 0.32 : 1}
-                    style-transition="opacity 200ms"
                   >
                     {/* Active concentric ring */}
                     {isActive && (
