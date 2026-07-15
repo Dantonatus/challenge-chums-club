@@ -1,8 +1,8 @@
-import { useState, useMemo, useRef } from 'react';
-import { Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Loader2, Target } from 'lucide-react';
-import { toJpeg } from 'html-to-image';
+import { useState, useMemo } from 'react';
+import { Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { exportWeightPDF } from '@/lib/weight/exportWeightPDF';
+import { ReportPreviewDialog } from '@/components/reporting/ReportPreviewDialog';
+import { buildWeightReportModel } from '@/lib/reporting/buildWeightReportModel';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
