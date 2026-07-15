@@ -1,11 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
-import { FileDown, Loader2, Target } from 'lucide-react';
-import { toJpeg } from 'html-to-image';
+import { useMemo, useState } from 'react';
+import { FileDown, Target } from 'lucide-react';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
 import { useHealthGoal } from '@/hooks/useHealthGoal';
 import CsvUploader from '@/components/training/CsvUploader';
 import { Button } from '@/components/ui/button';
-import { exportTrainingPDF } from '@/lib/training/exportTrainingPDF';
 import PersonalRecords from '@/components/training/PersonalRecords';
 import WeekdayHeatmap from '@/components/training/WeekdayHeatmap';
 import MonthlyComparisonChart from '@/components/training/MonthlyComparisonChart';
@@ -13,6 +11,8 @@ import TrainingCalendar from '@/components/training/TrainingCalendar';
 import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
 import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
 import { EmptyInsightState } from '@/components/health/EmptyInsightState';
+import { ReportPreviewDialog } from '@/components/reporting/ReportPreviewDialog';
+import { buildTrainingReportModel } from '@/lib/reporting/buildTrainingReportModel';
 import { useReporting } from '@/contexts/ReportingContext';
 import { filterByPeriod, parseLocalDate, resolveReferenceDate } from '@/lib/health/periods';
 import {
