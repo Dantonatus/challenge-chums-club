@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-export type ComparisonTone = 'positive' | 'watch' | 'neutral' | 'muted';
+export type ComparisonTone = 'positive' | 'watch' | 'neutral';
 
 interface Props {
   value: number;
