@@ -176,11 +176,7 @@ export default function TrainingOverviewPage() {
                   value={(scanMuscleDelta >= 0 ? '+' : '') + scanMuscleDelta.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   unit="kg"
                   tone="muscle"
-                  delta={{
-                    value: Number(latestScan!.muscle_mass_kg ?? 0),
-                    suffix: ' kg akt.',
-                    positiveWhen: 'either',
-                  }}
+                  hint={`Aktuell ${Number(latestScan!.muscle_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`}
                 />
               ) : (
                 <EmptyInsightState title="Zu wenige Scans" description="Mindestens zwei TANITA-Scans im Zeitraum für einen Trend." />
@@ -193,11 +189,7 @@ export default function TrainingOverviewPage() {
                   value={(scanFatDelta >= 0 ? '+' : '') + scanFatDelta.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   unit="kg"
                   tone="fat"
-                  delta={{
-                    value: Number(latestScan!.fat_mass_kg ?? 0),
-                    suffix: ' kg akt.',
-                    positiveWhen: 'either',
-                  }}
+                  hint={`Aktuell ${Number(latestScan!.fat_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`}
                 />
               ) : (
                 <EmptyInsightState title="Zu wenige Scans" description="Mindestens zwei TANITA-Scans im Zeitraum für einen Trend." />
