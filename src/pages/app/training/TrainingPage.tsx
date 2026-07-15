@@ -244,10 +244,9 @@ export default function TrainingPage() {
             headline={heroHeadline}
           />
 
-          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <RoutineMap checkins={periodCheckins} />
-            <RecoveryRhythm checkins={periodCheckins} range={period} referenceDate={referenceDate} />
-          </div>
+          <RoutineMap checkins={periodCheckins} />
+
+          <RecoveryRhythm checkins={periodCheckins} range={period} referenceDate={referenceDate} />
 
           <Accordion type="single" collapsible className="rounded-2xl border border-health-hairline bg-health-surface">
             <AccordionItem value="patterns" className="border-b-0">
