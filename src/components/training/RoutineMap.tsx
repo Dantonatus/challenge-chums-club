@@ -346,34 +346,6 @@ export function RoutineMap({ checkins }: Props) {
               </div>
             )}
 
-            {/* Legend */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-5 border-t border-health-hairline/60 pt-4">
-              <span className="text-[11px] uppercase tracking-[0.14em] text-health-ink-subtle">
-                Skala
-              </span>
-              {legendValues.map(v => {
-                const r = radiusFor(v);
-                const size = Math.max(12, r * 2);
-                const alpha = 0.35 + 0.55 * (maxCount ? v / maxCount : 0);
-                return (
-                  <div key={v} className="flex items-center gap-2">
-                    <svg width={size} height={size} className="block">
-                      <circle
-                        cx={size / 2}
-                        cy={size / 2}
-                        r={r}
-                        fill={`hsl(var(--health-observed) / ${alpha})`}
-                        stroke="hsl(var(--health-observed) / 0.95)"
-                        strokeWidth={1.25}
-                      />
-                    </svg>
-                    <span className="text-xs tabular-nums text-health-ink-muted">
-                      {v} {v === 1 ? 'Check-in' : 'Check-ins'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
           </>
         )}
       </div>
