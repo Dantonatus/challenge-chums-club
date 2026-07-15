@@ -2,12 +2,13 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutGrid, Dumbbell, ScanLine, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ITEMS = [
+const ITEMS: { to: string; label: string; icon: typeof LayoutGrid; exact?: boolean }[] = [
   { to: '/app/training/overview', label: 'Übersicht', icon: LayoutGrid },
   { to: '/app/training', label: 'Training', icon: Dumbbell, exact: true },
   { to: '/app/training/bodyscan', label: 'Körper', icon: ScanLine },
   { to: '/app/training/weight', label: 'Gewicht', icon: Scale },
-] as const;
+];
+
 
 export function ReportingSubnav() {
   const { pathname } = useLocation();
