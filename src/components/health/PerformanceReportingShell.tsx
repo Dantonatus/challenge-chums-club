@@ -27,8 +27,14 @@ export function PerformanceReportingShell({
   children,
 }: Props) {
   return (
-    <div className={cn('font-health -m-6 min-h-[calc(100vh-64px)] bg-health-canvas p-6 text-health-ink sm:-m-6 sm:p-8', className)}>
+    <div
+      className={cn(
+        'font-health rounded-3xl bg-health-canvas p-5 text-health-ink shadow-health-soft sm:p-8',
+        className,
+      )}
+    >
       <div className="mx-auto max-w-[1400px] space-y-8">
+
         <ReportingHeader
           eyebrow={eyebrow}
           title={title}
