@@ -1,48 +1,110 @@
-## Neue Datengrundlage vollständig einbetten
+# Performance Intelligence – Reporting Redesign
 
-Direkter Server-seitiger Import per SQL-`INSERT ... ON CONFLICT DO NOTHING`. Keine Duplikate, keine Überschreibung, keine Code-Änderungen an der App.
+Umfangreiches Redesign des Reporting-Bereichs (`/app/training`, `/app/training/bodyscan`, `/app/training/weight`) zu einer gemeinsamen, datengetriebenen Shell mit Apple-inspirierter Ästhetik, echtem Zielsystem und deterministischen Insights.
 
-### Ist-Stand (dein User)
-| Tabelle | aktuell | Neuer Upload | Erwartet nach Import |
-|---|---|---|---|
-| `training_checkins` | 49 | 100 Zeilen (CSV) | 100 (Duplikate übersprungen) |
-| `smart_scale_entries` | 58 | 102 Zeilen (XLS) | 102 (Duplikate übersprungen) |
-| `body_scans` | 11 (bis 10.04.2026) | 2 neue TANITA-PDFs | 13 |
+## 1. Design Tokens (additiv)
 
-### Schritt 1 – Check-ins
-`checkin_reports_15-Juli-2026_20-04-53.csv` → 100 Zeilen parsed (deutsches Datumsformat "02 Januar 2026"), alle Black & White Fitness Worms, Zeitraum 02.01.2026 – 14.07.2026. `ON CONFLICT (user_id, checkin_date, checkin_time) DO NOTHING`.
+**`src/index.css`** erweitern um HSL-Tokens (Light + Dark, kompatibel zu bestehendem System):
+`--health-canvas`, `--health-surface`, `--health-surface-elevated`, `--health-ink`, `--health-ink-muted`, `--health-hairline`, `--health-glass`, `--health-observed`, `--health-positive`, `--health-muscle`, `--health-fat`, `--health-forecast`, `--health-warning`, `--health-danger`, `--health-grid`.
 
-### Schritt 2 – Smart-Scale (Starfit XLS)
-`Starfit-Dante-5.csv` ist real ein XLS-Binary mit 102 Messungen (16.02.2026 – 15.07.2026). Parser: Python xlrd → Zeit "HH:MM DD/MM/YYYY" nach ISO. Einheiten (`kg`, `%`, `bpm`, `L/min/㎡`) werden gestrippt. `- -` → NULL. `ON CONFLICT (user_id, measured_at) DO NOTHING`.
+**`tailwind.config.ts`** um `health.*` Farb-Namespace erweitern. System-Font-Stack als eigene Utility (`font-health`: ui-sans-serif, -apple-system, ...). Keine externe Schrift.
 
-### Schritt 3 – TANITA PDFs (bereits ausgelesen)
+Bestehende `--primary`/shadcn-Tokens bleiben unangetastet. Reporting-Styles gekapselt via Komponenten + `.health-*` Klassen.
 
-**Scan 1 – 17.06.2026 19:41:47 (MC-780)**
-```text
-Gewicht 89,9 kg | Fett 16,7 % / 15,0 kg | FFM 74,9 kg | Muskel 71,2 kg
-Skelettmuskel 43,8 kg | BMI 25,4 | Viszeralfett 5 | Stoffwechselalter 22
-Wasser 52,9 kg (58,8 %) | ECW 20,2 | ICW 32,7 | ECW/TBW 38,2 %
-Knochen 3,7 kg | Grundumsatz 2198 kcal
-Segment Fett %:  Rumpf 17,6 | ArmR 14,0 | ArmL 15,3 | BeinR 15,7 | BeinL 16,2
-Segment Muskel kg: Rumpf 39,3 | ArmR 4,4 | ArmL 4,3 | BeinR 11,7 | BeinL 11,5
-```
+## 2. Zielsystem (Backend)
 
-**Scan 2 – 12.07.2026 11:40:46 (MC-780)**
-```text
-Gewicht 88,4 kg | Fett 16,3 % / 14,4 kg | FFM 74,0 kg | Muskel 70,4 kg
-Skelettmuskel 43,3 kg | BMI 25,0 | Viszeralfett 4 | Stoffwechselalter 21
-Wasser 52,3 kg (59,2 %) | ECW 20,0 | ICW 32,3 | ECW/TBW 38,2 %
-Knochen 3,6 kg | Grundumsatz 2168 kcal
-Segment Fett %:  Rumpf 16,5 | ArmR 11,7 | ArmL 12,9 | BeinR 17,4 | BeinL 18,2
-Segment Muskel kg: Rumpf 38,7 | ArmR 4,6 | ArmL 4,6 | BeinR 11,4 | BeinL 11,1
-```
+Neue Migration `health_goals`:
+- Spalten: `goal_mode` (enum-artig via CHECK: weight_loss|weight_gain|maintain|recomposition|training_consistency), `target_weight_kg`, `target_body_fat_percent`, `weekly_training_target`, `target_date`, `is_active`, Standard-Timestamps
+- Partial-unique-Index: max. 1 aktives Ziel pro `user_id`
+- GRANT `SELECT,INSERT,UPDATE,DELETE` an `authenticated`, `ALL` an `service_role`
+- RLS: 4 Policies (select/insert/update/delete) je `auth.uid() = user_id`
+- Update-Trigger für `updated_at`
 
-Insert in `body_scans` mit `segments_json` als JSONB `{muscle:{trunk,armL,armR,legL,legR}, fat:{...}}` (Struktur = bestehende BodyScanSegments). `ON CONFLICT (user_id, scan_date, scan_time) DO NOTHING`.
+**`src/hooks/useHealthGoal.ts`** – TanStack Query + Upsert-Mutation.
 
-### Sicherheit
-- Keine App-Code-Änderungen, keine Migrationen, keine Schema-Änderungen.
-- Alle Inserts sind idempotent (ON CONFLICT DO NOTHING) → mehrfach ausführbar ohne Nebenwirkung.
-- Nach Import: Verifikations-`SELECT count(*)` auf alle drei Tabellen + Datumsbereich der neuen Scans, damit die Zahlen exakt bestätigt werden.
+## 3. Shared Reporting-Layer
 
-### Nicht enthalten
-Keine Änderungen an Body-Scan/Weight/Training UI. Der PeriodNavigator zeigt die neuen Daten automatisch, weil sie in denselben Tabellen liegen.
+Neuer Ordner `src/components/health/`:
+- `PerformanceReportingShell.tsx` – Canvas + Header + Subnav + Slot
+- `ReportingHeader.tsx` – Eyebrow, Titel, dynamischer Kontextsatz, Zeitraum-Steuerung, Vergleichs-Toggle, DataFreshness, Actions
+- `ReportingSubnav.tsx` – Segmented Nav (Übersicht/Training/Körper/Gewicht), mobile horizontal scroll
+- `ExecutiveBrief.tsx` – zeigt 1 primary + 2 sekundäre Insights, "Alle Erkenntnisse"-Sheet
+- `JourneyHero.tsx` – Ziel-Fortschritt (Progress zu Target), Empty State "Ziel definieren"
+- `MetricHero.tsx` – Große Kennzahl mit Delta + Sparkline
+- `InsightRow.tsx` – Einzelinsight mit Icon, Evidence, optional Action
+- `ChartFrame.tsx` – Konsistenter Karten-Rahmen (Radius, Hairline, Titel, Legende, MethodologySheet-Trigger)
+- `ComparisonPill.tsx` – "+2,3 kg vs. Vorperiode"
+- `DataFreshness.tsx` – "Aktualisiert 10. Apr. 2026 · 4 Scans"
+- `ConfidenceBadge.tsx` – hoch/mittel/niedrig basierend auf Datenmenge
+- `MethodologySheet.tsx` – Formeln/Quellen offenlegen
+- `GoalEditorSheet.tsx` – Ziel anlegen/bearbeiten
+- `EmptyInsightState.tsx` – kompakte Erklärung statt leerer Chart
+
+**`src/contexts/ReportingContext.tsx`** – gemeinsamer Zustand:
+- `period: { start, end, mode }` (mit Presets 4W/12W/6M/YTD/1Y/Custom)
+- `comparison: 'previous' | 'start' | 'none'`
+- `referenceDate` = min(period.end, letztes Datum in Daten)
+- `previousPeriod` = exakt gleiche Länge
+- Zeitzone Europe/Berlin
+
+## 4. Deterministische Insights
+
+**`src/lib/health/executiveInsights.ts`** – Pure Funktion `computeInsights({ checkins, scans, weights, smartScale, goal, period, comparison }) => Insight[]`.
+
+Regeln (Auszug):
+- Recomposition: Gewicht ↑, Muskelmasse ↑, Fettmasse ↓ → positive Insight
+- Frequenz-Delta: letzte 4W abgeschlossene vs. vorherige 4W (nur wenn Perioden vollständig)
+- Gewichtstrend zu Ziel: linearer Fit → prognostiziertes Zieldatum, warnen wenn außerhalb `target_date`
+- Datenqualität: Lücke > 30 Tage in Scans → watch
+- Unterdaten: < 3 Messungen im Zeitraum → keine Trendbehauptung
+- Jede Insight enthält `evidence[]` mit konkreten Zahlen und optional `methodology`
+
+Keine medizinischen Aussagen. Kein Composite-Score ohne offengelegte Formel.
+
+## 5. Seiten-Refactor
+
+- **`/app/training`** (`TrainingPage.tsx`), **`/bodyscan`** (`BodyScanPage.tsx`), **`/weight`** (`WeightPage.tsx`) werden auf `PerformanceReportingShell` umgestellt. Bestehende Header (Titel + 3 Toggle-Buttons + Import/Export) werden entfernt und in Shell/Subnav konsolidiert.
+- **Neue Route `/app/training/overview`** als Landing der Shell (Übersicht mit ExecutiveBrief + JourneyHero + Cross-Domain-Kompaktkarten).
+- Bestehende Charts (`TrainingKPICards`, `WeeklyVisitsChart`, `BodyScanKPICards`, `WeightTerrainChart`, etc.) bleiben, werden aber in `ChartFrame` gewrapt und respektieren den globalen Zeitraum aus `ReportingContext`.
+- Import (CSV/PDF), Export (PDF), Auth, Datenhooks: unverändert.
+
+## 6. Datums-/Vergleichslogik
+
+**`src/lib/health/periods.ts`** – Helfer:
+- `resolveReferenceDate(period, latestDataDate)`
+- `getPreviousPeriod(period)` – exakt gleiche Länge
+- `isPeriodComplete(period, now)` – markiert unvollständige laufende W/M
+- Alle Datums-Operationen via `parseLocalDate`/`Europe/Berlin`
+
+## 7. Responsive & States
+
+- Desktop: 12-col Bento (Hero 8, Journey 4)
+- Tablet: 2-col
+- Mobile: 1-col, sticky kompakter Period-Chip, Touch ≥ 44px
+- Loading: Shimmer-Skeletons in `--health-surface`
+- Empty/Partial/Error: `EmptyInsightState` mit Kontext
+
+## 8. Verifikation
+
+- `npm run build` grün
+- Manuell prüfen: Light/Dark, 390/768/1440
+- Bestehende Import- und Export-Flows funktionieren
+
+## Datei-Übersicht
+
+**Neu (~18):** Migration `health_goals`, `useHealthGoal.ts`, 14 Health-Komponenten, `ReportingContext.tsx`, `executiveInsights.ts`, `periods.ts`, `Overview.tsx`
+**Geändert:** `index.css`, `tailwind.config.ts`, `TrainingPage.tsx`, `BodyScanPage.tsx`, `WeightPage.tsx`, `App.tsx` (Route)
+
+## Nicht enthalten
+
+- Redesign der App-Navigation außerhalb Reporting
+- Änderungen an Auth/Import-Pipeline
+- Neue Chart-Bibliothek (Recharts bleibt)
+
+## Umsetzung in Etappen
+
+Wegen des Umfangs schlage ich vor, in zwei Runden zu shippen:
+1. **Runde 1 (dieser Turn):** Tokens, Migration+Goal-Hook, Shell/Header/Subnav/Context/Insights-Engine, Overview-Route, minimales Einbinden der 3 Seiten in die Shell (Header ersetzt), Build grün.
+2. **Runde 2 (Folge-Turn):** Feinschliff aller Charts in `ChartFrame`, MethodologySheets, Journey-Progress-Visualisierung, Mobile-Politur.
+
+Bestätige, ob ich Runde 1 direkt starten soll — oder ob du zuerst Runde 1+2 in einem Guss willst (deutlich mehr Änderungen in einem Schritt, höheres Regressionsrisiko).
