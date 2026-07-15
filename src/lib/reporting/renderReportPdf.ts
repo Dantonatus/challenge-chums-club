@@ -439,9 +439,7 @@ export async function renderReportPdf(model: ReportModel, options: RenderOptions
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const cur: PageCursor = { doc, y: CONTENT_TOP, pageNumber: 1 };
 
-  drawPageChrome(doc, model, 1);
-  cur.y = CONTENT_TOP + HEADER_H + 4;
-
+  // Page 1: cover only (no repeating header)
   onProgress('Zeichne Cover', 0.15);
   drawCover(cur, model);
 
