@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Dumbbell, FileDown, Loader2, ScanLine, Scale } from 'lucide-react';
+import { useRef, useState, useMemo } from 'react';
+import { FileDown, Loader2, Target } from 'lucide-react';
 import { toJpeg } from 'html-to-image';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
+import { useHealthGoal } from '@/hooks/useHealthGoal';
 import CsvUploader from '@/components/training/CsvUploader';
 import { Button } from '@/components/ui/button';
 import { exportTrainingPDF } from '@/lib/training/exportTrainingPDF';
@@ -16,6 +16,12 @@ import TimeBubbleHeatmap from '@/components/training/TimeBubbleHeatmap';
 import FrequencyTrendChart from '@/components/training/FrequencyTrendChart';
 import RestDaysChart from '@/components/training/RestDaysChart';
 import PersonalRecords from '@/components/training/PersonalRecords';
+import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
+import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
+import { useReporting } from '@/contexts/ReportingContext';
+import { filterByPeriod, parseLocalDate } from '@/lib/health/periods';
+import { EmptyInsightState } from '@/components/health/EmptyInsightState';
+
 
 interface PdfSection {
   label: string;
@@ -24,9 +30,11 @@ interface PdfSection {
 
 export default function TrainingPage() {
   const { checkins, isLoading, importCsv } = useTrainingCheckins();
+  const { goal } = useHealthGoal();
+  const { period } = useReporting();
   const [exporting, setExporting] = useState(false);
+  const [goalOpen, setGoalOpen] = useState(false);
 
-  // Refs for every visual section to capture
   const kpiRef = useRef<HTMLDivElement>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
   const recordsRef = useRef<HTMLDivElement>(null);
@@ -45,6 +53,9 @@ export default function TrainingPage() {
     { label: 'Trainingskalender', ref: calendarRef },
   ];
 
+  const periodCheckins = useMemo(() => filterByPeriod(checkins, period, 'checkin_date'), [checkins, period]);
+  const latestDate = checkins.length ? parseLocalDate(checkins[checkins.length - 1].checkin_date) : null;
+
   const handleImport = async (rows: Parameters<typeof importCsv.mutateAsync>[0]) => {
     return importCsv.mutateAsync(rows);
   };
@@ -53,7 +64,6 @@ export default function TrainingPage() {
     setExporting(true);
     try {
       const images: { label: string; dataUrl: string }[] = [];
-
       for (const section of pdfSections) {
         if (section.ref.current) {
           try {
@@ -69,87 +79,64 @@ export default function TrainingPage() {
           }
         }
       }
-
-      await exportTrainingPDF(checkins, images);
+      await exportTrainingPDF(periodCheckins, images);
     } finally {
       setExporting(false);
     }
   };
 
-  const navigate = useNavigate();
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Dumbbell className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Training</h1>
-          <div className="flex items-center gap-1 ml-2 bg-muted rounded-lg p-1">
-            <button
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors bg-background text-foreground shadow-sm"
-            >
-              <Dumbbell className="h-3.5 w-3.5 inline mr-1" />
-              Check-ins
-            </button>
-            <button
-              onClick={() => navigate('/app/training/bodyscan')}
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <ScanLine className="h-3.5 w-3.5 inline mr-1" />
-              Body Scan
-            </button>
-            <button
-              onClick={() => navigate('/app/training/weight')}
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <Scale className="h-3.5 w-3.5 inline mr-1" />
-              Gewicht
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+    <PerformanceReportingShell
+      title="Training"
+      context="Rhythmus, Frequenz und Zeitverteilung deiner Check-ins."
+      updatedAt={latestDate}
+      sources={[{ label: 'Check-ins', count: periodCheckins.length }]}
+      actions={
+        <>
+          <Button variant="outline" size="sm" onClick={() => setGoalOpen(true)}>
+            <Target className="mr-1.5 h-3.5 w-3.5" />
+            Ziel
+          </Button>
           {checkins.length > 0 && (
-            <Button variant="outline" onClick={handleExport} disabled={exporting}>
-              {exporting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <FileDown className="mr-2 h-4 w-4" />
-              )}
-              PDF Export
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+              {exporting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileDown className="mr-1.5 h-3.5 w-3.5" />}
+              PDF
             </Button>
           )}
           <CsvUploader onImport={handleImport} isLoading={importCsv.isPending} />
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {isLoading ? (
-        <div className="text-muted-foreground text-center py-12">Lade Daten…</div>
-      ) : checkins.length === 0 ? (
-        <div className="text-center py-20 space-y-4">
-          <Dumbbell className="mx-auto h-12 w-12 text-muted-foreground/40" />
-          <p className="text-muted-foreground">Noch keine Check-in-Daten vorhanden.</p>
-          <p className="text-sm text-muted-foreground">Importiere eine CSV-Datei, um dein Training zu analysieren.</p>
-        </div>
+        <div className="rounded-2xl border border-health-hairline bg-health-surface p-10 text-center text-health-ink-muted">Lade Daten…</div>
+      ) : periodCheckins.length === 0 ? (
+        <EmptyInsightState
+          title="Keine Trainings im gewählten Zeitraum"
+          description="Wähle einen längeren Zeitraum oder importiere eine CSV-Datei mit deinen Check-ins."
+        />
       ) : (
-        <>
-          <div ref={kpiRef} className="-m-5 p-5"><TrainingKPICards checkins={checkins} /></div>
-          <div ref={heatmapRef} className="-m-5 p-5"><TimeBubbleHeatmap checkins={checkins} /></div>
-          <div ref={recordsRef} className="-m-5 p-5"><PersonalRecords checkins={checkins} /></div>
+        <div className="space-y-6">
+          <div ref={kpiRef} className="-m-5 p-5"><TrainingKPICards checkins={periodCheckins} /></div>
+          <div ref={heatmapRef} className="-m-5 p-5"><TimeBubbleHeatmap checkins={periodCheckins} /></div>
+          <div ref={recordsRef} className="-m-5 p-5"><PersonalRecords checkins={periodCheckins} /></div>
           <div ref={gridRow1Ref} className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <FrequencyTrendChart checkins={checkins} />
-            <RestDaysChart checkins={checkins} />
+            <FrequencyTrendChart checkins={periodCheckins} />
+            <RestDaysChart checkins={periodCheckins} />
           </div>
           <div ref={gridRow2Ref} className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <WeeklyVisitsChart checkins={checkins} />
-            <TimeDistributionChart checkins={checkins} />
+            <WeeklyVisitsChart checkins={periodCheckins} />
+            <TimeDistributionChart checkins={periodCheckins} />
           </div>
           <div ref={gridRow3Ref} className="-m-5 p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <WeekdayHeatmap checkins={checkins} />
-            <MonthlyComparisonChart checkins={checkins} />
+            <WeekdayHeatmap checkins={periodCheckins} />
+            <MonthlyComparisonChart checkins={periodCheckins} />
           </div>
-          <div ref={calendarRef} className="-m-5 p-5"><TrainingCalendar checkins={checkins} /></div>
-        </>
+          <div ref={calendarRef} className="-m-5 p-5"><TrainingCalendar checkins={periodCheckins} /></div>
+        </div>
       )}
-    </div>
+
+      <GoalEditorSheet open={goalOpen} onOpenChange={setGoalOpen} goal={goal} />
+    </PerformanceReportingShell>
   );
 }
+

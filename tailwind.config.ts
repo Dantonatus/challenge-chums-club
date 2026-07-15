@@ -80,8 +80,33 @@ export default {
           warning: 'hsl(var(--milestone-warning))',
           danger: 'hsl(var(--milestone-danger))',
           success: 'hsl(var(--milestone-success))'
+        },
+        health: {
+          canvas: 'hsl(var(--health-canvas))',
+          surface: 'hsl(var(--health-surface))',
+          'surface-elevated': 'hsl(var(--health-surface-elevated))',
+          ink: 'hsl(var(--health-ink))',
+          'ink-muted': 'hsl(var(--health-ink-muted))',
+          'ink-subtle': 'hsl(var(--health-ink-subtle))',
+          hairline: 'hsl(var(--health-hairline))',
+          observed: 'hsl(var(--health-observed))',
+          positive: 'hsl(var(--health-positive))',
+          muscle: 'hsl(var(--health-muscle))',
+          fat: 'hsl(var(--health-fat))',
+          forecast: 'hsl(var(--health-forecast))',
+          warning: 'hsl(var(--health-warning))',
+          danger: 'hsl(var(--health-danger))',
+          grid: 'hsl(var(--health-grid))',
         }
       },
+      fontFamily: {
+        health: ['ui-sans-serif', '-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"Segoe UI"', 'sans-serif'],
+      },
+      boxShadow: {
+        'health-soft': 'var(--health-shadow-soft)',
+        'health-hero': 'var(--health-shadow-hero)',
+      },
+
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',

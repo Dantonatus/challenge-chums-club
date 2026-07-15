@@ -1,6 +1,5 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Dumbbell, ScanLine, Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Loader2 } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Loader2, Target } from 'lucide-react';
 import { toJpeg } from 'html-to-image';
 import { Button } from '@/components/ui/button';
 import { exportWeightPDF } from '@/lib/weight/exportWeightPDF';
@@ -9,16 +8,14 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
 import { useForecastSnapshots } from '@/hooks/useForecastSnapshots';
 import { useSmartScaleEntries } from '@/hooks/useSmartScaleEntries';
+import { useHealthGoal } from '@/hooks/useHealthGoal';
 import { mergeWeightSources } from '@/lib/weight/unifiedTimeline';
-import { filterByDateRange } from '@/lib/weight/analytics';
 import { filterByTimeOfDay, type TimeSlot } from '@/lib/smartscale/analytics';
 import WeightInput from '@/components/weight/WeightInput';
 import WeightTerrainChart from '@/components/weight/WeightTerrainChart';
 import WeightKPICards from '@/components/weight/WeightKPICards';
 import WeightHeatmapStrip from '@/components/weight/WeightHeatmapStrip';
-import MonthSummaryBar from '@/components/weight/MonthSummaryBar';
 import WeightEntryList from '@/components/weight/WeightEntryList';
-import PeriodNavigator from '@/components/weight/PeriodNavigator';
 import ScaleFileUploader from '@/components/smartscale/ScaleFileUploader';
 import ScaleKPIStrip from '@/components/smartscale/ScaleKPIStrip';
 import BodyCompositionChart from '@/components/smartscale/BodyCompositionChart';
@@ -26,17 +23,23 @@ import HeartHealthChart from '@/components/smartscale/HeartHealthChart';
 import VisceralFatChart from '@/components/smartscale/VisceralFatChart';
 import MetabolismChart from '@/components/smartscale/MetabolismChart';
 import DailyComparisonCard from '@/components/smartscale/DailyComparisonCard';
+import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
+import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
+import { EmptyInsightState } from '@/components/health/EmptyInsightState';
+import { useReporting } from '@/contexts/ReportingContext';
+import { filterByPeriod, parseLocalDate } from '@/lib/health/periods';
+
 
 export default function WeightPage() {
   const { entries, isLoading, upsert, update, remove } = useWeightEntries();
   const { snapshots } = useForecastSnapshots();
   const { entries: scaleEntries, isLoading: scaleLoading, bulkImport } = useSmartScaleEntries();
-  const [periodRange, setPeriodRange] = useState<{ start: Date; end: Date } | null>(null);
+  const { goal } = useHealthGoal();
+  const { period } = useReporting();
   const [timeSlot, setTimeSlot] = useState<TimeSlot>('morning');
   const [exporting, setExporting] = useState(false);
-  const navigate = useNavigate();
+  const [goalOpen, setGoalOpen] = useState(false);
 
-  // Capture refs for PDF export
   const kpiRef = useRef<HTMLDivElement>(null);
   const entryListRef = useRef<HTMLDivElement>(null);
   const comparisonRef = useRef<HTMLDivElement>(null);
@@ -49,30 +52,27 @@ export default function WeightPage() {
   );
 
   const hasScaleData = scaleEntries.length > 0;
-  const hasHRData = scaleEntries.some(e => e.heart_rate_bpm !== null);
+  const hasHRData = scaleEntries.some((e) => e.heart_rate_bpm !== null);
 
-  // Unified weight timeline: manual + scale (respects time-of-day filter)
   const unifiedEntries = useMemo(() => {
     const merged = mergeWeightSources(entries, scaleEntries);
     if (timeSlot === 'all') return merged;
-    return merged.filter(e => {
+    return merged.filter((e) => {
       const hour = parseInt((e.time ?? '').slice(0, 2), 10);
       if (isNaN(hour)) return timeSlot === 'morning';
       if (timeSlot === 'morning') return hour < 15;
       return hour >= 15;
     });
   }, [entries, scaleEntries, timeSlot]);
-  const handlePeriodChange = useCallback((start: Date, end: Date) => {
-    setPeriodRange({ start, end });
-  }, []);
 
-  // Filter unified entries by selected period
-  const periodEntries = useMemo(() => {
-    if (!periodRange) return unifiedEntries;
-    return filterByDateRange(unifiedEntries, periodRange.start, periodRange.end);
-  }, [unifiedEntries, periodRange]);
+  const periodEntries = useMemo(
+    () => filterByPeriod(unifiedEntries, period, 'date'),
+    [unifiedEntries, period],
+  );
 
   const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
+  const latestDate = entries.length ? parseLocalDate(entries[entries.length - 1].date) : null;
+
 
   const pdfSections = [
     { label: 'KPIs', ref: kpiRef },
@@ -126,59 +126,38 @@ export default function WeightPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Dumbbell className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Training</h1>
-          <div className="flex items-center gap-1 ml-2 bg-muted rounded-lg p-1">
-            <button
-              onClick={() => navigate('/app/training')}
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <Dumbbell className="h-3.5 w-3.5 inline mr-1" />
-              Check-ins
-            </button>
-            <button
-              onClick={() => navigate('/app/training/bodyscan')}
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <ScanLine className="h-3.5 w-3.5 inline mr-1" />
-              Body Scan
-            </button>
-            <button className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors bg-background text-foreground shadow-sm">
-              <Scale className="h-3.5 w-3.5 inline mr-1" />
-              Gewicht
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+    <PerformanceReportingShell
+      title="Gewicht"
+      context="Manuelle Einträge, Smart-Scale-Daten und dein Verlauf im gewählten Zeitraum."
+      updatedAt={latestDate}
+      sources={[
+        { label: 'Manuell', count: entries.length },
+        { label: 'Smart Scale', count: scaleEntries.length },
+      ]}
+      actions={
+        <>
+          <Button variant="outline" size="sm" onClick={() => setGoalOpen(true)}>
+            <Target className="mr-1.5 h-3.5 w-3.5" />
+            Ziel
+          </Button>
           {unifiedEntries.length > 0 && (
-            <Button variant="outline" onClick={handleExport} disabled={exporting}>
-              {exporting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <FileDown className="mr-2 h-4 w-4" />
-              )}
-              PDF Export
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+              {exporting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileDown className="mr-1.5 h-3.5 w-3.5" />}
+              PDF
             </Button>
           )}
-          <ScaleFileUploader
-            onImport={(parsed) => bulkImport.mutateAsync(parsed)}
-            isLoading={bulkImport.isPending}
-          />
-        </div>
-      </div>
-
+          <ScaleFileUploader onImport={(parsed) => bulkImport.mutateAsync(parsed)} isLoading={bulkImport.isPending} />
+        </>
+      }
+    >
       {isLoading || scaleLoading ? (
-        <div className="text-muted-foreground text-center py-12">Lade Daten…</div>
+        <div className="rounded-2xl border border-health-hairline bg-health-surface p-10 text-center text-health-ink-muted">Lade Daten…</div>
       ) : (
-        <>
+        <div className="space-y-6">
           <WeightInput lastEntry={lastEntry} onSave={handleSave} isSaving={upsert.isPending} />
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <TabsList className="justify-start overflow-x-auto">
                 <TabsTrigger value="overview" className="gap-1.5 text-xs">
                   <Activity className="h-3.5 w-3.5" />
@@ -211,32 +190,27 @@ export default function WeightPage() {
               </TabsList>
 
               <ToggleGroup
-                  type="single"
-                  value={timeSlot}
-                  onValueChange={(v) => { if (v) setTimeSlot(v as TimeSlot); }}
-                  size="sm"
-                  className="bg-muted rounded-lg p-0.5"
-                >
-                  <ToggleGroupItem value="morning" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
-                    <Sun className="h-3 w-3" />
-                    Morgens
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="evening" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
-                    <Moon className="h-3 w-3" />
-                    Abends
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="all" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
-                    <Clock className="h-3 w-3" />
-                    Alle
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                type="single"
+                value={timeSlot}
+                onValueChange={(v) => { if (v) setTimeSlot(v as TimeSlot); }}
+                size="sm"
+                className="bg-muted rounded-lg p-0.5"
+              >
+                <ToggleGroupItem value="morning" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+                  <Sun className="h-3 w-3" /> Morgens
+                </ToggleGroupItem>
+                <ToggleGroupItem value="evening" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+                  <Moon className="h-3 w-3" /> Abends
+                </ToggleGroupItem>
+                <ToggleGroupItem value="all" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+                  <Clock className="h-3 w-3" /> Alle
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
 
-            {/* Tab: Übersicht */}
             <TabsContent value="overview" className="space-y-4">
-              {unifiedEntries.length > 0 && (
+              {periodEntries.length > 0 ? (
                 <>
-                  <PeriodNavigator onChange={handlePeriodChange} modes={['week', 'month', 'quarter', 'year', 'all']} />
                   <div ref={kpiRef} className="-m-5 p-5"><WeightKPICards entries={periodEntries} /></div>
                   <div ref={entryListRef} className="-m-5 p-5"><WeightEntryList
                     entries={periodEntries}
@@ -247,40 +221,37 @@ export default function WeightPage() {
                   <div ref={terrainRef} className="-m-5 p-5"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
                   <div ref={heatmapRef} className="-m-5 p-5"><WeightHeatmapStrip entries={periodEntries} /></div>
                 </>
+              ) : (
+                <EmptyInsightState title="Keine Messungen im Zeitraum" description="Wähle einen längeren Zeitraum oder trage einen neuen Wert ein." />
               )}
             </TabsContent>
 
-            {/* Tab: Körper */}
             {hasScaleData && (
               <TabsContent value="body" className="space-y-4">
                 <ScaleKPIStrip entries={filteredScaleEntries} />
                 <BodyCompositionChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
-
-            {/* Tab: Herz */}
             {hasHRData && (
               <TabsContent value="heart" className="space-y-4">
                 <HeartHealthChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
-
-            {/* Tab: Fett */}
             {hasScaleData && (
               <TabsContent value="fat" className="space-y-4">
                 <VisceralFatChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
-
-            {/* Tab: Stoffwechsel */}
             {hasScaleData && (
               <TabsContent value="metabolism" className="space-y-4">
                 <MetabolismChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
           </Tabs>
-        </>
+        </div>
       )}
-    </div>
+
+      <GoalEditorSheet open={goalOpen} onOpenChange={setGoalOpen} goal={goal} />
+    </PerformanceReportingShell>
   );
 }

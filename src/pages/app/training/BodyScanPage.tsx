@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import { useBodyScans } from '@/hooks/useBodyScans';
-import { Dumbbell, ScanLine, FileDown, Loader2, Scale, Hash, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useHealthGoal } from '@/hooks/useHealthGoal';
+import { ScanLine, FileDown, Loader2, Hash, ChevronLeft, ChevronRight, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { exportBodyScanPDF } from '@/lib/bodyscan/exportBodyScanPDF';
 import BodyScanCsvUploader from '@/components/bodyscan/BodyScanCsvUploader';
@@ -14,37 +14,27 @@ import SegmentFatChart from '@/components/bodyscan/SegmentFatChart';
 import MetabolismCard from '@/components/bodyscan/MetabolismCard';
 import ScanTimeline from '@/components/bodyscan/ScanTimeline';
 import AnatomyFigure from '@/components/bodyscan/AnatomyFigure';
-import PeriodNavigator from '@/components/weight/PeriodNavigator';
+import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
+import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
+import { EmptyInsightState } from '@/components/health/EmptyInsightState';
+import { useReporting } from '@/contexts/ReportingContext';
+import { filterByPeriod, parseLocalDate } from '@/lib/health/periods';
+
 
 export default function BodyScanPage() {
   const { scans, isLoading, importScan } = useBodyScans();
-  const navigate = useNavigate();
+  const { goal } = useHealthGoal();
+  const { period } = useReporting();
   const [exporting, setExporting] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [periodRange, setPeriodRange] = useState<{ start: Date; end: Date } | null>(null);
+  const [goalOpen, setGoalOpen] = useState(false);
 
-  const handlePeriodChange = useCallback((start: Date, end: Date) => {
-    setPeriodRange({ start, end });
-  }, []);
+  const filteredScans = useMemo(() => filterByPeriod(scans, period, 'scan_date'), [scans, period]);
 
-  // Filter scans by period
-  const filteredScans = useMemo(() => {
-    if (!periodRange) return scans;
-    return scans.filter(s => {
-      const d = new Date(s.scan_date);
-      return d >= periodRange.start && d <= periodRange.end;
-    });
-  }, [scans, periodRange]);
-
-  // Keep selectedIndex in sync with filteredScans
   useEffect(() => {
-    if (filteredScans.length > 0) {
-      setSelectedIndex(filteredScans.length - 1);
-    } else {
-      setSelectedIndex(-1);
-    }
-  }, [filteredScans.length, periodRange]);
+    setSelectedIndex(filteredScans.length > 0 ? filteredScans.length - 1 : -1);
+  }, [filteredScans.length]);
 
   const selectedScan = filteredScans[selectedIndex] ?? null;
   const previousScan = selectedIndex > 0 ? filteredScans[selectedIndex - 1] : null;
@@ -67,33 +57,24 @@ export default function BodyScanPage() {
     { label: 'Scan-Verlauf', ref: timelineRef },
   ];
 
-  const handleImport = async (scan: Parameters<typeof importScan.mutateAsync>[0]) => {
-    return importScan.mutateAsync(scan);
-  };
+  const handleImport = (scan: Parameters<typeof importScan.mutateAsync>[0]) => importScan.mutateAsync(scan);
 
   const handleExport = async () => {
     setExporting(true);
     const prevLabels = showLabels;
     try {
-      // Temporarily enable labels so charts show data values
       if (!showLabels) {
         setShowLabels(true);
-        await new Promise(r => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 400));
       }
-
       const isDark = document.documentElement.classList.contains('dark');
       const bgColor = isDark ? '#141414' : '#fcfcfa';
-
       const images: { label: string; dataUrl: string }[] = [];
       for (const section of pdfSections) {
         if (!section.ref.current) continue;
-        const dataUrl = await toPng(section.ref.current, {
-          pixelRatio: 3,
-          backgroundColor: bgColor,
-        });
+        const dataUrl = await toPng(section.ref.current, { pixelRatio: 3, backgroundColor: bgColor });
         images.push({ label: section.label, dataUrl });
       }
-
       await exportBodyScanPDF(filteredScans, images);
     } finally {
       setShowLabels(prevLabels);
@@ -106,43 +87,27 @@ export default function BodyScanPage() {
     return `${d}.${m}.${y}`;
   };
 
+  const latestScanDate = scans.length ? parseLocalDate(scans[scans.length - 1].scan_date) : null;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Dumbbell className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Training</h1>
-          <div className="flex items-center gap-1 ml-2 bg-muted rounded-lg p-1">
-            <button
-              onClick={() => navigate('/app/training')}
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <Dumbbell className="h-3.5 w-3.5 inline mr-1" />
-              Check-ins
-            </button>
-            <button
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors bg-background text-foreground shadow-sm"
-            >
-              <ScanLine className="h-3.5 w-3.5 inline mr-1" />
-              Body Scan
-            </button>
-            <button
-              onClick={() => navigate('/app/training/weight')}
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <Scale className="h-3.5 w-3.5 inline mr-1" />
-              Gewicht
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+    <PerformanceReportingShell
+      title="Körper"
+      context="Zusammensetzung, Segmente und Stoffwechsel aus deinen TANITA-Scans."
+      updatedAt={latestScanDate}
+      sources={[{ label: 'Scans', count: filteredScans.length }]}
+      actions={
+        <>
+          <Button variant="outline" size="sm" onClick={() => setGoalOpen(true)}>
+            <Target className="mr-1.5 h-3.5 w-3.5" />
+            Ziel
+          </Button>
           {scans.length > 0 && (
             <>
               <Button
-                variant={showLabels ? "default" : "outline"}
+                variant={showLabels ? 'default' : 'outline'}
                 size="icon"
                 className="h-9 w-9"
-                onClick={() => setShowLabels(v => !v)}
+                onClick={() => setShowLabels((v) => !v)}
                 title="Datenwerte anzeigen"
               >
                 <Hash className="h-4 w-4" />
@@ -154,56 +119,33 @@ export default function BodyScanPage() {
             </>
           )}
           <BodyScanCsvUploader onImport={handleImport} isLoading={importScan.isPending} />
-        </div>
-      </div>
-
-      {/* Period Navigator */}
-      {scans.length > 0 && (
-        <PeriodNavigator onChange={handlePeriodChange} modes={['month', 'last3m', 'last6m', 'year', 'all']} defaultMode="last3m" />
-      )}
-
-      {/* Scan Navigator */}
-      {filteredScans.length > 1 && selectedScan && (
-        <div className="flex items-center justify-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            disabled={selectedIndex <= 0}
-            onClick={() => setSelectedIndex(i => i - 1)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="text-center min-w-[200px]">
-            <div className="text-sm font-semibold">
-              {formatDate(selectedScan.scan_date)} — {selectedScan.device}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {selectedIndex + 1} von {filteredScans.length}
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            disabled={selectedIndex >= filteredScans.length - 1}
-            onClick={() => setSelectedIndex(i => i + 1)}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-
+        </>
+      }
+    >
       {isLoading ? (
-        <div className="text-muted-foreground text-center py-12">Lade Daten…</div>
-      ) : scans.length === 0 ? (
-        <div className="text-center py-20 space-y-4">
-          <ScanLine className="mx-auto h-12 w-12 text-muted-foreground/40" />
-          <p className="text-muted-foreground">Noch keine Body-Scan-Daten vorhanden.</p>
-          <p className="text-sm text-muted-foreground">Importiere eine oder mehrere TANITA CSV-Dateien.</p>
-        </div>
+        <div className="rounded-2xl border border-health-hairline bg-health-surface p-10 text-center text-health-ink-muted">Lade Daten…</div>
+      ) : filteredScans.length === 0 ? (
+        <EmptyInsightState
+          icon={<ScanLine className="h-5 w-5" />}
+          title={scans.length === 0 ? 'Noch keine Body-Scan-Daten' : 'Keine Scans im gewählten Zeitraum'}
+          description="Importiere TANITA CSV-Dateien oder wähle einen längeren Zeitraum."
+        />
       ) : (
-        <>
+        <div className="space-y-6">
+          {filteredScans.length > 1 && selectedScan && (
+            <div className="flex items-center justify-center gap-3">
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={selectedIndex <= 0} onClick={() => setSelectedIndex((i) => i - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="min-w-[200px] text-center">
+                <div className="text-sm font-semibold">{formatDate(selectedScan.scan_date)} — {selectedScan.device}</div>
+                <div className="text-xs text-health-ink-muted">{selectedIndex + 1} von {filteredScans.length}</div>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={selectedIndex >= filteredScans.length - 1} onClick={() => setSelectedIndex((i) => i + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
           <div className="-m-5 p-5" ref={kpiRef}><BodyScanKPICards scans={filteredScans} selectedScan={selectedScan} /></div>
           <div className="-m-5 p-5" ref={compositionRef}><CompositionTrendChart scans={filteredScans} showLabels={showLabels} /></div>
           <div className="-m-5 p-5" ref={fatMuscleRef}><FatMuscleAreaChart scans={filteredScans} showLabels={showLabels} /></div>
@@ -214,8 +156,11 @@ export default function BodyScanPage() {
           <div className="-m-5 p-5" ref={anatomyRef}><AnatomyFigure scans={filteredScans} selectedScan={selectedScan} previousScan={previousScan} /></div>
           <div className="-m-5 p-5" ref={metabolismRef}><MetabolismCard scans={filteredScans} selectedScan={selectedScan} /></div>
           <div className="-m-5 p-5" ref={timelineRef}><ScanTimeline scans={filteredScans} selectedIndex={selectedIndex} onSelectIndex={setSelectedIndex} /></div>
-        </>
+        </div>
       )}
-    </div>
+
+      <GoalEditorSheet open={goalOpen} onOpenChange={setGoalOpen} goal={goal} />
+    </PerformanceReportingShell>
   );
 }
+

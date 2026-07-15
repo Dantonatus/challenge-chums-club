@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -45,9 +45,12 @@ import ImportPage from "./pages/Import";
 import TrainingPage from "./pages/app/training/TrainingPage";
 import BodyScanPage from "./pages/app/training/BodyScanPage";
 import WeightPage from "./pages/app/training/WeightPage";
+import TrainingOverviewPage from "./pages/app/training/OverviewPage";
+import { ReportingProvider } from "./contexts/ReportingContext";
 import LearningPage from "./pages/app/learning/LearningPage";
 import FavoritesPage from "./pages/app/favorites/FavoritesPage";
 import DreamJournalPage from "./pages/app/dreams/DreamJournalPage";
+
 
 const queryClient = new QueryClient();
 
@@ -105,10 +108,14 @@ const App = () => (
               <Route path="planning" element={<PlanningPage />} />
               {/* Feedback */}
               <Route path="feedback" element={<FeedbackPage />} />
-              {/* Training */}
-              <Route path="training" element={<TrainingPage />} />
-              <Route path="training/bodyscan" element={<BodyScanPage />} />
-              <Route path="training/weight" element={<WeightPage />} />
+              {/* Training – Performance Intelligence Reporting Shell */}
+              <Route path="training" element={<ReportingProvider><Outlet/></ReportingProvider>}>
+                <Route index element={<TrainingPage />} />
+                <Route path="overview" element={<TrainingOverviewPage />} />
+                <Route path="bodyscan" element={<BodyScanPage />} />
+                <Route path="weight" element={<WeightPage />} />
+              </Route>
+
               {/* Learning */}
               <Route path="learning" element={<LearningPage />} />
               {/* Favorites */}

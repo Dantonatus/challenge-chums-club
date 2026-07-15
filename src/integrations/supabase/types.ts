@@ -657,6 +657,48 @@ export type Database = {
         }
         Relationships: []
       }
+      health_goals: {
+        Row: {
+          created_at: string
+          goal_mode: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          target_body_fat_percent: number | null
+          target_date: string | null
+          target_weight_kg: number | null
+          updated_at: string
+          user_id: string
+          weekly_training_target: number | null
+        }
+        Insert: {
+          created_at?: string
+          goal_mode: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          target_body_fat_percent?: number | null
+          target_date?: string | null
+          target_weight_kg?: number | null
+          updated_at?: string
+          user_id: string
+          weekly_training_target?: number | null
+        }
+        Update: {
+          created_at?: string
+          goal_mode?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          target_body_fat_percent?: number | null
+          target_date?: string | null
+          target_weight_kg?: number | null
+          updated_at?: string
+          user_id?: string
+          weekly_training_target?: number | null
+        }
+        Relationships: []
+      }
       idea_comments: {
         Row: {
           content: string
