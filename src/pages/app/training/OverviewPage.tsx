@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FileDown, Target } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
 import { ExecutiveBrief } from '@/components/health/ExecutiveBrief';
