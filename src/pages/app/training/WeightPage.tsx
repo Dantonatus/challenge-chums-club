@@ -126,59 +126,38 @@ export default function WeightPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Dumbbell className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Training</h1>
-          <div className="flex items-center gap-1 ml-2 bg-muted rounded-lg p-1">
-            <button
-              onClick={() => navigate('/app/training')}
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <Dumbbell className="h-3.5 w-3.5 inline mr-1" />
-              Check-ins
-            </button>
-            <button
-              onClick={() => navigate('/app/training/bodyscan')}
-              className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <ScanLine className="h-3.5 w-3.5 inline mr-1" />
-              Body Scan
-            </button>
-            <button className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors bg-background text-foreground shadow-sm">
-              <Scale className="h-3.5 w-3.5 inline mr-1" />
-              Gewicht
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+    <PerformanceReportingShell
+      title="Gewicht"
+      context="Manuelle Einträge, Smart-Scale-Daten und dein Verlauf im gewählten Zeitraum."
+      updatedAt={latestDate}
+      sources={[
+        { label: 'Manuell', count: entries.length },
+        { label: 'Smart Scale', count: scaleEntries.length },
+      ]}
+      actions={
+        <>
+          <Button variant="outline" size="sm" onClick={() => setGoalOpen(true)}>
+            <Target className="mr-1.5 h-3.5 w-3.5" />
+            Ziel
+          </Button>
           {unifiedEntries.length > 0 && (
-            <Button variant="outline" onClick={handleExport} disabled={exporting}>
-              {exporting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <FileDown className="mr-2 h-4 w-4" />
-              )}
-              PDF Export
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+              {exporting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileDown className="mr-1.5 h-3.5 w-3.5" />}
+              PDF
             </Button>
           )}
-          <ScaleFileUploader
-            onImport={(parsed) => bulkImport.mutateAsync(parsed)}
-            isLoading={bulkImport.isPending}
-          />
-        </div>
-      </div>
-
+          <ScaleFileUploader onImport={(parsed) => bulkImport.mutateAsync(parsed)} isLoading={bulkImport.isPending} />
+        </>
+      }
+    >
       {isLoading || scaleLoading ? (
-        <div className="text-muted-foreground text-center py-12">Lade Daten…</div>
+        <div className="rounded-2xl border border-health-hairline bg-health-surface p-10 text-center text-health-ink-muted">Lade Daten…</div>
       ) : (
-        <>
+        <div className="space-y-6">
           <WeightInput lastEntry={lastEntry} onSave={handleSave} isSaving={upsert.isPending} />
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <TabsList className="justify-start overflow-x-auto">
                 <TabsTrigger value="overview" className="gap-1.5 text-xs">
                   <Activity className="h-3.5 w-3.5" />
@@ -211,32 +190,27 @@ export default function WeightPage() {
               </TabsList>
 
               <ToggleGroup
-                  type="single"
-                  value={timeSlot}
-                  onValueChange={(v) => { if (v) setTimeSlot(v as TimeSlot); }}
-                  size="sm"
-                  className="bg-muted rounded-lg p-0.5"
-                >
-                  <ToggleGroupItem value="morning" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
-                    <Sun className="h-3 w-3" />
-                    Morgens
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="evening" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
-                    <Moon className="h-3 w-3" />
-                    Abends
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="all" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
-                    <Clock className="h-3 w-3" />
-                    Alle
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                type="single"
+                value={timeSlot}
+                onValueChange={(v) => { if (v) setTimeSlot(v as TimeSlot); }}
+                size="sm"
+                className="bg-muted rounded-lg p-0.5"
+              >
+                <ToggleGroupItem value="morning" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+                  <Sun className="h-3 w-3" /> Morgens
+                </ToggleGroupItem>
+                <ToggleGroupItem value="evening" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+                  <Moon className="h-3 w-3" /> Abends
+                </ToggleGroupItem>
+                <ToggleGroupItem value="all" className="gap-1 text-xs px-2.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md">
+                  <Clock className="h-3 w-3" /> Alle
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
 
-            {/* Tab: Übersicht */}
             <TabsContent value="overview" className="space-y-4">
-              {unifiedEntries.length > 0 && (
+              {periodEntries.length > 0 ? (
                 <>
-                  <PeriodNavigator onChange={handlePeriodChange} modes={['week', 'month', 'quarter', 'year', 'all']} />
                   <div ref={kpiRef} className="-m-5 p-5"><WeightKPICards entries={periodEntries} /></div>
                   <div ref={entryListRef} className="-m-5 p-5"><WeightEntryList
                     entries={periodEntries}
@@ -247,40 +221,37 @@ export default function WeightPage() {
                   <div ref={terrainRef} className="-m-5 p-5"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
                   <div ref={heatmapRef} className="-m-5 p-5"><WeightHeatmapStrip entries={periodEntries} /></div>
                 </>
+              ) : (
+                <EmptyInsightState title="Keine Messungen im Zeitraum" description="Wähle einen längeren Zeitraum oder trage einen neuen Wert ein." />
               )}
             </TabsContent>
 
-            {/* Tab: Körper */}
             {hasScaleData && (
               <TabsContent value="body" className="space-y-4">
                 <ScaleKPIStrip entries={filteredScaleEntries} />
                 <BodyCompositionChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
-
-            {/* Tab: Herz */}
             {hasHRData && (
               <TabsContent value="heart" className="space-y-4">
                 <HeartHealthChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
-
-            {/* Tab: Fett */}
             {hasScaleData && (
               <TabsContent value="fat" className="space-y-4">
                 <VisceralFatChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
-
-            {/* Tab: Stoffwechsel */}
             {hasScaleData && (
               <TabsContent value="metabolism" className="space-y-4">
                 <MetabolismChart entries={filteredScaleEntries} />
               </TabsContent>
             )}
           </Tabs>
-        </>
+        </div>
       )}
-    </div>
+
+      <GoalEditorSheet open={goalOpen} onOpenChange={setGoalOpen} goal={goal} />
+    </PerformanceReportingShell>
   );
 }
