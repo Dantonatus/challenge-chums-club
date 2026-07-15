@@ -37,14 +37,9 @@ export default function WeightPage() {
   const { goal } = useHealthGoal();
   const { period } = useReporting();
   const [timeSlot, setTimeSlot] = useState<TimeSlot>('morning');
-  const [exporting, setExporting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
 
-  const kpiRef = useRef<HTMLDivElement>(null);
-  const entryListRef = useRef<HTMLDivElement>(null);
-  const comparisonRef = useRef<HTMLDivElement>(null);
-  const terrainRef = useRef<HTMLDivElement>(null);
-  const heatmapRef = useRef<HTMLDivElement>(null);
 
   const filteredScaleEntries = useMemo(
     () => filterByTimeOfDay(scaleEntries, timeSlot),
