@@ -48,10 +48,10 @@ export default function TrainingPage() {
   const { checkins, isLoading, importCsv } = useTrainingCheckins();
   const { goal } = useHealthGoal();
   const { period, now } = useReporting();
-  const [exporting, setExporting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
 
-  const captureRef = useRef<HTMLDivElement>(null);
+
 
   const periodCheckins = useMemo(
     () => filterByPeriod(checkins, period, 'checkin_date'),
