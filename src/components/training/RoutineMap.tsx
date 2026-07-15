@@ -173,10 +173,30 @@ export function RoutineMap({ checkins }: Props) {
               onMouseLeave={() => setHover(null)}
             >
               <defs>
-                <filter id="routine-bubble-glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
+                <radialGradient id="routine-bubble-fill" cx="35%" cy="30%" r="75%">
+                  <stop offset="0%" stopColor="hsl(var(--health-observed))" stopOpacity="1" />
+                  <stop offset="55%" stopColor="hsl(var(--health-observed))" stopOpacity="0.85" />
+                  <stop offset="100%" stopColor="hsl(var(--health-observed))" stopOpacity="0.55" />
+                </radialGradient>
+                <radialGradient id="routine-bubble-highlight" cx="32%" cy="26%" r="28%">
+                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.75" />
+                  <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                </radialGradient>
+                <filter id="routine-bubble-glow" x="-80%" y="-80%" width="260%" height="260%">
+                  <feGaussianBlur stdDeviation="5" result="blur" />
                   <feMerge>
                     <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <filter id="routine-bubble-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+                  <feOffset dx="0" dy="1.5" result="offsetblur" />
+                  <feComponentTransfer>
+                    <feFuncA type="linear" slope="0.35" />
+                  </feComponentTransfer>
+                  <feMerge>
+                    <feMergeNode />
                     <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
