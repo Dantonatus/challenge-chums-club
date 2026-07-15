@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { toPng } from 'html-to-image';
+import { useEffect, useMemo, useState } from 'react';
 import { useBodyScans } from '@/hooks/useBodyScans';
 import { useHealthGoal } from '@/hooks/useHealthGoal';
-import { ScanLine, FileDown, Loader2, Target, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ScanLine, FileDown, Target, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { exportBodyScanPDF } from '@/lib/bodyscan/exportBodyScanPDF';
+import { ReportPreviewDialog } from '@/components/reporting/ReportPreviewDialog';
+import { buildBodyScanReportModel } from '@/lib/reporting/buildBodyScanReportModel';
 import BodyScanCsvUploader from '@/components/bodyscan/BodyScanCsvUploader';
 import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
 import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
