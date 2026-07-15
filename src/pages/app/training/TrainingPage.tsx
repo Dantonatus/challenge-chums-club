@@ -185,21 +185,19 @@ export default function TrainingPage() {
   const handleImport = async (rows: Parameters<typeof importCsv.mutateAsync>[0]) =>
     importCsv.mutateAsync(rows);
 
-  const handleExport = async () => {
-    if (!captureRef.current) return;
-    setExporting(true);
-    try {
-      const isDark = document.documentElement.classList.contains('dark');
-      const dataUrl = await toJpeg(captureRef.current, {
-        pixelRatio: 2,
-        quality: 0.92,
-        backgroundColor: isDark ? '#141414' : '#fcfcfc',
-      });
-      await exportTrainingPDF(periodCheckins, [{ label: 'Trainingskonsistenz', dataUrl }]);
-    } finally {
-      setExporting(false);
-    }
-  };
+  const reportModel = useMemo(
+    () => reportOpen
+      ? buildTrainingReportModel({
+          checkins,
+          periodCheckins,
+          period,
+          now,
+          goal,
+          updatedAt: latestDate,
+        })
+      : null,
+    [reportOpen, checkins, periodCheckins, period, now, goal, latestDate],
+  );
 
   return (
     <PerformanceReportingShell
@@ -214,13 +212,9 @@ export default function TrainingPage() {
             Ziel
           </Button>
           {checkins.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-              {exporting ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <FileDown className="mr-1.5 h-3.5 w-3.5" />
-              )}
-              PDF
+            <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
+              <FileDown className="mr-1.5 h-3.5 w-3.5" />
+              Report
             </Button>
           )}
           <CsvUploader onImport={handleImport} isLoading={importCsv.isPending} />
