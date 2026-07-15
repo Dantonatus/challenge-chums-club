@@ -108,10 +108,14 @@ const App = () => (
               <Route path="planning" element={<PlanningPage />} />
               {/* Feedback */}
               <Route path="feedback" element={<FeedbackPage />} />
-              {/* Training */}
-              <Route path="training" element={<TrainingPage />} />
-              <Route path="training/bodyscan" element={<BodyScanPage />} />
-              <Route path="training/weight" element={<WeightPage />} />
+              {/* Training – Performance Intelligence Reporting Shell */}
+              <Route path="training" element={<ReportingProvider><Outlet/></ReportingProvider>}>
+                <Route index element={<TrainingPage />} />
+                <Route path="overview" element={<TrainingOverviewPage />} />
+                <Route path="bodyscan" element={<BodyScanPage />} />
+                <Route path="weight" element={<WeightPage />} />
+              </Route>
+
               {/* Learning */}
               <Route path="learning" element={<LearningPage />} />
               {/* Favorites */}
