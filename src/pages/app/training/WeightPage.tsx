@@ -174,15 +174,15 @@ export default function WeightPage() {
             <TabsContent value="overview" className="space-y-4">
               {periodEntries.length > 0 ? (
                 <>
-                  <div ref={kpiRef} className="-m-5 p-5"><WeightKPICards entries={periodEntries} /></div>
-                  <div ref={entryListRef} className="-m-5 p-5"><WeightEntryList
+                  <WeightKPICards entries={periodEntries} />
+                  <WeightEntryList
                     entries={periodEntries}
                     onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
                     onDelete={(id) => remove.mutate({ id })}
-                  /></div>
-                  {hasScaleData && <div ref={comparisonRef} className="-m-5 p-5"><DailyComparisonCard entries={filteredScaleEntries} /></div>}
-                  <div ref={terrainRef} className="-m-5 p-5"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
-                  <div ref={heatmapRef} className="-m-5 p-5"><WeightHeatmapStrip entries={periodEntries} /></div>
+                  />
+                  {hasScaleData && <DailyComparisonCard entries={filteredScaleEntries} />}
+                  <WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} />
+                  <WeightHeatmapStrip entries={periodEntries} />
                 </>
               ) : (
                 <EmptyInsightState title="Keine Messungen im Zeitraum" description="Wähle einen längeren Zeitraum oder trage einen neuen Wert ein." />
