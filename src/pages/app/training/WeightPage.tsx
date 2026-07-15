@@ -1,8 +1,8 @@
-import { useState, useMemo, useRef } from 'react';
-import { Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Loader2, Target } from 'lucide-react';
-import { toJpeg } from 'html-to-image';
+import { useState, useMemo } from 'react';
+import { Scale, Heart, Droplets, Flame, Activity, Sun, Moon, Clock, FileDown, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { exportWeightPDF } from '@/lib/weight/exportWeightPDF';
+import { ReportPreviewDialog } from '@/components/reporting/ReportPreviewDialog';
+import { buildWeightReportModel } from '@/lib/reporting/buildWeightReportModel';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useWeightEntries } from '@/hooks/useWeightEntries';
@@ -37,14 +37,9 @@ export default function WeightPage() {
   const { goal } = useHealthGoal();
   const { period } = useReporting();
   const [timeSlot, setTimeSlot] = useState<TimeSlot>('morning');
-  const [exporting, setExporting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
 
-  const kpiRef = useRef<HTMLDivElement>(null);
-  const entryListRef = useRef<HTMLDivElement>(null);
-  const comparisonRef = useRef<HTMLDivElement>(null);
-  const terrainRef = useRef<HTMLDivElement>(null);
-  const heatmapRef = useRef<HTMLDivElement>(null);
 
   const filteredScaleEntries = useMemo(
     () => filterByTimeOfDay(scaleEntries, timeSlot),
@@ -74,56 +69,24 @@ export default function WeightPage() {
   const latestDate = entries.length ? parseLocalDate(entries[entries.length - 1].date) : null;
 
 
-  const pdfSections = [
-    { label: 'KPIs', ref: kpiRef },
-    { label: 'Einträge', ref: entryListRef },
-    { label: 'Tagesvergleich', ref: comparisonRef },
-    { label: 'Gewichtsverlauf', ref: terrainRef },
-    { label: 'Heatmap', ref: heatmapRef },
-  ];
-
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      // Temporarily expand scroll containers for full capture
-      const scrollDiv = entryListRef.current?.querySelector('.overflow-y-auto') as HTMLElement | null;
-      if (scrollDiv) {
-        scrollDiv.style.maxHeight = 'none';
-        scrollDiv.style.overflow = 'visible';
-      }
-
-      const images: { label: string; dataUrl: string }[] = [];
-      for (const section of pdfSections) {
-        if (section.ref.current) {
-          try {
-            const isDark = document.documentElement.classList.contains('dark');
-            const dataUrl = await toJpeg(section.ref.current, {
-              pixelRatio: 2,
-              quality: 0.92,
-              backgroundColor: isDark ? '#141414' : '#fcfcfc',
-            });
-            images.push({ label: section.label, dataUrl });
-          } catch (err) {
-            console.warn(`Failed to capture ${section.label}:`, err);
-          }
-        }
-      }
-
-      // Restore scroll constraints
-      if (scrollDiv) {
-        scrollDiv.style.maxHeight = '';
-        scrollDiv.style.overflow = '';
-      }
-
-      await exportWeightPDF(images);
-    } finally {
-      setExporting(false);
-    }
-  };
+  const reportModel = useMemo(
+    () => reportOpen
+      ? buildWeightReportModel({
+          entries: periodEntries,
+          allEntries: unifiedEntries,
+          hasScaleContext: hasScaleData,
+          goal,
+          period,
+          updatedAt: latestDate,
+        })
+      : null,
+    [reportOpen, periodEntries, unifiedEntries, hasScaleData, goal, period, latestDate],
+  );
 
   const handleSave = async (data: { date: string; time: string; weight_kg: number }) => {
     await upsert.mutateAsync(data);
   };
+
 
   return (
     <PerformanceReportingShell
@@ -141,9 +104,9 @@ export default function WeightPage() {
             Ziel
           </Button>
           {unifiedEntries.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-              {exporting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileDown className="mr-1.5 h-3.5 w-3.5" />}
-              PDF
+            <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
+              <FileDown className="mr-1.5 h-3.5 w-3.5" />
+              Report
             </Button>
           )}
           <ScaleFileUploader onImport={(parsed) => bulkImport.mutateAsync(parsed)} isLoading={bulkImport.isPending} />
@@ -211,15 +174,15 @@ export default function WeightPage() {
             <TabsContent value="overview" className="space-y-4">
               {periodEntries.length > 0 ? (
                 <>
-                  <div ref={kpiRef} className="-m-5 p-5"><WeightKPICards entries={periodEntries} /></div>
-                  <div ref={entryListRef} className="-m-5 p-5"><WeightEntryList
+                  <WeightKPICards entries={periodEntries} />
+                  <WeightEntryList
                     entries={periodEntries}
                     onUpdate={(id, weight_kg) => update.mutate({ id, weight_kg })}
                     onDelete={(id) => remove.mutate({ id })}
-                  /></div>
-                  {hasScaleData && <div ref={comparisonRef} className="-m-5 p-5"><DailyComparisonCard entries={filteredScaleEntries} /></div>}
-                  <div ref={terrainRef} className="-m-5 p-5"><WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} /></div>
-                  <div ref={heatmapRef} className="-m-5 p-5"><WeightHeatmapStrip entries={periodEntries} /></div>
+                  />
+                  {hasScaleData && <DailyComparisonCard entries={filteredScaleEntries} />}
+                  <WeightTerrainChart entries={periodEntries} selectedMonth={null} snapshots={snapshots} />
+                  <WeightHeatmapStrip entries={periodEntries} />
                 </>
               ) : (
                 <EmptyInsightState title="Keine Messungen im Zeitraum" description="Wähle einen längeren Zeitraum oder trage einen neuen Wert ein." />
@@ -252,6 +215,7 @@ export default function WeightPage() {
       )}
 
       <GoalEditorSheet open={goalOpen} onOpenChange={setGoalOpen} goal={goal} />
+      <ReportPreviewDialog open={reportOpen} onOpenChange={setReportOpen} model={reportModel} />
     </PerformanceReportingShell>
   );
 }

@@ -1,11 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
-import { FileDown, Loader2, Target } from 'lucide-react';
-import { toJpeg } from 'html-to-image';
+import { useMemo, useState } from 'react';
+import { FileDown, Target } from 'lucide-react';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
 import { useHealthGoal } from '@/hooks/useHealthGoal';
 import CsvUploader from '@/components/training/CsvUploader';
 import { Button } from '@/components/ui/button';
-import { exportTrainingPDF } from '@/lib/training/exportTrainingPDF';
 import PersonalRecords from '@/components/training/PersonalRecords';
 import WeekdayHeatmap from '@/components/training/WeekdayHeatmap';
 import MonthlyComparisonChart from '@/components/training/MonthlyComparisonChart';
@@ -13,6 +11,8 @@ import TrainingCalendar from '@/components/training/TrainingCalendar';
 import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
 import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
 import { EmptyInsightState } from '@/components/health/EmptyInsightState';
+import { ReportPreviewDialog } from '@/components/reporting/ReportPreviewDialog';
+import { buildTrainingReportModel } from '@/lib/reporting/buildTrainingReportModel';
 import { useReporting } from '@/contexts/ReportingContext';
 import { filterByPeriod, parseLocalDate, resolveReferenceDate } from '@/lib/health/periods';
 import {
@@ -48,10 +48,10 @@ export default function TrainingPage() {
   const { checkins, isLoading, importCsv } = useTrainingCheckins();
   const { goal } = useHealthGoal();
   const { period, now } = useReporting();
-  const [exporting, setExporting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
 
-  const captureRef = useRef<HTMLDivElement>(null);
+
 
   const periodCheckins = useMemo(
     () => filterByPeriod(checkins, period, 'checkin_date'),
@@ -185,21 +185,19 @@ export default function TrainingPage() {
   const handleImport = async (rows: Parameters<typeof importCsv.mutateAsync>[0]) =>
     importCsv.mutateAsync(rows);
 
-  const handleExport = async () => {
-    if (!captureRef.current) return;
-    setExporting(true);
-    try {
-      const isDark = document.documentElement.classList.contains('dark');
-      const dataUrl = await toJpeg(captureRef.current, {
-        pixelRatio: 2,
-        quality: 0.92,
-        backgroundColor: isDark ? '#141414' : '#fcfcfc',
-      });
-      await exportTrainingPDF(periodCheckins, [{ label: 'Trainingskonsistenz', dataUrl }]);
-    } finally {
-      setExporting(false);
-    }
-  };
+  const reportModel = useMemo(
+    () => reportOpen
+      ? buildTrainingReportModel({
+          checkins,
+          periodCheckins,
+          period,
+          now,
+          goal,
+          updatedAt: latestDate,
+        })
+      : null,
+    [reportOpen, checkins, periodCheckins, period, now, goal, latestDate],
+  );
 
   return (
     <PerformanceReportingShell
@@ -214,13 +212,9 @@ export default function TrainingPage() {
             Ziel
           </Button>
           {checkins.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-              {exporting ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <FileDown className="mr-1.5 h-3.5 w-3.5" />
-              )}
-              PDF
+            <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
+              <FileDown className="mr-1.5 h-3.5 w-3.5" />
+              Report
             </Button>
           )}
           <CsvUploader onImport={handleImport} isLoading={importCsv.isPending} />
@@ -240,7 +234,7 @@ export default function TrainingPage() {
           />
         </div>
       ) : (
-        <div ref={captureRef} className="-m-5 space-y-6 p-5">
+        <div className="-m-5 space-y-6 p-5">
           <TrainingBrief brief={brief} />
 
           <ConsistencyHero
@@ -281,6 +275,7 @@ export default function TrainingPage() {
       )}
 
       <GoalEditorSheet open={goalOpen} onOpenChange={setGoalOpen} goal={goal} />
+      <ReportPreviewDialog open={reportOpen} onOpenChange={setReportOpen} model={reportModel} />
     </PerformanceReportingShell>
   );
 }

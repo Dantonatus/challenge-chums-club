@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { toPng } from 'html-to-image';
+import { useEffect, useMemo, useState } from 'react';
 import { useBodyScans } from '@/hooks/useBodyScans';
 import { useHealthGoal } from '@/hooks/useHealthGoal';
-import { ScanLine, FileDown, Loader2, Target, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ScanLine, FileDown, Target, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { exportBodyScanPDF } from '@/lib/bodyscan/exportBodyScanPDF';
+import { ReportPreviewDialog } from '@/components/reporting/ReportPreviewDialog';
+import { buildBodyScanReportModel } from '@/lib/reporting/buildBodyScanReportModel';
 import BodyScanCsvUploader from '@/components/bodyscan/BodyScanCsvUploader';
 import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
 import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
@@ -31,7 +31,7 @@ export default function BodyScanPage() {
   const { scans, isLoading, importScan } = useBodyScans();
   const { goal } = useHealthGoal();
   const { period } = useReporting();
-  const [exporting, setExporting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
 
   const filteredScans = useMemo(
@@ -81,29 +81,27 @@ export default function BodyScanPage() {
     [filteredScans, baselineScan],
   );
 
-  const captureRef = useRef<HTMLDivElement>(null);
-
   const handleImport = (scan: Parameters<typeof importScan.mutateAsync>[0]) =>
     importScan.mutateAsync(scan);
-
-  const handleExport = async () => {
-    if (!captureRef.current) return;
-    setExporting(true);
-    try {
-      const isDark = document.documentElement.classList.contains('dark');
-      const dataUrl = await toPng(captureRef.current, {
-        pixelRatio: 2,
-        backgroundColor: isDark ? '#141414' : '#fcfcfa',
-      });
-      await exportBodyScanPDF(filteredScans, [{ label: 'Recomposition Intelligence', dataUrl }]);
-    } finally {
-      setExporting(false);
-    }
-  };
 
   const latestScanDate = scans.length
     ? parseLocalDate(scans[scans.length - 1].scan_date)
     : null;
+
+  const reportModel = useMemo(
+    () => reportOpen
+      ? buildBodyScanReportModel({
+          scans,
+          filteredScans,
+          currentScan,
+          baselineScan,
+          goal,
+          period,
+          updatedAt: latestScanDate,
+        })
+      : null,
+    [reportOpen, scans, filteredScans, currentScan, baselineScan, goal, period, latestScanDate],
+  );
 
   return (
     <PerformanceReportingShell
@@ -118,9 +116,9 @@ export default function BodyScanPage() {
             Ziel
           </Button>
           {scans.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-              {exporting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileDown className="mr-1.5 h-3.5 w-3.5" />}
-              PDF
+            <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
+              <FileDown className="mr-1.5 h-3.5 w-3.5" />
+              Report
             </Button>
           )}
           <BodyScanCsvUploader onImport={handleImport} isLoading={importScan.isPending} />
@@ -138,7 +136,7 @@ export default function BodyScanPage() {
           description="Importiere TANITA CSV-Dateien oder wähle einen längeren Zeitraum."
         />
       ) : (
-        <div ref={captureRef} className="-m-5 space-y-6 p-5">
+        <div className="-m-5 space-y-6 p-5">
           {/* Header: Baseline + Scan-Navigation */}
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-health-hairline bg-health-surface p-4">
             <BaselineSelector
@@ -230,6 +228,7 @@ export default function BodyScanPage() {
       )}
 
       <GoalEditorSheet open={goalOpen} onOpenChange={setGoalOpen} goal={goal} />
+      <ReportPreviewDialog open={reportOpen} onOpenChange={setReportOpen} model={reportModel} />
     </PerformanceReportingShell>
   );
 }
