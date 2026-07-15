@@ -45,9 +45,12 @@ import ImportPage from "./pages/Import";
 import TrainingPage from "./pages/app/training/TrainingPage";
 import BodyScanPage from "./pages/app/training/BodyScanPage";
 import WeightPage from "./pages/app/training/WeightPage";
+import TrainingOverviewPage from "./pages/app/training/OverviewPage";
+import { ReportingProvider } from "./contexts/ReportingContext";
 import LearningPage from "./pages/app/learning/LearningPage";
 import FavoritesPage from "./pages/app/favorites/FavoritesPage";
 import DreamJournalPage from "./pages/app/dreams/DreamJournalPage";
+
 
 const queryClient = new QueryClient();
 
