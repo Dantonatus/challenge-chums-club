@@ -72,7 +72,6 @@ export function hexToRgb(hex: string): [number, number, number] {
 export function sanitizePdfText(input: string): string {
   return input
     .replace(/Δ/g, 'd.')
-    .replace(/Ø/g, 'O')
     .replace(/[·•]/g, '-')
     .replace(/→/g, '->')
     .replace(/←/g, '<-')
