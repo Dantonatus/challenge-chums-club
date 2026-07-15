@@ -42,28 +42,56 @@ export default function TrainingOverviewPage() {
     return dates.length ? new Date(Math.max(...dates)) : null;
   }, [checkins, scans, weights, smartScale]);
 
-  const periodCheckins = filterByPeriod(checkins, period, 'checkin_date');
-  const periodScans = filterByPeriod(scans, period, 'scan_date');
-  const periodWeights = filterByPeriod(weights, period, 'date');
+  // Alle Ableitungen strikt aus dem Zeitraum – kein globaler Fallback,
+  // sonst wirken KPI-Karten „eingefroren", wenn der neue Zeitraum leer ist.
+  const periodCheckins = useMemo(() => filterByPeriod(checkins, period, 'checkin_date'), [checkins, period]);
+  const periodScans = useMemo(() => filterByPeriod(scans, period, 'scan_date'), [scans, period]);
+  const periodWeights = useMemo(() => filterByPeriod(weights, period, 'date'), [weights, period]);
+  const periodSmart = useMemo(() => filterByPeriod(smartScale, period, 'measured_at'), [smartScale, period]);
 
-  const latestScan = periodScans[periodScans.length - 1] ?? scans[scans.length - 1] ?? null;
-  const latestWeight = (() => {
-    const w = periodWeights[periodWeights.length - 1] ?? weights[weights.length - 1];
-    return w ? Number(w.weight_kg) : null;
-  })();
+  // Firsts / Lasts strikt im Zeitraum
+  const firstScan = periodScans[0] ?? null;
+  const latestScan = periodScans[periodScans.length - 1] ?? null;
+
+  // Für die Ziel-Journey (rechte Karte) darf – anders als KPIs – ein globaler
+  // Fallback verwendet werden, damit „aktueller Stand vs. Ziel" nicht verschwindet.
+  const globalLatestWeight = weights.length ? Number(weights[weights.length - 1].weight_kg) : null;
+  const globalLatestScan = scans.length ? scans[scans.length - 1] : null;
+
+  // Period-strenger letzter Gewichtspunkt (Manual + Smart Scale kombiniert)
+  const periodLatestWeight = useMemo(() => {
+    const candidates: { t: number; w: number }[] = [];
+    for (const w of periodWeights) {
+      candidates.push({ t: parseLocalDate(w.date).getTime(), w: Number(w.weight_kg) });
+    }
+    for (const s of periodSmart) {
+      const anyS = s as any;
+      const kg = Number(anyS.weight_kg ?? anyS.weight ?? NaN);
+      if (isFinite(kg)) candidates.push({ t: new Date(anyS.measured_at).getTime(), w: kg });
+    }
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => a.t - b.t);
+    return candidates[candidates.length - 1].w;
+  }, [periodWeights, periodSmart]);
 
   // Trainings pro Woche im Zeitraum
-  const trainingsPerWeek = (() => {
+  const trainingsPerWeek = useMemo(() => {
     if (!periodCheckins.length) return 0;
     const days = Math.max(1, (period.end.getTime() - period.start.getTime()) / (1000 * 60 * 60 * 24));
     return periodCheckins.length / (days / 7);
-  })();
+  }, [periodCheckins, period]);
 
-  // Deltas fürs Hero
-  const firstScan = periodScans[0];
-  const scanWeightDelta = firstScan && latestScan ? Number(latestScan.weight_kg ?? 0) - Number(firstScan.weight_kg ?? 0) : 0;
-  const scanMuscleDelta = firstScan && latestScan ? Number(latestScan.muscle_mass_kg ?? 0) - Number(firstScan.muscle_mass_kg ?? 0) : 0;
-  const scanFatDelta = firstScan && latestScan ? Number(latestScan.fat_mass_kg ?? 0) - Number(firstScan.fat_mass_kg ?? 0) : 0;
+  // Deltas im Zeitraum (nur wenn ≥ 2 Scans, sonst null)
+  const hasScanTrend = periodScans.length >= 2 && firstScan && latestScan;
+  const scanWeightDelta = hasScanTrend
+    ? Number(latestScan!.weight_kg ?? 0) - Number(firstScan!.weight_kg ?? 0)
+    : 0;
+  const scanMuscleDelta = hasScanTrend
+    ? Number(latestScan!.muscle_mass_kg ?? 0) - Number(firstScan!.muscle_mass_kg ?? 0)
+    : 0;
+  const scanFatDelta = hasScanTrend
+    ? Number(latestScan!.fat_mass_kg ?? 0) - Number(firstScan!.fat_mass_kg ?? 0)
+    : 0;
 
   const totalRecords = checkins.length + scans.length + weights.length + smartScale.length;
 
@@ -73,9 +101,9 @@ export default function TrainingOverviewPage() {
       context="Alles Wichtige aus Training, Körper und Gewicht auf einen Blick – im gewählten Zeitraum."
       updatedAt={latestDate}
       sources={[
-        { label: 'Trainings', count: checkins.length },
-        { label: 'Scans', count: scans.length },
-        { label: 'Messungen', count: weights.length + smartScale.length },
+        { label: 'Trainings', count: periodCheckins.length },
+        { label: 'Scans', count: periodScans.length },
+        { label: 'Messungen', count: periodWeights.length + periodSmart.length },
       ]}
       actions={
         <>
@@ -108,8 +136,14 @@ export default function TrainingOverviewPage() {
             <div className="lg:col-span-4">
               <JourneyHero
                 goal={goal}
-                currentWeight={latestWeight}
-                currentBodyFat={latestScan?.fat_percent ? Number(latestScan.fat_percent) : null}
+                currentWeight={periodLatestWeight ?? globalLatestWeight}
+                currentBodyFat={
+                  latestScan?.fat_percent != null
+                    ? Number(latestScan.fat_percent)
+                    : globalLatestScan?.fat_percent != null
+                      ? Number(globalLatestScan.fat_percent)
+                      : null
+                }
                 weeklyTrainingCount={Math.round(trainingsPerWeek)}
               />
             </div>
@@ -129,49 +163,57 @@ export default function TrainingOverviewPage() {
                 }}
               />
             </ChartFrame>
-            <ChartFrame title="Gewicht" caption="letzter Messpunkt" eyebrow="Aktuell">
-              {latestWeight != null ? (
+            <ChartFrame title="Gewicht" caption="letzter Punkt im Zeitraum" eyebrow="Aktuell">
+              {periodLatestWeight != null ? (
                 <MetricHero
                   label=""
-                  value={latestWeight.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  value={periodLatestWeight.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   unit="kg"
                   tone="observed"
                 />
               ) : (
-                <EmptyInsightState title="Keine Waage-Daten" description="Trage ein Gewicht ein oder importiere Smart-Scale-Daten." />
+                <EmptyInsightState title="Keine Waage-Daten" description="Kein Gewichtseintrag im gewählten Zeitraum." />
               )}
             </ChartFrame>
             <ChartFrame title="Muskelmasse" caption="Δ im Zeitraum" eyebrow="Körper">
-              {firstScan && latestScan ? (
+              {hasScanTrend ? (
                 <MetricHero
                   label=""
-                  value={(latestScan.muscle_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  value={(scanMuscleDelta >= 0 ? '+' : '') + scanMuscleDelta.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   unit="kg"
                   tone="muscle"
-                  delta={{ value: scanMuscleDelta, suffix: ' kg', positiveWhen: 'up' }}
+                  delta={{
+                    value: Number(latestScan!.muscle_mass_kg ?? 0),
+                    suffix: ' kg akt.',
+                    positiveWhen: 'either',
+                  }}
                 />
               ) : (
-                <EmptyInsightState title="Zu wenige Scans" description="Mindestens zwei TANITA-Scans für einen Trend." />
+                <EmptyInsightState title="Zu wenige Scans" description="Mindestens zwei TANITA-Scans im Zeitraum für einen Trend." />
               )}
             </ChartFrame>
             <ChartFrame title="Fettmasse" caption="Δ im Zeitraum" eyebrow="Körper">
-              {firstScan && latestScan ? (
+              {hasScanTrend ? (
                 <MetricHero
                   label=""
-                  value={(latestScan.fat_mass_kg ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  value={(scanFatDelta >= 0 ? '+' : '') + scanFatDelta.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   unit="kg"
                   tone="fat"
-                  delta={{ value: scanFatDelta, suffix: ' kg', positiveWhen: 'down' }}
+                  delta={{
+                    value: Number(latestScan!.fat_mass_kg ?? 0),
+                    suffix: ' kg akt.',
+                    positiveWhen: 'either',
+                  }}
                 />
               ) : (
-                <EmptyInsightState title="Zu wenige Scans" description="Mindestens zwei TANITA-Scans für einen Trend." />
+                <EmptyInsightState title="Zu wenige Scans" description="Mindestens zwei TANITA-Scans im Zeitraum für einen Trend." />
               )}
             </ChartFrame>
           </div>
 
-          {scanWeightDelta !== 0 && (
+          {hasScanTrend && scanWeightDelta !== 0 && (
             <div className="rounded-2xl border border-health-hairline bg-health-surface p-6 text-sm text-health-ink-muted shadow-health-soft">
-              <span className="font-medium text-health-ink">Gewicht seit erstem Scan im Zeitraum:</span>{' '}
+              <span className="font-medium text-health-ink">Gewicht zwischen erstem und letztem Scan im Zeitraum:</span>{' '}
               {scanWeightDelta > 0 ? '+' : ''}
               {scanWeightDelta.toFixed(1)} kg – die Bewertung dieser Zahl hängt von Muskel-/Fett-Anteil ab (siehe Executive Brief).
             </div>
