@@ -188,8 +188,29 @@ All colors MUST be HSL. */
 
     --chart-grid: 0 0% 20%;
     --chart-axis: 0 0% 45%;
+
+    /* Performance Intelligence – Dark */
+    --health-canvas: 220 14% 6%;
+    --health-surface: 220 14% 10%;
+    --health-surface-elevated: 220 14% 12%;
+    --health-ink: 210 20% 96%;
+    --health-ink-muted: 220 10% 68%;
+    --health-ink-subtle: 220 8% 48%;
+    --health-hairline: 220 12% 18%;
+    --health-glass: 220 14% 10% / 0.72;
+    --health-observed: 210 20% 92%;
+    --health-positive: 158 60% 52%;
+    --health-muscle: 210 92% 62%;
+    --health-fat: 12 82% 62%;
+    --health-forecast: 262 68% 68%;
+    --health-warning: 36 92% 58%;
+    --health-danger: 358 72% 62%;
+    --health-grid: 220 12% 18%;
+    --health-shadow-soft: 0 1px 2px 0 hsl(0 0% 0% / 0.4), 0 8px 24px -12px hsl(0 0% 0% / 0.5);
+    --health-shadow-hero: 0 1px 2px 0 hsl(0 0% 0% / 0.4), 0 24px 48px -24px hsl(0 0% 0% / 0.6);
   }
 }
+
 
 /* Week numbers styling for calendar */
 .rdp-weeknumber {
