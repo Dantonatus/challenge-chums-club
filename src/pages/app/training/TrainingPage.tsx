@@ -234,7 +234,7 @@ export default function TrainingPage() {
           />
         </div>
       ) : (
-        <div ref={captureRef} className="-m-5 space-y-6 p-5">
+        <div className="-m-5 space-y-6 p-5">
           <TrainingBrief brief={brief} />
 
           <ConsistencyHero
@@ -275,6 +275,7 @@ export default function TrainingPage() {
       )}
 
       <GoalEditorSheet open={goalOpen} onOpenChange={setGoalOpen} goal={goal} />
+      <ReportPreviewDialog open={reportOpen} onOpenChange={setReportOpen} model={reportModel} />
     </PerformanceReportingShell>
   );
 }
