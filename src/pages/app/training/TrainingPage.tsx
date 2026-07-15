@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Dumbbell, FileDown, Loader2, ScanLine, Scale } from 'lucide-react';
+import { useRef, useState, useMemo } from 'react';
+import { FileDown, Loader2, Target } from 'lucide-react';
 import { toJpeg } from 'html-to-image';
 import { useTrainingCheckins } from '@/hooks/useTrainingCheckins';
+import { useHealthGoal } from '@/hooks/useHealthGoal';
 import CsvUploader from '@/components/training/CsvUploader';
 import { Button } from '@/components/ui/button';
 import { exportTrainingPDF } from '@/lib/training/exportTrainingPDF';
@@ -16,6 +16,12 @@ import TimeBubbleHeatmap from '@/components/training/TimeBubbleHeatmap';
 import FrequencyTrendChart from '@/components/training/FrequencyTrendChart';
 import RestDaysChart from '@/components/training/RestDaysChart';
 import PersonalRecords from '@/components/training/PersonalRecords';
+import { PerformanceReportingShell } from '@/components/health/PerformanceReportingShell';
+import { GoalEditorSheet } from '@/components/health/GoalEditorSheet';
+import { useReporting } from '@/contexts/ReportingContext';
+import { filterByPeriod, parseLocalDate } from '@/lib/health/periods';
+import { EmptyInsightState } from '@/components/health/EmptyInsightState';
+
 
 interface PdfSection {
   label: string;
