@@ -515,7 +515,7 @@ export default function AnatomyFigure({
               style={{ gridArea: 'figure' }}
               className="flex items-center justify-center px-4"
             >
-              <div className="w-44">
+              <div className="w-64 md:w-72">
                 <BodySilhouette
                   mode={mode}
                   segments={values}
