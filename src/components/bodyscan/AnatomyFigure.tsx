@@ -474,7 +474,7 @@ export default function AnatomyFigure({
       <CardContent className="pb-8 px-6 md:px-8">
         {isMobile ? (
           <div className="flex flex-col items-center gap-5">
-            <div className="w-40 h-auto">
+            <div className="w-56 h-auto py-2">
               <BodySilhouette
                 mode={mode}
                 segments={values}
