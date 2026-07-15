@@ -4,11 +4,15 @@ import type { TrainingCheckin } from '@/lib/training/types';
 import { trainingDatesSet } from '@/lib/training/analytics';
 import { parseISO, subMonths } from 'date-fns';
 
-interface Props { checkins: TrainingCheckin[] }
+interface Props {
+  checkins: TrainingCheckin[];
+  anchorDate?: Date;
+}
 
-export default function TrainingCalendar({ checkins }: Props) {
+export default function TrainingCalendar({ checkins, anchorDate }: Props) {
   const dates = trainingDatesSet(checkins);
   const highlighted = Array.from(dates).map(d => parseISO(d));
+  const anchor = anchorDate ?? new Date();
 
   return (
     <Card>
@@ -20,7 +24,7 @@ export default function TrainingCalendar({ checkins }: Props) {
           mode="multiple"
           numberOfMonths={3}
           pagedNavigation
-          defaultMonth={subMonths(new Date(), 2)}
+          defaultMonth={subMonths(anchor, 2)}
           selected={highlighted}
           className="rounded-md"
         />
