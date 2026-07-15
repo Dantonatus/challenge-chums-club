@@ -115,7 +115,7 @@ export default function BodyScanPage() {
             <Target className="mr-1.5 h-3.5 w-3.5" />
             Ziel
           </Button>
-          {scans.length > 0 && (
+          {filteredScans.length > 0 && (
             <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
               <FileDown className="mr-1.5 h-3.5 w-3.5" />
               Report
