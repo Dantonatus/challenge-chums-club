@@ -136,7 +136,7 @@ export default function BodyScanPage() {
           description="Importiere TANITA CSV-Dateien oder wähle einen längeren Zeitraum."
         />
       ) : (
-        <div ref={captureRef} className="-m-5 space-y-6 p-5">
+        <div className="-m-5 space-y-6 p-5">
           {/* Header: Baseline + Scan-Navigation */}
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-health-hairline bg-health-surface p-4">
             <BaselineSelector
