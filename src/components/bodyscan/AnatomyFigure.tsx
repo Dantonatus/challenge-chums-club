@@ -212,10 +212,12 @@ function BodySilhouette({
         </linearGradient>
 
         {/* Body inner shading (creates volume) */}
-        <radialGradient id="body-volume" cx="50%" cy="35%" r="70%">
-          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity="0" />
-          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity="0.08" />
-        </radialGradient>
+        <linearGradient id="body-volume" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity="0.04" />
+          <stop offset="50%" stopColor="hsl(var(--foreground))" stopOpacity="0" />
+          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity="0.04" />
+        </linearGradient>
+
 
         {/* Per-zone heat gradients */}
         {zoneKeys.map((key) => {
