@@ -277,39 +277,51 @@ export function RoutineMap({ checkins }: Props) {
                 );
               })}
 
-              {/* Bubbles */}
+              {/* Bubbles with 3D glow effect */}
               {nonZero.map(c => {
                 const cx = xFor(c.hour);
                 const cy = yFor(c.weekdayIdx);
                 const r = radiusFor(c.count);
-                const alpha = 0.35 + 0.55 * (maxCount ? c.count / maxCount : 0);
                 const isActive =
                   hover && hover.weekdayIdx === c.weekdayIdx && hover.hour === c.hour;
+                const displayR = isActive ? r * 1.1 : r;
                 return (
-                  <circle
+                  <g
                     key={`b-${c.weekdayIdx}-${c.hour}`}
-                    cx={cx}
-                    cy={cy}
-                    r={isActive ? r * 1.08 : r}
-                    fill={`hsl(var(--health-observed) / ${alpha})`}
-                    stroke="hsl(var(--health-observed) / 0.95)"
-                    strokeWidth={1.25}
                     style={{
                       cursor: 'pointer',
-                      transition: 'r 120ms ease-out',
-                      filter: isActive ? 'url(#routine-bubble-glow)' : undefined,
+                      filter: isActive ? 'url(#routine-bubble-glow)' : 'url(#routine-bubble-shadow)',
                     }}
                     tabIndex={0}
                     role="img"
                     aria-label={`${DAYS_LONG[c.weekdayIdx]} ${String(c.hour).padStart(2, '0')}:00 Uhr: ${c.count} Check-in${c.count === 1 ? '' : 's'}`}
                     onMouseEnter={() =>
-                      setHover({ weekdayIdx: c.weekdayIdx, hour: c.hour, count: c.count, cx, cy, r })
+                      setHover({ weekdayIdx: c.weekdayIdx, hour: c.hour, count: c.count, cx, cy, r: displayR })
                     }
+                    onMouseLeave={() => setHover(null)}
                     onFocus={() =>
-                      setHover({ weekdayIdx: c.weekdayIdx, hour: c.hour, count: c.count, cx, cy, r })
+                      setHover({ weekdayIdx: c.weekdayIdx, hour: c.hour, count: c.count, cx, cy, r: displayR })
                     }
                     onBlur={() => setHover(null)}
-                  />
+                  >
+                    <circle cx={cx} cy={cy} r={displayR + 2} fill="hsl(var(--health-observed) / 0.18)" />
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={displayR}
+                      fill="url(#routine-bubble-fill)"
+                      stroke="hsl(var(--health-observed) / 0.9)"
+                      strokeWidth={1}
+                      style={{ transition: 'r 160ms ease-out' }}
+                    />
+                    <circle
+                      cx={cx - displayR * 0.28}
+                      cy={cy - displayR * 0.32}
+                      r={displayR * 0.55}
+                      fill="url(#routine-bubble-highlight)"
+                      pointerEvents="none"
+                    />
+                  </g>
                 );
               })}
             </svg>
