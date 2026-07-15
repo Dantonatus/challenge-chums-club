@@ -65,22 +65,25 @@ export function hexToRgb(hex: string): [number, number, number] {
 }
 
 /**
- * jsPDF's built-in Helvetica uses WinAnsi (CP1252) which covers German umlauts,
- * but some Unicode characters (— · • → ≥ ≤ ± °) render as ? or blocks.
+ * jsPDF's built-in Helvetica uses WinAnsi (CP1252) which covers Latin-1 (German
+ * umlauts, ß) but not Greek letters or many typographic punctuation marks.
  * Replace the common offenders with WinAnsi-safe equivalents.
  */
 export function sanitizePdfText(input: string): string {
   return input
+    .replace(/Δ/g, 'd.')
+    .replace(/Ø/g, 'O')
     .replace(/[·•]/g, '-')
     .replace(/→/g, '->')
     .replace(/←/g, '<-')
     .replace(/≥/g, '>=')
     .replace(/≤/g, '<=')
     .replace(/±/g, '+/-')
-    .replace(/–|—/g, '-')       // en/em dash → hyphen
+    .replace(/–|—/g, '-')
     .replace(/[""]/g, '"')
     .replace(/['']/g, "'")
     .replace(/…/g, '...')
-    .replace(/\u00A0/g, ' ')     // NBSP
+    .replace(/\u00A0/g, ' ')
     .replace(/[\u2000-\u200F\u2028-\u202F]/g, ' ');
 }
+
