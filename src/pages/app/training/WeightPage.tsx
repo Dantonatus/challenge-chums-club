@@ -34,12 +34,12 @@ export default function WeightPage() {
   const { entries, isLoading, upsert, update, remove } = useWeightEntries();
   const { snapshots } = useForecastSnapshots();
   const { entries: scaleEntries, isLoading: scaleLoading, bulkImport } = useSmartScaleEntries();
-  const [periodRange, setPeriodRange] = useState<{ start: Date; end: Date } | null>(null);
+  const { goal } = useHealthGoal();
+  const { period } = useReporting();
   const [timeSlot, setTimeSlot] = useState<TimeSlot>('morning');
   const [exporting, setExporting] = useState(false);
-  const navigate = useNavigate();
+  const [goalOpen, setGoalOpen] = useState(false);
 
-  // Capture refs for PDF export
   const kpiRef = useRef<HTMLDivElement>(null);
   const entryListRef = useRef<HTMLDivElement>(null);
   const comparisonRef = useRef<HTMLDivElement>(null);
@@ -52,30 +52,27 @@ export default function WeightPage() {
   );
 
   const hasScaleData = scaleEntries.length > 0;
-  const hasHRData = scaleEntries.some(e => e.heart_rate_bpm !== null);
+  const hasHRData = scaleEntries.some((e) => e.heart_rate_bpm !== null);
 
-  // Unified weight timeline: manual + scale (respects time-of-day filter)
   const unifiedEntries = useMemo(() => {
     const merged = mergeWeightSources(entries, scaleEntries);
     if (timeSlot === 'all') return merged;
-    return merged.filter(e => {
+    return merged.filter((e) => {
       const hour = parseInt((e.time ?? '').slice(0, 2), 10);
       if (isNaN(hour)) return timeSlot === 'morning';
       if (timeSlot === 'morning') return hour < 15;
       return hour >= 15;
     });
   }, [entries, scaleEntries, timeSlot]);
-  const handlePeriodChange = useCallback((start: Date, end: Date) => {
-    setPeriodRange({ start, end });
-  }, []);
 
-  // Filter unified entries by selected period
-  const periodEntries = useMemo(() => {
-    if (!periodRange) return unifiedEntries;
-    return filterByDateRange(unifiedEntries, periodRange.start, periodRange.end);
-  }, [unifiedEntries, periodRange]);
+  const periodEntries = useMemo(
+    () => filterByPeriod(unifiedEntries, period, 'date'),
+    [unifiedEntries, period],
+  );
 
   const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
+  const latestDate = entries.length ? parseLocalDate(entries[entries.length - 1].date) : null;
+
 
   const pdfSections = [
     { label: 'KPIs', ref: kpiRef },
